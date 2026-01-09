@@ -1,0 +1,55 @@
+import type { RegisterDto, LoginDto, AuthResponse } from '../dto/auth.dto';
+
+const API_BASE_URL = 'http://127.0.0.1:8000/api/users/auth';
+
+export class AuthService {
+  static async register(data: RegisterDto): Promise<AuthResponse> {
+    console.log('📤 Register request data:', data);
+
+    const response = await fetch(`${API_BASE_URL}/register/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    console.log('📥 Register response status:', response.status);
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('❌ Register error:', error);
+      throw error;
+    }
+
+    const result = await response.json();
+    console.log('✅ Register success response:', result);
+
+    return result;
+  }
+
+  static async login(data: LoginDto): Promise<AuthResponse> {
+    console.log('📤 Login request data:', data);
+
+    const response = await fetch(`${API_BASE_URL}/login/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    console.log('📥 Login response status:', response.status);
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('❌ Login error:', error);
+      throw error;
+    }
+
+    const result = await response.json();
+    console.log('✅ Login success response:', result);
+
+    return result;
+  }
+}

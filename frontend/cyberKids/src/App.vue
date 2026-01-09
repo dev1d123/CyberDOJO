@@ -1,15 +1,21 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import AnimatedBackground from './components/AnimatedBackground.vue';
 import Navbar from './components/Navbar.vue';
-import HomePage from './pages/HomePage.vue';
+
+const route = useRoute();
+
+// Solo mostrar el background y navbar en la página principal
+const showLayout = computed(() => route.path === '/');
 </script>
 
 <template>
   <div class="app-container">
-    <AnimatedBackground />
-    <div class="content-wrapper">
-      <Navbar />
-      <HomePage />
+    <AnimatedBackground v-if="showLayout" />
+    <div class="content-wrapper" :class="{ 'no-bg': !showLayout }">
+      <Navbar v-if="showLayout" />
+      <router-view />
     </div>
   </div>
 </template>
@@ -30,5 +36,10 @@ import HomePage from './pages/HomePage.vue';
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.content-wrapper.no-bg {
+  background: transparent;
+  overflow-y: auto;
 }
 </style>
