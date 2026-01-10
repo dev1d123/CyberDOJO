@@ -28,7 +28,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     
     # CyberKids Apps
-    'apps.users',              # User Core: user, country, risk_level
+    'apps.cyberUser',              # User Core: user, country, risk_level
     'apps.slang_engine',       # RF-01: Cultural Personalization
     'apps.simulation',         # RF-02: Social Engineering Simulation
     'apps.pets',               # RF-03: Emotional Feedback System
@@ -143,6 +143,4 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'USER_ID_FIELD': 'user_id',
-    'USER_ID_CLAIM': 'user_id',
 }
