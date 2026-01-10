@@ -150,7 +150,7 @@ const goToLogin = () => {
   align-items: center;
   justify-content: center;
   gap: 3rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   width: 100%;
   max-width: 1100px;
 }
@@ -166,7 +166,7 @@ const goToLogin = () => {
 .buttons-container {
   display: flex;
   gap: 2rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
   flex: 1;
