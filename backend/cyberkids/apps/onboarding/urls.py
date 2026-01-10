@@ -1,13 +1,19 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views import (
+    OnboardingQuestionViewSet,
+    AnswerOptionViewSet,
+    OnboardingResponseViewSet,
+    UserStatisticViewSet,
+    GlobalStatisticViewSet
+)
 
 router = DefaultRouter()
-# TODO: Register viewsets
-# router.register(r'questions', OnboardingQuestionViewSet)
-# router.register(r'options', AnswerOptionViewSet)
-# router.register(r'responses', OnboardingResponseViewSet)
-# router.register(r'user-stats', UserStatisticViewSet)
-# router.register(r'global-stats', GlobalStatisticViewSet)
+router.register(r'questions', OnboardingQuestionViewSet, basename='onboarding-questions')
+router.register(r'options', AnswerOptionViewSet, basename='answer-options')
+router.register(r'responses', OnboardingResponseViewSet, basename='onboarding-responses')
+router.register(r'user-stats', UserStatisticViewSet, basename='user-statistics')
+router.register(r'global-stats', GlobalStatisticViewSet, basename='global-statistics')
 
 urlpatterns = [
     path('', include(router.urls)),

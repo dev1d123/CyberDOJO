@@ -4,4 +4,4 @@ from django.apps import AppConfig
 class OnboardingConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.onboarding'
-    verbose_name = 'RF-06: Initial Risk Identification (Onboarding)'
+    verbose_name = 'Onboarding'
