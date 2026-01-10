@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
 COPY cyberkids/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install additional packages for production
+# Install additional packages for production (kept for compatibility)
 RUN pip install --no-cache-dir gunicorn whitenoise psycopg2-binary python-decouple
 
 # Copy project
