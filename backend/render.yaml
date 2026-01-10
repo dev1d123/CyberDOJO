@@ -1,0 +1,32 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: cyberkids-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: oregon
+    plan: free
+    branch: main
+    healthCheckPath: /admin/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cyberkids-db
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        sync: false
+
+  # PostgreSQL Database
+  - type: pserv
+    name: cyberkids-db
+    env: docker
+    region: oregon
+    plan: free
+    ipAllowList: []
