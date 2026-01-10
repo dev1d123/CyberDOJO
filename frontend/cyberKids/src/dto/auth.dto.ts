@@ -6,7 +6,7 @@ export interface RegisterDto {
 }
 
 export interface LoginDto {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -18,6 +18,10 @@ export interface AuthResponse {
     email: string;
   };
   token?: string;
+  tokens?: {
+    access: string;
+    refresh: string;
+  };
 }
 
 export interface ValidationErrors {
@@ -25,4 +29,6 @@ export interface ValidationErrors {
   email?: string[];
   password?: string[];
   password_confirm?: string[];
+  non_field_errors?: string[];
+  error?: string;
 }
