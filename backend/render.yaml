@@ -9,6 +9,7 @@ services:
     plan: free
     branch: main
     healthCheckPath: /admin/
+    startCommand: "bash -lc 'python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn cyberkids.wsgi:application --bind 0.0.0.0:8000 --workers 3'"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
