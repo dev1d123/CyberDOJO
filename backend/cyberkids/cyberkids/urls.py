@@ -26,7 +26,7 @@ urlpatterns = [
     path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     
     # API routes
-    path('api/users/', include('apps.users.urls')),
+    path('api/users/', include('apps.cyberUser.urls')),
     path('api/slang/', include('apps.slang_engine.urls')),
     path('api/simulation/', include('apps.simulation.urls')),
     path('api/pets/', include('apps.pets.urls')),
