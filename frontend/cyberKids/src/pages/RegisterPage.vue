@@ -61,11 +61,23 @@ const handleRegister = async () => {
   
   try {
     const response = await AuthService.register(formData.value);
+    
+    // Guardar tokens
+    if (response.tokens) {
+      localStorage.setItem('access_token', response.tokens.access);
+      localStorage.setItem('refresh_token', response.tokens.refresh);
+    }
+    
+    // Guardar información del usuario
+    if (response.user) {
+      localStorage.setItem('user_id', response.user.user_id.toString());
+    }
+    
     successMessage.value = '¡Cuenta creada exitosamente! Redirigiendo...';
     
     setTimeout(() => {
-      router.push('/login');
-    }, 2000);
+      router.push('/onboarding');
+    }, 1500);
   } catch (error: any) {
     if (error && typeof error === 'object') {
       // Traducir mensajes del backend si es necesario
