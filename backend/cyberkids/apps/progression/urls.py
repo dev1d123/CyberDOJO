@@ -1,14 +1,16 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views import (
+    ProgressionLevelViewSet, CosmeticItemViewSet,
+    UserInventoryViewSet, CreditTransactionViewSet, UserProgressViewSet
+)
 
 router = DefaultRouter()
-# TODO: Register viewsets
-# router.register(r'levels', ProgressionLevelViewSet)
-# router.register(r'cosmetics', CosmeticItemViewSet)
-# router.register(r'inventory', UserInventoryViewSet)
-# router.register(r'transactions', CreditTransactionViewSet)
-# router.register(r'progress', UserProgressViewSet)
-
+router.register(r'levels', ProgressionLevelViewSet, basename='progression-levels')
+router.register(r'cosmetics', CosmeticItemViewSet, basename='cosmetic-items')
+router.register(r'inventory', UserInventoryViewSet, basename='user-inventory')
+router.register(r'transactions', CreditTransactionViewSet, basename='credit-transactions')
+router.register(r'progress', UserProgressViewSet, basename='user-progress')
 urlpatterns = [
     path('', include(router.urls)),
 ]
