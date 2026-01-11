@@ -9,36 +9,50 @@ from datetime import timedelta
 from django.conf import settings
 import jwt
 from .models import CyberUser
-from .serializers import UserSerializer, RegisterSerializer, LoginSerializer
+from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, PreferencesSerializer 
 
 
 def generate_tokens_for_cyberuser(user):
-    """Genera tokens JWT personalizados para CyberUser"""
     from datetime import datetime
-    
+    from .models import Preferences
+
+    if not user.preferences:
+        preferences = Preferences.objects.create()
+        user.preferences = preferences
+        user.save(update_fields=['preferences'])
+    else:
+        preferences = user.preferences
+
     access_payload = {
         'user_id': user.user_id,
         'email': user.email,
+        'username': user.username,
+        'country': user.country.name if user.country else None,
+        'risk_level': user.risk_level.name if user.risk_level else None,
+        'cybercreds': user.cybercreds,
+        'is_active': user.is_active,
+        'avatar': user.avatar.url if user.avatar else None,
+        'preferences': {
+            'receive_newsletters': preferences.receive_newsletters,
+            'dark_mode': preferences.dark_mode,
+        },
         'exp': datetime.utcnow() + timedelta(hours=1),
         'iat': datetime.utcnow(),
         'token_type': 'access'
     }
-    
+
     refresh_payload = {
-        'user_id': user.user_id,
-        'email': user.email,
+        **access_payload,
         'exp': datetime.utcnow() + timedelta(days=7),
-        'iat': datetime.utcnow(),
         'token_type': 'refresh'
     }
-    
-    access_token = jwt.encode(access_payload, settings.SECRET_KEY, algorithm='HS256')
-    refresh_token = jwt.encode(refresh_payload, settings.SECRET_KEY, algorithm='HS256')
-    
+
     return {
-        'access': access_token,
-        'refresh': refresh_token
+        'access': jwt.encode(access_payload, settings.SECRET_KEY, algorithm='HS256'),
+        'refresh': jwt.encode(refresh_payload, settings.SECRET_KEY, algorithm='HS256'),
     }
+
+
 
 
 class RegisterView(APIView):
@@ -89,7 +103,7 @@ class LoginView(APIView):
         
         return Response({
             'message': 'Login exitoso',
-            'user': UserSerializer(user).data,
+            # 'user': UserSerializer(user).data,
             'tokens': tokens
         })
 
