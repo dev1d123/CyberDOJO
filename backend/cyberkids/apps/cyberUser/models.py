@@ -36,7 +36,13 @@ class CyberUserManager(models.Manager):
         if not email:
             raise ValueError('El email es obligatorio')
         email = email.lower().strip()
-        user = self.model(email=email, username=username, **extra_fields)
+        
+        preferences = Preferences.objects.create(
+            receive_newsletters=False,
+            dark_mode=False
+        )
+        
+        user = self.model(email=email, username=username, preferences=preferences, **extra_fields)
         if password:
             user.set_password(password)
         user.save(using=self._db)
@@ -44,7 +50,7 @@ class CyberUserManager(models.Manager):
     
 class Preferences(models.Model):
     preference_id = models.AutoField(primary_key=True)
-    receive_newsletters = models.BooleanField(default=True)
+    receive_newsletters = models.BooleanField(default=False)
     dark_mode = models.BooleanField(default=False)
 
     class Meta:
