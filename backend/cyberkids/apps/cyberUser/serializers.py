@@ -1,5 +1,14 @@
 from rest_framework import serializers
 from .models import CyberUser
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+from .models import Preferences
+
+
+class PreferencesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Preferences
+        fields = '__all__'
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -8,7 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'user_id', 'username', 'email', 'country',
             'risk_level', 'pet_id', 'cybercreds', 'created_at',
-            'last_login', 'is_active'
+            'last_login', 'is_active', 'avatar', 'preferences'
         ]
         read_only_fields = ['user_id', 'created_at', 'last_login']
 
@@ -41,3 +50,4 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+
