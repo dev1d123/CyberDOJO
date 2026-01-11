@@ -13,11 +13,12 @@ export interface LoginDto {
 export interface AuthResponse {
   message?: string;
   user?: {
-    id: number;
+    user_id: number;
     username: string;
     email: string;
   };
-  token?: string;
+  access?: string;
+  refresh?: string;
   tokens?: {
     access: string;
     refresh: string;
