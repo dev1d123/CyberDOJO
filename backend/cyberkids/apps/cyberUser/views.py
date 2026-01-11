@@ -23,6 +23,13 @@ def generate_tokens_for_cyberuser(user):
     else:
         preferences = user.preferences
 
+    avatar_url = None
+    if user.avatar:
+        if hasattr(user.avatar, 'url'):
+            avatar_url = user.avatar.url
+        else:
+            avatar_url = str(user.avatar)
+
     access_payload = {
         'user_id': user.user_id,
         'email': user.email,
@@ -31,7 +38,7 @@ def generate_tokens_for_cyberuser(user):
         'risk_level': user.risk_level.name if user.risk_level else None,
         'cybercreds': user.cybercreds,
         'is_active': user.is_active,
-        'avatar': user.avatar.url if user.avatar else None,
+        'avatar': avatar_url,
         'preferences': {
             'receive_newsletters': preferences.receive_newsletters,
             'dark_mode': preferences.dark_mode,
@@ -67,7 +74,7 @@ class RegisterView(APIView):
         
         return Response({
             'message': 'Usuario registrado exitosamente',
-            'user': UserSerializer(user).data,
+            #'user': UserSerializer(user).data,
             'tokens': tokens
         }, status=status.HTTP_201_CREATED)
 
