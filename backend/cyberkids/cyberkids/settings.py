@@ -2,6 +2,9 @@
 
 from pathlib import Path
 import os
+
+import cloudinary
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -36,6 +39,9 @@ INSTALLED_APPS = [
     'apps.progression',        # RF-05: Progression and Economy
     'apps.onboarding',         # RF-06: Initial Risk Identification
     'apps.audit',              # Audit and Logging
+
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 MIDDLEWARE = [
@@ -146,11 +152,19 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "user_id",
     "USER_ID_CLAIM": "user_id",
 }
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 CORS_ALLOW_ALL_ORIGINS = True
 
 # Hosts permitidos
 ALLOWED_HOSTS = ['*']
+
+CLOUDINARY_CLOUD_NAME = 'dsvynqyq5'
+CLOUDINARY_API_KEY = '537782675375588'
+CLOUDINARY_API_SECRET = '9tbhQfQOxFjU1Xb-yZZiyXvM72I'
+
+cloudinary.config(
+    cloud_name='dsvynqyq5',
+    api_key='537782675375588',
+    api_secret='9tbhQfQOxFjU1Xb-yZZiyXvM72I',
+)
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
