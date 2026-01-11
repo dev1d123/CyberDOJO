@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
-
+from cloudinary.models import CloudinaryField
 
 class Country(models.Model):
     country_id = models.AutoField(primary_key=True)
@@ -69,7 +69,7 @@ class CyberUser(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
-    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    avatar = CloudinaryField('avatar', folder='avatars/', null=True, blank=True, default='avatars/default.jpg')
     preferences = models.OneToOneField(Preferences, on_delete=models.CASCADE, null=True, blank=True)
     country = models.ForeignKey(Country, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
     risk_level = models.ForeignKey(RiskLevel, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
