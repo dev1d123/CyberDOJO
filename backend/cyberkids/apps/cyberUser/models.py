@@ -41,7 +41,17 @@ class CyberUserManager(models.Manager):
             user.set_password(password)
         user.save(using=self._db)
         return user
+    
+class Preferences(models.Model):
+    preference_id = models.AutoField(primary_key=True)
+    receive_newsletters = models.BooleanField(default=True)
+    dark_mode = models.BooleanField(default=False)
 
+    class Meta:
+        db_table = 'preferences'
+
+    def __str__(self):
+        return f"Preferences for {self.user.username}"
 
 class CyberUser(models.Model):
     user_id = models.AutoField(primary_key=True)
@@ -53,6 +63,8 @@ class CyberUser(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    preferences = models.OneToOneField(Preferences, on_delete=models.CASCADE, null=True, blank=True)
     country = models.ForeignKey(Country, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
     risk_level = models.ForeignKey(RiskLevel, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
 
