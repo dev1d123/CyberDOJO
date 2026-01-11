@@ -36,12 +36,28 @@ class CyberUserManager(models.Manager):
         if not email:
             raise ValueError('El email es obligatorio')
         email = email.lower().strip()
-        user = self.model(email=email, username=username, **extra_fields)
+        
+        preferences = Preferences.objects.create(
+            receive_newsletters=False,
+            dark_mode=False
+        )
+        
+        user = self.model(email=email, username=username, preferences=preferences, **extra_fields)
         if password:
             user.set_password(password)
         user.save(using=self._db)
         return user
+    
+class Preferences(models.Model):
+    preference_id = models.AutoField(primary_key=True)
+    receive_newsletters = models.BooleanField(default=False)
+    dark_mode = models.BooleanField(default=False)
 
+    class Meta:
+        db_table = 'preferences'
+
+    def __str__(self):
+        return f"Preferences for {self.cyberuser.username}"
 
 class CyberUser(models.Model):
     user_id = models.AutoField(primary_key=True)
@@ -53,6 +69,8 @@ class CyberUser(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    preferences = models.OneToOneField(Preferences, on_delete=models.CASCADE, null=True, blank=True)
     country = models.ForeignKey(Country, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
     risk_level = models.ForeignKey(RiskLevel, on_delete=models.CASCADE, null=True, blank=True, related_name='users')
 

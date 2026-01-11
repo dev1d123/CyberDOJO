@@ -22,8 +22,38 @@ const handleRegister = async () => {
   successMessage.value = '';
   
   // Validación básica del lado del cliente
-  if (formData.value.password !== formData.value.password_confirm) {
+  let hasErrors = false;
+  
+  if (!formData.value.username.trim()) {
+    errors.value.username = ['El nombre de usuario es obligatorio'];
+    hasErrors = true;
+  }
+  
+  if (!formData.value.email.trim()) {
+    errors.value.email = ['El correo electrónico es obligatorio'];
+    hasErrors = true;
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.value.email)) {
+    errors.value.email = ['Por favor ingresa un correo electrónico válido'];
+    hasErrors = true;
+  }
+  
+  if (!formData.value.password) {
+    errors.value.password = ['La contraseña es obligatoria'];
+    hasErrors = true;
+  } else if (formData.value.password.length < 6) {
+    errors.value.password = ['La contraseña debe tener al menos 6 caracteres'];
+    hasErrors = true;
+  }
+  
+  if (!formData.value.password_confirm) {
+    errors.value.password_confirm = ['Debes confirmar tu contraseña'];
+    hasErrors = true;
+  } else if (formData.value.password !== formData.value.password_confirm) {
     errors.value.password_confirm = ['Las contraseñas no coinciden'];
+    hasErrors = true;
+  }
+  
+  if (hasErrors) {
     return;
   }
   
@@ -38,7 +68,26 @@ const handleRegister = async () => {
     }, 2000);
   } catch (error: any) {
     if (error && typeof error === 'object') {
-      errors.value = error;
+      // Traducir mensajes del backend si es necesario
+      const translatedErrors: ValidationErrors = {};
+      for (const [key, value] of Object.entries(error)) {
+        if (Array.isArray(value)) {
+          translatedErrors[key as keyof ValidationErrors] = value.map((msg: string) => {
+            // Traducir mensajes comunes del backend
+            if (msg.includes('This field is required') || msg.includes('required')) {
+              return 'Este campo es obligatorio';
+            }
+            if (msg.includes('already exists') || msg.includes('already registered')) {
+              return 'Este correo ya está registrado';
+            }
+            if (msg.includes('password') && msg.includes('match')) {
+              return 'Las contraseñas no coinciden';
+            }
+            return msg;
+          });
+        }
+      }
+      errors.value = translatedErrors;
     } else {
       errors.value = { username: ['Error al registrar. Intenta de nuevo.'] };
     }
@@ -169,32 +218,38 @@ const goBack = () => {
 
 <style scoped>
 .register-page {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  overflow: hidden;
 }
 
 .register-container {
   width: 100%;
-  max-width: 600px;
+  max-width: 650px;
   position: relative;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .back-button {
   background: rgba(255, 255, 255, 0.9);
   color: #667eea;
   border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 20px;
-  font-size: 1.1rem;
+  padding: 1rem 2rem;
+  border-radius: 25px;
+  font-size: 1.3rem;
   font-weight: bold;
   cursor: pointer;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 }
 
 .back-button:hover {
@@ -206,14 +261,16 @@ const goBack = () => {
 .register-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 30px;
-  padding: 3rem;
+  padding: 2rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   border: 5px solid #667eea;
   backdrop-filter: blur(10px);
+  overflow-y: auto;
+  max-height: calc(100vh - 100px);
 }
 
 .register-title {
-  font-size: 3rem;
+  font-size: 3.5rem;
   color: #667eea;
   text-align: center;
   margin: 0 0 0.5rem 0;
@@ -221,17 +278,17 @@ const goBack = () => {
 }
 
 .register-subtitle {
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   color: #666;
   text-align: center;
-  margin: 0 0 2rem 0;
+  margin: 0 0 1.5rem 0;
   font-weight: 600;
 }
 
 .register-form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.2rem;
 }
 
 .form-group {
@@ -241,16 +298,16 @@ const goBack = () => {
 }
 
 .form-label {
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   color: #2c3e50;
   font-weight: bold;
 }
 
 .form-input {
-  padding: 1rem 1.5rem;
+  padding: 1.2rem 1.5rem;
   border: 3px solid #e0e0e0;
-  border-radius: 15px;
-  font-size: 1.2rem;
+  border-radius: 18px;
+  font-size: 1.4rem;
   font-family: 'CyberKids', 'Comic Sans MS', Arial, sans-serif;
   transition: all 0.3s ease;
   background: white;
@@ -270,7 +327,7 @@ const goBack = () => {
 
 .error-message {
   color: #ff6b6b;
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: bold;
   margin-top: 0.3rem;
   animation: shake 0.3s ease;
@@ -279,10 +336,10 @@ const goBack = () => {
 .success-message {
   background: linear-gradient(135deg, #00f5a0, #00d9f5);
   color: white;
-  padding: 1rem;
-  border-radius: 15px;
+  padding: 1.2rem;
+  border-radius: 18px;
   text-align: center;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: bold;
   animation: slideIn 0.5s ease;
 }
@@ -291,14 +348,14 @@ const goBack = () => {
   background: linear-gradient(135deg, #48c6ef 0%, #6f86d6 100%);
   color: white;
   border: none;
-  padding: 1.3rem 2rem;
-  border-radius: 25px;
-  font-size: 1.6rem;
+  padding: 1.5rem 2rem;
+  border-radius: 30px;
+  font-size: 1.8rem;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   box-shadow: 0 10px 30px rgba(72, 198, 239, 0.4);
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 }
 
 .submit-button:hover:not(:disabled) {
@@ -313,20 +370,20 @@ const goBack = () => {
 
 .login-link {
   text-align: center;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 2px solid #e0e0e0;
 }
 
 .login-link p {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   color: #666;
   margin: 0 0 0.8rem 0;
 }
 
 .link-button {
   color: #ff6b6b;
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   font-weight: bold;
   text-decoration: none;
   transition: all 0.3s ease;
@@ -356,31 +413,64 @@ const goBack = () => {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .register-card {
-    padding: 2rem;
+@media (max-height: 800px) {
+  .register-title {
+    font-size: 3rem;
   }
   
+  .register-subtitle {
+    font-size: 1.4rem;
+  }
+  
+  .form-label {
+    font-size: 1.3rem;
+  }
+  
+  .form-input {
+    font-size: 1.2rem;
+    padding: 1rem 1.2rem;
+  }
+  
+  .submit-button {
+    font-size: 1.6rem;
+    padding: 1.2rem 1.8rem;
+  }
+  
+  .register-card {
+    padding: 1.5rem;
+  }
+  
+  .register-form {
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
   .register-title {
     font-size: 2.5rem;
   }
   
   .register-subtitle {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
   }
   
   .form-label {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
   }
   
   .form-input {
-    font-size: 1rem;
-    padding: 0.8rem 1.2rem;
+    font-size: 1.1rem;
+    padding: 0.9rem 1.2rem;
   }
   
   .submit-button {
-    font-size: 1.3rem;
-    padding: 1rem 1.5rem;
+    font-size: 1.4rem;
+    padding: 1.1rem 1.5rem;
+  }
+  
+  .back-button {
+    font-size: 1.1rem;
+    padding: 0.8rem 1.5rem;
   }
 }
 </style>
