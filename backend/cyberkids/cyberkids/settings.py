@@ -31,13 +31,12 @@ INSTALLED_APPS = [
     'drf_yasg',
     
     # CyberKids Apps
-    'apps.cyberUser',              # User Core: user, country, risk_level
-    'apps.slang_engine',       # RF-01: Cultural Personalization
-    'apps.simulation',         # RF-02: Social Engineering Simulation
-    'apps.pets',               # RF-03: Emotional Feedback System
-    'apps.minigames',          # RF-04: Gamified Events
-    'apps.progression',        # RF-05: Progression and Economy
-    'apps.onboarding',         # RF-06: Initial Risk Identification
+    'apps.cyberUser',          # User Core: user, country, risk_level
+    'apps.simulation',         # Social Engineering Simulation
+    'apps.pets',               # Emotional Feedback System
+    'apps.minigames',          # Gamified Events
+    'apps.progression',        # Progression and Economy
+    'apps.onboarding',         # Initial Risk Identification
     'apps.audit',              # Audit and Logging
 
     'cloudinary',

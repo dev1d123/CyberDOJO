@@ -52,6 +52,9 @@ class Preferences(models.Model):
     preference_id = models.AutoField(primary_key=True)
     receive_newsletters = models.BooleanField(default=False)
     dark_mode = models.BooleanField(default=False)
+    base_content = models.TextField(null=True, blank=True)
+    tone_instructions = models.TextField(null=True, blank=True)
+    age = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = 'preferences'

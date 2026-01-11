@@ -29,7 +29,6 @@ urlpatterns = [
     
     # API routes
     path('api/users/', include('apps.cyberUser.urls')),
-    path('api/slang/', include('apps.slang_engine.urls')),
     path('api/simulation/', include('apps.simulation.urls')),
     path('api/pets/', include('apps.pets.urls')),
     path('api/minigames/', include('apps.minigames.urls')),
