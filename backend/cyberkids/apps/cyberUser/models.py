@@ -51,7 +51,7 @@ class Preferences(models.Model):
         db_table = 'preferences'
 
     def __str__(self):
-        return f"Preferences for {self.user.username}"
+        return f"Preferences for {self.cyberuser.username}"
 
 class CyberUser(models.Model):
     user_id = models.AutoField(primary_key=True)
