@@ -9,7 +9,10 @@ from datetime import timedelta
 from django.conf import settings
 import jwt
 from .models import CyberUser
-from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, PreferencesSerializer 
+from .serializers import (
+    UserSerializer, RegisterSerializer, LoginSerializer, PreferencesSerializer,
+    UpdateUserSerializer, UpdatePreferencesSerializer, ChangePasswordSerializer
+) 
 
 
 def generate_tokens_for_cyberuser(user):
@@ -138,24 +141,144 @@ class RefreshTokenView(APIView):
             return Response({'error': 'Token inválido'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
+def get_user_from_token(request):
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return None, Response({'error': 'Token no proporcionado'}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    token = auth_header.split(' ')[1]
+    
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        user = CyberUser.objects.get(user_id=payload['user_id'], is_active=True)
+        return user, None
+    except jwt.ExpiredSignatureError:
+        return None, Response({'error': 'Token expirado'}, status=status.HTTP_401_UNAUTHORIZED)
+    except (jwt.InvalidTokenError, CyberUser.DoesNotExist):
+        return None, Response({'error': 'Token inválido'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
 class MeView(APIView):
     permission_classes = [AllowAny]  # Validamos manualmente el token
 
     def get(self, request):
-        auth_header = request.headers.get('Authorization', '')
-        if not auth_header.startswith('Bearer '):
-            return Response({'error': 'Token no proporcionado'}, status=status.HTTP_401_UNAUTHORIZED)
+        user, error_response = get_user_from_token(request)
+        if error_response:
+            return error_response
+        return Response(UserSerializer(user).data)
+
+
+class UpdateProfileView(APIView):
+    permission_classes = [AllowAny]
+
+    def patch(self, request):
+        user, error_response = get_user_from_token(request)
+        if error_response:
+            return error_response
         
-        token = auth_header.split(' ')[1]
+        serializer = UpdateUserSerializer(
+            user, 
+            data=request.data, 
+            partial=True,
+            context={'request': type('Request', (), {'user_instance': user})()}
+        )
         
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-            user = CyberUser.objects.get(user_id=payload['user_id'], is_active=True)
-            return Response(UserSerializer(user).data)
-        except jwt.ExpiredSignatureError:
-            return Response({'error': 'Token expirado'}, status=status.HTTP_401_UNAUTHORIZED)
-        except (jwt.InvalidTokenError, CyberUser.DoesNotExist):
-            return Response({'error': 'Token inválido'}, status=status.HTTP_401_UNAUTHORIZED)
+        if serializer.is_valid():
+            serializer.save()
+            tokens = generate_tokens_for_cyberuser(user)
+            return Response({
+                'message': 'Perfil actualizado exitosamente',
+                'user': UserSerializer(user).data,
+                'tokens': tokens
+            })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request):
+        return self.patch(request)
+
+
+class UpdatePreferencesView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        user, error_response = get_user_from_token(request)
+        if error_response:
+            return error_response
+        
+        if not user.preferences:
+            from .models import Preferences
+            preferences = Preferences.objects.create()
+            user.preferences = preferences
+            user.save(update_fields=['preferences'])
+        
+        return Response(PreferencesSerializer(user.preferences).data)
+
+    def patch(self, request):
+        user, error_response = get_user_from_token(request)
+        if error_response:
+            return error_response
+        
+        # Crear preferencias si no existen
+        if not user.preferences:
+            from .models import Preferences
+            preferences = Preferences.objects.create()
+            user.preferences = preferences
+            user.save(update_fields=['preferences'])
+        
+        serializer = UpdatePreferencesSerializer(
+            user.preferences, 
+            data=request.data, 
+            partial=True
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            # Regenerar tokens con preferencias actualizadas
+            tokens = generate_tokens_for_cyberuser(user)
+            return Response({
+                'message': 'Preferencias actualizadas exitosamente',
+                'preferences': PreferencesSerializer(user.preferences).data,
+                'tokens': tokens
+            })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request):
+        return self.patch(request)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        user, error_response = get_user_from_token(request)
+        if error_response:
+            return error_response
+        
+        serializer = ChangePasswordSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            # Verificar contraseña actual
+            if not user.check_password(serializer.validated_data['current_password']):
+                return Response(
+                    {'error': 'La contraseña actual es incorrecta'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Establecer nueva contraseña
+            user.set_password(serializer.validated_data['new_password'])
+            user.save(update_fields=['password'])
+            
+            # Regenerar tokens
+            tokens = generate_tokens_for_cyberuser(user)
+            
+            return Response({
+                'message': 'Contraseña actualizada exitosamente',
+                'tokens': tokens
+            })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
