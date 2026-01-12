@@ -43,17 +43,28 @@ const handleLogin = async () => {
   
   try {
     const response = await AuthService.login(formData.value);
-    successMessage.value = '¡Inicio de sesión exitoso! Redirigiendo...';
     
-    // Guardar el token si viene en la respuesta
-    if (response.tokens?.access) {
+    // Guardar tokens
+    if (response.tokens) {
       localStorage.setItem('access_token', response.tokens.access);
       localStorage.setItem('refresh_token', response.tokens.refresh);
+      
+      // Decodificar token para obtener user_id
+      try {
+        const tokenPayload = JSON.parse(atob(response.tokens.access.split('.')[1]));
+        if (tokenPayload.user_id) {
+          localStorage.setItem('user_id', tokenPayload.user_id.toString());
+        }
+      } catch (e) {
+        console.error('Error al decodificar token:', e);
+      }
     }
     
+    successMessage.value = '¡Inicio de sesión exitoso! Redirigiendo...';
+    
     setTimeout(() => {
-      router.push('/'); // O redirigir al dashboard
-    }, 2000);
+      router.push('/onboarding');
+    }, 1500);
   } catch (error: any) {
     if (error && typeof error === 'object') {
       // Traducir mensajes del backend si es necesario
