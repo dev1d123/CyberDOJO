@@ -35,6 +35,7 @@ urlpatterns = [
     path('api/progression/', include('apps.progression.urls')),
     path('api/onboarding/', include('apps.onboarding.urls')),
     path('api/audit/', include('apps.audit.urls')),
+    path('api/llm/', include('apps.llm.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

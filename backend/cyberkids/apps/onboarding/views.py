@@ -12,6 +12,7 @@ from .serializers import (
     GlobalStatisticSerializer
 )
 from apps.cyberUser.models import CyberUser, RiskLevel
+from apps.llm.service import generate_onboarding_analysis
 
 
 class OnboardingQuestionViewSet(viewsets.ModelViewSet):
@@ -87,6 +88,24 @@ class OnboardingResponseViewSet(viewsets.ModelViewSet):
             defaults={'value': risk_percentage}
         )
         
+        # Generar análisis con LLM
+        responses_data = [
+            {
+                'question': r.question.content,
+                'answer': r.option.content if r.option else r.open_answer,
+                'risk_value': r.option.risk_value if r.option else 0
+            }
+            for r in responses
+        ]
+        
+        llm_analysis = generate_onboarding_analysis(responses_data, risk_percentage)
+        
+        # Guardar configuración en preferencias del usuario
+        if user.preferences:
+            user.preferences.base_content = llm_analysis.get('base_content', '')
+            user.preferences.tone_instructions = llm_analysis.get('tone_instructions', '')
+            user.preferences.save()
+        
         return Response({
             'user_id': user.user_id,
             'total_risk_score': total_risk_score,
@@ -94,7 +113,8 @@ class OnboardingResponseViewSet(viewsets.ModelViewSet):
             'risk_percentage': round(risk_percentage, 2),
             'risk_level': risk_level_name,
             'questions_answered': questions_answered,
-            'total_questions': total_questions
+            'total_questions': total_questions,
+            'llm_analysis': llm_analysis
         })
 
     @action(detail=False, methods=['get'], url_path='status/(?P<user_id>[^/.]+)')
