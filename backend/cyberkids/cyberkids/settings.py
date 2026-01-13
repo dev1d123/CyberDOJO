@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'apps.progression',        # Progression and Economy
     'apps.onboarding',         # Initial Risk Identification
     'apps.audit',              # Audit and Logging
+    'apps.llm',                # LLM Integration
 
     'cloudinary',
     'cloudinary_storage',
@@ -167,3 +168,7 @@ cloudinary.config(
     api_secret='9tbhQfQOxFjU1Xb-yZZiyXvM72I',
 )
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# LLM Service Configuration
+OPENROUTER_URL = os.getenv('OPENROUTER_URL', 'https://openrouter.ai/api/v1/chat/completions')
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
