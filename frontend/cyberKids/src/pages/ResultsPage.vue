@@ -118,7 +118,7 @@ const getRiskLevelText = (level: string): string => {
 };
 
 const goToDashboard = () => {
-  router.push('/'); // Cambiar a la ruta del dashboard cuando esté disponible
+  router.push('/dashboard');
 };
 
 const retakeTest = () => {

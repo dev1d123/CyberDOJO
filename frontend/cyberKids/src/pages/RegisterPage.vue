@@ -76,7 +76,7 @@ const handleRegister = async () => {
     successMessage.value = '¡Cuenta creada exitosamente! Redirigiendo...';
     
     setTimeout(() => {
-      router.push('/onboarding');
+      router.push('/profile-setup');
     }, 1500);
   } catch (error: any) {
     if (error && typeof error === 'object') {

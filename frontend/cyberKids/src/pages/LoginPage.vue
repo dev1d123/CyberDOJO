@@ -63,7 +63,7 @@ const handleLogin = async () => {
     successMessage.value = '¡Inicio de sesión exitoso! Redirigiendo...';
     
     setTimeout(() => {
-      router.push('/onboarding');
+      router.push('/dashboard');
     }, 1500);
   } catch (error: any) {
     if (error && typeof error === 'object') {
