@@ -11,7 +11,7 @@ import json
 import random
 from django.utils import timezone
 import os
-
+from rest_framework.permissions import IsAuthenticated
 
 
 def start_with_role(request):
@@ -138,7 +138,7 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
 @csrf_exempt
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
+@permission_classes([IsAuthenticated])
 def chat(request):
     """Chat endpoint that supports two provider modes and optional persistence.
 
@@ -514,7 +514,7 @@ def chat(request):
 
 @csrf_exempt
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
+@permission_classes([IsAuthenticated])
 def create_session(request):
     """Create a GameSession.
 
