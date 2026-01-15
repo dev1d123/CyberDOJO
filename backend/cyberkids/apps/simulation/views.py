@@ -1038,4 +1038,3 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
     queryset = ChatMessage.objects.all().order_by('sent_at')
     serializer_class = ChatMessageSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
-

@@ -3,10 +3,12 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, RegisterView, LoginView, MeView, RefreshTokenView,
     UpdateProfileView, UpdatePreferencesView, ChangePasswordView
+    , CountryViewSet
 )
 
 router = DefaultRouter()
 router.register(r'', UserViewSet)
+router.register(r'countries', CountryViewSet, basename='country')
 
 urlpatterns = [
     path('auth/register/', RegisterView.as_view(), name='register'),

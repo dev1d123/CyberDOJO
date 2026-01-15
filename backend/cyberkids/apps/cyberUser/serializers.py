@@ -3,6 +3,7 @@ from .models import CyberUser
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import Preferences
+from .models import Country
 
 
 class PreferencesSerializer(serializers.ModelSerializer):
@@ -102,3 +103,9 @@ class ChangePasswordSerializer(serializers.Serializer):
         if data['new_password'] != data['new_password_confirm']:
             raise serializers.ValidationError({'new_password_confirm': 'Las contraseñas no coinciden'})
         return data
+
+
+class CountrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Country
+        fields = ['country_id', 'name', 'iso_code', 'language', 'is_active']

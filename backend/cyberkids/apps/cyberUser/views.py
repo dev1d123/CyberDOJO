@@ -8,10 +8,11 @@ from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 import jwt
-from .models import CyberUser
+from .models import CyberUser, Country
 from .serializers import (
     UserSerializer, RegisterSerializer, LoginSerializer, PreferencesSerializer,
     UpdateUserSerializer, UpdatePreferencesSerializer, ChangePasswordSerializer
+    , CountrySerializer
 ) 
 
 
@@ -301,3 +302,10 @@ class UserViewSet(viewsets.ModelViewSet):
         user.is_active = False
         user.save(update_fields=['is_active'])
         return Response({'message': 'Usuario desactivado'})
+
+
+class CountryViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only endpoints for countries"""
+    queryset = Country.objects.filter(is_active=True).order_by('name')
+    serializer_class = CountrySerializer
+    lookup_field = 'country_id'
