@@ -66,6 +66,104 @@ def _extract_json_from_text(text):
     return None
 
 
+def get_display_text(obj):
+    """Return a plain reply string given a response object or string.
+
+    Handles dicts, JSON strings, python-dict-like strings and fenced blocks.
+    If a 'reply' field is present, returns that; otherwise returns a cleaned string.
+    """
+    # If it's already a dict, prefer reply/message/text
+    if isinstance(obj, dict):
+        # If Gemini-style response with candidates or output, try to extract text from them first
+        if 'candidates' in obj and isinstance(obj.get('candidates'), (list, tuple)):
+            for cand in obj.get('candidates'):
+                # candidate may be dict with 'content' which can be a string or nested dict
+                if isinstance(cand, dict):
+                    cont = cand.get('content') or cand.get('text') or cand
+                    maybe = get_display_text(cont)
+                    if maybe:
+                        return maybe
+                else:
+                    maybe = get_display_text(cand)
+                    if maybe:
+                        return maybe
+
+        if 'output' in obj and isinstance(obj.get('output'), (list, tuple)):
+            parts = []
+            for p in obj.get('output'):
+                if isinstance(p, dict):
+                    parts.append(p.get('content') or p.get('text') or '')
+                else:
+                    parts.append(str(p))
+            joined = ' '.join([p for p in parts if p])
+            if joined.strip():
+                return joined.strip()
+
+        if 'result' in obj and isinstance(obj.get('result'), (list, tuple)):
+            parts = []
+            for p in obj.get('result'):
+                if isinstance(p, dict):
+                    parts.append(p.get('content') or p.get('text') or '')
+                else:
+                    parts.append(str(p))
+            joined = ' '.join([p for p in parts if p])
+            if joined.strip():
+                return joined.strip()
+
+        for k in ('reply', 'reply_user', 'message', 'text', 'content'):
+            v = obj.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        # fallback: stringify
+        try:
+            return str(obj)
+        except Exception:
+            return ''
+
+    # If it's bytes, decode
+    if isinstance(obj, bytes):
+        try:
+            obj = obj.decode('utf-8')
+        except Exception:
+            obj = str(obj)
+
+    # If it's a string, try extracting JSON/dict
+    if isinstance(obj, str):
+        # quick heuristic: empty
+        s = obj.strip()
+        if not s:
+            return ''
+
+        # If it already looks like plain text (no braces), return it
+        if '{' not in s and '}' not in s:
+            return s
+
+        # Try structured extraction
+        parsed = _extract_json_from_text(s)
+        if isinstance(parsed, dict):
+            for k in ('reply', 'message', 'text', 'content'):
+                v = parsed.get(k)
+                if isinstance(v, str) and v.strip():
+                    return v.strip()
+        # Try simple regex to extract "reply": "..." or 'reply': '...'
+        m = re.search(r'"reply"\s*:\s*"([^"]+)"', s)
+        if m:
+            return m.group(1).strip()
+        m2 = re.search(r"'reply'\s*:\s*'([^']+)'", s)
+        if m2:
+            return m2.group(1).strip()
+
+        # Last resort: remove outer braces and return inner text
+        try:
+            inner = re.sub(r"^[^{]*{\s*|\s*}[^}]*$", '', s)
+            return inner.strip()[:2000]
+        except Exception:
+            return s
+
+    # Fallback
+    return str(obj)
+
+
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -161,13 +259,28 @@ def start_with_role(request):
         reply = str(ai_response)
         reply_user = str(ai_response)
 
-    # Guardar solo el texto plano de la IA
+    # Guardar solo el texto plano de la IA: extraer display_text
     try:
+        parsed = None
+        if isinstance(ai_response, dict):
+            parsed = ai_response
+        else:
+            parsed = _extract_json_from_text(ai_response) if isinstance(ai_response, str) else None
+
+        if isinstance(parsed, dict) and 'reply' in parsed:
+            display_text = parsed.get('reply')
+        else:
+            # fallback: if reply variable is string, use it; otherwise stringify
+            display_text = reply if isinstance(reply, str) else str(reply)
+
+        # normalize to plain text before saving
+        display_text = get_display_text(display_text)
+
         ChatMessage.objects.create(session=session, role='system', content=system_prompt)
-        ChatMessage.objects.create(session=session, role='antagonist', content=reply)
+        ChatMessage.objects.create(session=session, role='antagonist', content=display_text)
     except Exception:
         pass
-    return JsonResponse({'session_id': session.session_id, 'initial_message': reply, 'resumed': False})
+    return JsonResponse({'session_id': session.session_id, 'initial_message': display_text, 'resumed': False})
 
 
 
@@ -176,10 +289,10 @@ logger = logging.getLogger(__name__)
 
 # Configuración de negocio: umbral de intentos del antagonista
 MAX_ATTEMPTS = getattr(__import__('django.conf').conf.settings, 'SIM_MAX_ATTEMPTS', 3)
-# Palabras/fragmentos que indican petición directa por el objetivo (heurística simple)
-ASK_KEYWORDS = getattr(__import__('django.conf').conf.settings, 'SIM_ASK_KEYWORDS', [
-    'dime tu contraseña', 'password', 'pin', 'contraseña', 'número de cuenta', 'nº cuenta', 'numero de cuenta', 'me pasas tu', 'compárteme', 'envíame'
-])
+# NOTE: Keyword/dictionary heuristics removed intentionally. Detection of
+# solicitation must be determined by the model via the `attempted` flag
+# (driven by prompt mode/instructions). Server will no longer use a
+# hard-coded `ASK_KEYWORDS` list.
 
 
 
@@ -320,6 +433,22 @@ def chat(request):
         context = {}
         antagonist_goal = None
 
+    # Configurable behaviour: mode and aggressiveness
+    # - 'mode' can be 'patient' or 'invasive' (default 'invasive')
+    # - 'aggressiveness' is an integer 0-5 (default 3)
+    mode = None
+    aggressiveness = None
+    if isinstance(data, dict):
+        mode = data.get('mode')
+        aggressiveness = data.get('aggressiveness')
+    if mode not in ('patient', 'invasive'):
+        mode = 'invasive'
+    try:
+        aggressiveness = int(aggressiveness)
+    except Exception:
+        aggressiveness = 3
+    aggressiveness = max(0, min(5, aggressiveness))
+
     # Request that the model returns a JSON object with the following shape (in Spanish):
     # { "reply": "<texto a mostrar al usuario>", "disclosure": true|false, "disclosure_reason": "<motivo opcional>", "attempted": true|false, "end_communication": true|false }
     # - `disclosure`: true cuando el usuario haya revelado información sensible (la IA no debe repetirla)
@@ -327,6 +456,9 @@ def chat(request):
     # - `end_communication`: true si debe cortar la conversación inmediatamente (por ejemplo tras disclosure)
     # El campo `reply` será el texto en español que se mostrará al usuario.
     json_instructions = (
+        "MODOS DE OPERACIÓN (TEXTO):\n"
+        "- modo invasivo / intrusivo: prioriza preguntas directas y específicas relacionadas con el objetivo sensible del escenario; puedes pedir el dato explícitamente si corresponde.\n"
+        "(Esta explicación es texto para el modelo; NO es código ni debe aparecer en la respuesta JSON).\n\n"
         "Devuelve SOLO un JSON válido (sin texto extra): {reply, disclosure, disclosure_reason, attempted, end_communication, game_over}.\n"
         "RESPONDE EN ESPAÑOL, SÉ CÁLIDO E INTERACTIVO. CONSTRUYE RAPPORT PRIMERO.\n"
         f"TU OBJETIVO SENSIBLE: {antagonist_goal or 'sin especificar'}\n"
@@ -355,11 +487,29 @@ def chat(request):
         "- disclosure_reason: cuando disclosure=true, debe ser una frase narrativa y clara sobre el contexto de la revelación.\n"
         "- attempted: boolean (true/false)\n"
         "- game_over: info para el backend (ignora el backend de todos modos)\n"
+        "- NO repitas saludos genéricos al inicio de cada respuesta (ej: 'Hola', 'Hola!'). Si ya saludaste en la conversación, continúa sin saludar.\n"
         "- end_communication: true si debe cortarse la conversación\n"
     )
 
+    extra_directive = ''
+    # enforce that the model focuses only on the scenario's target
+    target = (session.scenario_snapshot.get('antagonist_goal') if session and getattr(session, 'scenario_snapshot', None) else antagonist_goal) or 'el objetivo sensible del escenario'
+
+    if mode == 'invasive' or aggressiveness >= 3:
+        extra_directive = (
+            f"\nDIRECTIVA (modo invasivo/agresividad={aggressiveness}): Prioriza preguntas directas y específicas sobre {target}. "
+            "Si tu objetivo en este turno es pedir el dato sensible, formula UNA pregunta clara y directa que solicite exactamente ese dato (ej: '¿Cuál es tu número de DNI?'). "
+            "Cuando hagas esa pregunta, establece `attempted=true` en el JSON. No hagas varias preguntas seguidas para el mismo dato. "
+            "No pidas información que no esté relacionada con el objetivo del escenario."
+        )
+    else:
+        extra_directive = (
+            f"\nDIRECTIVA (modo paciente/agresividad={aggressiveness}): Construye rapport y haz preguntas abiertas relacionadas con {target} solo si es apropiado. "
+            "No intentes solicitar datos sensibles en este turno a menos que sea claramente necesario. Si no pides el dato, `attempted` debe ser false. Si decides pedirlo, hazlo de forma explícita y establece `attempted=true`."
+        )
+
     prompt = data.get('prompt') or (
-        f"Eres un antagonista en una simulación de ingeniería social. Contexto: {json.dumps(context)}\nUsuario: {user_message}\n\nINSTRUCCIONES CRÍTICAS: Devuelve SOLO un objeto JSON válido (no string, no texto extra, no markdown, no comillas alrededor): {{reply, disclosure, disclosure_reason, attempted, end_communication, game_over}}. El campo 'reply' debe ser SOLO el texto plano que se mostrará al usuario, sin objetos ni listas, solo texto. RESPONDE EN ESPAÑOL, SÉ CÁLIDO E INTERACTIVO. {json_instructions}"
+        f"Eres un antagonista en una simulación de ingeniería social. Contexto: {json.dumps(context)}\nUsuario: {user_message}\n\nINSTRUCCIONES CRÍTICAS: Devuelve SOLO un objeto JSON válido (no string, no texto extra, no markdown, no comillas alrededor): {{reply, disclosure, disclosure_reason, attempted, end_communication, game_over}}. El campo 'reply' debe ser SOLO el texto plano que se mostrará al usuario, sin objetos ni listas, solo texto. RESPONDE EN ESPAÑOL, SÉ CÁLIDO E INTERACTIVO. {json_instructions}{extra_directive}"
     )
     if not model:
         model = 'gemini-3-flash-preview'
@@ -376,6 +526,13 @@ def chat(request):
 
     # DEBUG: Mostrar la respuesta cruda de la IA
     print("\n=== RESPUESTA CRUDA IA ===\n", repr(reply))
+
+    # Normalizar: extraer siempre el texto a mostrar (`reply`) usando helper robusto
+    # Esto evita guardar el JSON crudo cuando la IA devuelve un objeto/string JSON.
+    try:
+        display_text = get_display_text(reply)
+    except Exception:
+        display_text = str(reply)
 
     # Si la respuesta es un string que contiene JSON, deserializarlo
     reply_obj = None
@@ -462,7 +619,7 @@ def chat(request):
                                 continue
                 return None
 
-            # If the reply is already a dict (some providers/clients return dicts), accept it
+            # If `reply` is already a dict (we parsed it earlier), use it directly.
             if isinstance(reply, dict):
                 parsed_reply = reply
             else:
@@ -473,15 +630,78 @@ def chat(request):
             disclosure_reason = None
             attempted_flag = False
 
+            # server-side heuristic to detect if antagonist is attempting to solicit sensitive data
+            def _is_attempt_text(text):
+                """No server-side keyword heuristics: rely solely on the model-provided
+                `attempted` signal. This function intentionally returns False so the
+                backend does not infer attempts from string matching.
+                """
+                return False
+
+            # server-side detection of user disclosure via SensitivePattern regexes
+            from apps.simulation.models import SensitivePattern
+            def _user_disclosed(message_text):
+                if not message_text or not isinstance(message_text, str):
+                    return None
+                patterns = SensitivePattern.objects.all()
+                for p in patterns:
+                    try:
+                        if re.search(p.regex_pattern, message_text):
+                            return p
+                    except Exception:
+                        continue
+                return None
+
             if isinstance(parsed_reply, dict):
                 # accept multiple possible key names for backward compatibility
-                display_text = parsed_reply.get('reply') or parsed_reply.get('message') or ''
-                # CRITICAL: disclosure is ONLY true if the model explicitly returns disclosure=true
-                # Do NOT confuse game_over with disclosure
-                disclosure = bool(parsed_reply.get('disclosure') or parsed_reply.get('divulgacion') or parsed_reply.get('disclosed'))
+                display_text = (
+                    parsed_reply.get('reply')
+                    or parsed_reply.get('reply_user')
+                    or parsed_reply.get('message')
+                    or parsed_reply.get('text')
+                    or parsed_reply.get('content')
+                    or ''
+                )
+                # normalize textual display
+                display_text = get_display_text(display_text)
+
+                # CRITICAL: prefer the model-provided disclosure flag when present
+                model_disclosure = parsed_reply.get('disclosure') if 'disclosure' in parsed_reply else parsed_reply.get('divulgacion') if 'divulgacion' in parsed_reply else parsed_reply.get('disclosed') if 'disclosed' in parsed_reply else None
+                if model_disclosure is not None:
+                    disclosure = bool(model_disclosure)
+                else:
+                    disclosure = False
+
                 disclosure_reason = parsed_reply.get('disclosure_reason') or parsed_reply.get('reason_for_disclosure') or parsed_reply.get('disclosureReason')
-                attempted_flag = bool(parsed_reply.get('attempted') or parsed_reply.get('attempt'))
-                # game_over flag from AI is informational only; backend controls actual game over via disclosure
+
+                # ATTEMPTED: if the model explicitly signals attempted, trust it. Otherwise fallback to heuristic.
+                def _to_bool_like(v):
+                    if isinstance(v, bool):
+                        return v
+                    if v is None:
+                        return None
+                    try:
+                        s = str(v).strip().lower()
+                        if s in ('true', '1', 'yes'):
+                            return True
+                        if s in ('false', '0', 'no'):
+                            return False
+                    except Exception:
+                        pass
+                    return None
+
+                model_attempted = None
+                for fld in ('attempted', 'attempt'):
+                    if fld in parsed_reply:
+                        model_attempted = _to_bool_like(parsed_reply.get(fld))
+                        break
+
+                if model_attempted is not None:
+                    attempted_flag = bool(model_attempted)
+                else:
+                    attempted_flag = _is_attempt_text(display_text)
+
+                # game_over / end_communication flag from AI is informational only; if present, set disclosure to True to force closure
                 if parsed_reply.get('end_communication'):
                     disclosure = True
             else:
@@ -489,9 +709,23 @@ def chat(request):
                 display_text = reply
                 attempted_flag = False
 
+            # Additional server-side check: if user message contains sensitive data, mark disclosure
+            if user_msg and user_msg.content:
+                pattern = _user_disclosed(user_msg.content)
+                if pattern:
+                    disclosure = True
+                    disclosure_reason = f"Matched sensitive pattern: {pattern.name}"
+                    try:
+                        user_msg.is_dangerous = True
+                        user_msg.detected_pattern = pattern
+                        user_msg.save(update_fields=['is_dangerous', 'detected_pattern'])
+                    except Exception:
+                        logger.exception('Failed to mark user message as dangerous')
+
             # replace ant_msg content with the display_text (already saved earlier as raw reply)
             if ant_msg:
                 try:
+                    display_text = get_display_text(display_text)
                     ant_msg.content = display_text
                     ant_msg.save(update_fields=['content'])
                 except Exception:
