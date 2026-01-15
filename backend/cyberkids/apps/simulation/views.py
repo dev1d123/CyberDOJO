@@ -1,9 +1,8 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import permissions
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 from rest_framework import viewsets
@@ -14,14 +13,10 @@ import json
 import random
 from django.utils import timezone
 import os
-from rest_framework.permissions import IsAuthenticated
+from apps.cyberUser.models import CyberUser
 
 
 def _extract_json_from_text(text):
-    """Attempt to extract a JSON-like object from `text`.
-    Returns a dict if successful, otherwise None.
-    Supports raw JSON, Python-dict-like strings, fenced code blocks, and common Gemini response shapes.
-    """
     if not text or not isinstance(text, str):
         return None
     # direct json
@@ -67,11 +62,6 @@ def _extract_json_from_text(text):
 
 
 def get_display_text(obj):
-    """Return a plain reply string given a response object or string.
-
-    Handles dicts, JSON strings, python-dict-like strings and fenced blocks.
-    If a 'reply' field is present, returns that; otherwise returns a cleaned string.
-    """
     # If it's already a dict, prefer reply/message/text
     if isinstance(obj, dict):
         # If Gemini-style response with candidates or output, try to extract text from them first
@@ -171,16 +161,19 @@ def start_with_role(request):
     """Crea una nueva GameSession y devuelve el primer mensaje del antagonista (Gemini). Nunca reanuda sesiones."""
     from apps.cyberUser.models import CyberUser
     user = None
+    # request.user es establecido por JWTCustomAuthentication y ya es un CyberUser
     if hasattr(request, 'user') and getattr(request.user, 'is_authenticated', False):
-        try:
-            user = CyberUser.objects.get(pk=request.user.id)
-        except Exception:
-            user = None
-    if not user:
-        try:
-            user = CyberUser.objects.first()
-        except Exception:
-            user = None
+        # Si viene de JWTCustomAuthentication, request.user ya es CyberUser
+        if isinstance(request.user, CyberUser):
+            user = request.user
+        else:
+            # Fallback: buscar por user_id (clave primaria de CyberUser)
+            try:
+                user_pk = getattr(request.user, 'user_id', None) or getattr(request.user, 'pk', None)
+                if user_pk:
+                    user = CyberUser.objects.get(pk=user_pk)
+            except Exception:
+                user = None
     if not user:
         return JsonResponse({'error': 'authentication_required'}, status=401)
     from apps.simulation.models import Scenario, GameSession, ChatMessage
@@ -301,8 +294,6 @@ MAX_ATTEMPTS = getattr(__import__('django.conf').conf.settings, 'SIM_MAX_ATTEMPT
 # TODO: Implement viewsets for Scenario, SensitivePattern, GameSession, ChatMessage
 from apps.simulation.models import GameSession, ChatMessage
 from django.db import transaction
-from apps.cyberUser.models import CyberUser
-from apps.cyberUser.views import get_user_from_token
 
 from .serializers import GameSessionSerializer, ChatMessageSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
@@ -337,11 +328,17 @@ def chat(request):
     user_obj = None
     try:
         if getattr(request, 'user', None) and request.user.is_authenticated:
-            # assume request.user is linked to CyberUser via FK; otherwise ignore
-            try:
-                user_obj = CyberUser.objects.get(pk=request.user.id)
-            except Exception:
-                user_obj = None
+            # request.user ya es CyberUser si viene de JWTCustomAuthentication
+            if isinstance(request.user, CyberUser):
+                user_obj = request.user
+            else:
+                # Fallback: buscar por user_id (clave primaria de CyberUser)
+                try:
+                    user_pk = getattr(request.user, 'user_id', None) or getattr(request.user, 'pk', None)
+                    if user_pk:
+                        user_obj = CyberUser.objects.get(pk=user_pk)
+                except Exception:
+                    user_obj = None
         if not user_obj and user_id:
             try:
                 user_obj = CyberUser.objects.get(pk=int(user_id))
@@ -823,12 +820,20 @@ def create_session(request):
     user_id = data.get('user_id')
     scenario_id = data.get('scenario_id')
 
-    # Prefer user from token/session
-    user, error_response = get_user_from_token(request)
-    if error_response:
-        # if token invalid but client provided user_id, allow that for testing
-        user = None
+    # IsAuthenticated ya validó el token, request.user es CyberUser
+    user = None
+    if hasattr(request, 'user') and request.user.is_authenticated:
+        if isinstance(request.user, CyberUser):
+            user = request.user
+        else:
+            try:
+                user_pk = getattr(request.user, 'user_id', None) or getattr(request.user, 'pk', None)
+                if user_pk:
+                    user = CyberUser.objects.get(pk=user_pk)
+            except Exception:
+                user = None
 
+    # Fallback a user_id si se proporciona y no hay usuario autenticado
     if not user and user_id:
         try:
             user = CyberUser.objects.get(pk=int(user_id))
@@ -843,7 +848,7 @@ def create_session(request):
             scenario = None
 
     if not user:
-        return error_response or JsonResponse({'error': 'authentication_required'}, status=401)
+        return JsonResponse({'error': 'authentication_required'}, status=401)
 
     session = GameSession.objects.create(user=user, scenario=scenario)
     return JsonResponse({'session_id': session.session_id})
@@ -991,21 +996,22 @@ def _call_ai_provider(model: str, prompt: str, max_tokens: int = 256) -> str:
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def resume_session(request):
-    """Busca y retorna la sesión activa (is_game_over=None) para el usuario autenticado (JWT) o el primero disponible."""
+    """Busca y retorna la sesión activa (is_game_over=None) para el usuario autenticado (JWT)."""
     from apps.cyberUser.models import CyberUser
     user = None
+    # request.user es establecido por JWTCustomAuthentication y ya es un CyberUser
     if hasattr(request, 'user') and getattr(request.user, 'is_authenticated', False):
-        try:
-            user = CyberUser.objects.get(pk=request.user.id)
-        except Exception:
-            user = None
+        if isinstance(request.user, CyberUser):
+            user = request.user
+        else:
+            try:
+                user_pk = getattr(request.user, 'user_id', None) or getattr(request.user, 'pk', None)
+                if user_pk:
+                    user = CyberUser.objects.get(pk=user_pk)
+            except Exception:
+                user = None
     if not user:
-        try:
-            user = CyberUser.objects.first()
-        except Exception:
-            user = None
-    if not user:
-        return JsonResponse({'error': 'user_not_found'}, status=404)
+        return JsonResponse({'error': 'authentication_required'}, status=401)
     from apps.simulation.models import GameSession, ChatMessage
     session = GameSession.objects.filter(user=user, is_game_over__isnull=True).order_by('-started_at').first()
     if not session:

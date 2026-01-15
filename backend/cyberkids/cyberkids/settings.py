@@ -5,22 +5,18 @@ import os
 
 import cloudinary
 
-# Load Gemini API key from environment (.env)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GOOGLE_GENAI_API_KEY = GEMINI_API_KEY
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-change-this-in-production-cyberkids-2024'
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -41,7 +37,6 @@ INSTALLED_APPS = [
     'apps.minigames',          # Gamified Events
     'apps.progression',        # Progression and Economy
     'apps.onboarding',         # Initial Risk Identification
-    'apps.audit',              # Audit and Logging
 
     'cloudinary',
     'cloudinary_storage',
@@ -80,7 +75,6 @@ WSGI_APPLICATION = 'cyberkids.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
     'default': {
@@ -91,7 +85,6 @@ DATABASES = {
 
 
 # Password validation
-# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {

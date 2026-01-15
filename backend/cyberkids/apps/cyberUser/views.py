@@ -2,8 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
-from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
@@ -142,40 +141,24 @@ class RefreshTokenView(APIView):
             return Response({'error': 'Token inválido'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
-def get_user_from_token(request):
-    auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
-        return None, Response({'error': 'Token no proporcionado'}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    token = auth_header.split(' ')[1]
-    
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-        user = CyberUser.objects.get(user_id=payload['user_id'], is_active=True)
-        return user, None
-    except jwt.ExpiredSignatureError:
-        return None, Response({'error': 'Token expirado'}, status=status.HTTP_401_UNAUTHORIZED)
-    except (jwt.InvalidTokenError, CyberUser.DoesNotExist):
-        return None, Response({'error': 'Token inválido'}, status=status.HTTP_401_UNAUTHORIZED)
+# NOTA: get_user_from_token ya no es necesaria. 
+# Usa IsAuthenticated como permission_class y request.user será el CyberUser autenticado.
 
 
 class MeView(APIView):
-    permission_classes = [AllowAny]  # Validamos manualmente el token
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user, error_response = get_user_from_token(request)
-        if error_response:
-            return error_response
-        return Response(UserSerializer(user).data)
+        # request.user ya es CyberUser gracias a JWTCustomAuthentication
+        return Response(UserSerializer(request.user).data)
 
 
 class UpdateProfileView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def patch(self, request):
-        user, error_response = get_user_from_token(request)
-        if error_response:
-            return error_response
+        # request.user ya es CyberUser gracias a JWTCustomAuthentication
+        user = request.user
         
         serializer = UpdateUserSerializer(
             user, 
@@ -200,12 +183,11 @@ class UpdateProfileView(APIView):
 
 
 class UpdatePreferencesView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user, error_response = get_user_from_token(request)
-        if error_response:
-            return error_response
+        # request.user ya es CyberUser gracias a JWTCustomAuthentication
+        user = request.user
         
         if not user.preferences:
             from .models import Preferences
@@ -216,9 +198,8 @@ class UpdatePreferencesView(APIView):
         return Response(PreferencesSerializer(user.preferences).data)
 
     def patch(self, request):
-        user, error_response = get_user_from_token(request)
-        if error_response:
-            return error_response
+        # request.user ya es CyberUser gracias a JWTCustomAuthentication
+        user = request.user
         
         # Crear preferencias si no existen
         if not user.preferences:
@@ -250,12 +231,11 @@ class UpdatePreferencesView(APIView):
 
 
 class ChangePasswordView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        user, error_response = get_user_from_token(request)
-        if error_response:
-            return error_response
+        # request.user ya es CyberUser gracias a JWTCustomAuthentication
+        user = request.user
         
         serializer = ChangePasswordSerializer(data=request.data)
         

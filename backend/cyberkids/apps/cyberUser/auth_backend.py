@@ -1,7 +1,6 @@
 from rest_framework.authentication import BaseAuthentication
 from rest_framework import exceptions
 from django.conf import settings
-from django.contrib.auth import get_user_model
 import jwt
 
 
@@ -12,6 +11,9 @@ class JWTCustomAuthentication(BaseAuthentication):
     is signed with the Django `SECRET_KEY` and contains a claim with the
     user id (commonly `user_id`). This class is defensive and will try
     several common claim names.
+    
+    IMPORTANTE: Esta clase devuelve directamente una instancia de CyberUser,
+    por lo que request.user será un CyberUser con user_id como clave primaria.
     """
 
     def authenticate(self, request):
@@ -43,18 +45,24 @@ class JWTCustomAuthentication(BaseAuthentication):
         if not user_id:
             raise exceptions.AuthenticationFailed('Token missing user identifier')
 
-        User = get_user_model()
+        # Importar CyberUser directamente para evitar usar get_user_model
+        # ya que CyberUser no extiende AbstractUser
+        from apps.cyberUser.models import CyberUser
         try:
-            user = User.objects.get(pk=int(user_id))
-        except Exception:
+            user = CyberUser.objects.get(user_id=int(user_id))
+        except CyberUser.DoesNotExist:
             raise exceptions.AuthenticationFailed('User not found')
+        except Exception:
+            raise exceptions.AuthenticationFailed('Error retrieving user')
 
-        # Some custom user models may not implement the Django-provided
-        # `is_authenticated` property; ensure it's present and truthy.
+        # Asegurar que el usuario tiene la propiedad is_authenticated
         if not hasattr(user, 'is_authenticated'):
-            setattr(user, 'is_authenticated', True)
+            user.is_authenticated = True
+        elif not callable(getattr(user, 'is_authenticated', None)):
+            # Si es una propiedad, asegurar que retorna True
+            pass
 
-        return (user, None)
+        return (user, payload)
 
     def authenticate_header(self, request):
         return 'Bearer'

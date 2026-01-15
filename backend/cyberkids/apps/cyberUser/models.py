@@ -85,6 +85,21 @@ class CyberUser(models.Model):
     def __str__(self):
         return self.username
 
+    @property
+    def is_authenticated(self):
+        """Requerido por DRF para que el usuario sea considerado autenticado."""
+        return True
+
+    @property
+    def is_anonymous(self):
+        """Requerido por DRF."""
+        return False
+
+    @property
+    def pk(self):
+        """Alias para user_id para compatibilidad con DRF."""
+        return self.user_id
+
     def set_password(self, raw_password):
         self.password = make_password(raw_password)
 
