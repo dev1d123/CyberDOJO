@@ -3,9 +3,12 @@ from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view, permission_classes
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import permissions
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 from rest_framework import viewsets
 import logging
+import ast
 import re
 import json
 import random
@@ -14,6 +17,58 @@ import os
 from rest_framework.permissions import IsAuthenticated
 
 
+def _extract_json_from_text(text):
+    """Attempt to extract a JSON-like object from `text`.
+    Returns a dict if successful, otherwise None.
+    Supports raw JSON, Python-dict-like strings, fenced code blocks, and common Gemini response shapes.
+    """
+    if not text or not isinstance(text, str):
+        return None
+    # direct json
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    # try ast literal eval for python-style dicts
+    try:
+        obj = ast.literal_eval(text)
+        if isinstance(obj, dict):
+            return obj
+    except Exception:
+        pass
+
+    # strip triple-backtick fenced blocks
+    stripped = re.sub(r"```[a-zA-Z0-9\-]*\n|```", "", text)
+    # find first '{' and parse a balanced JSON object
+    start = stripped.find('{')
+    if start == -1:
+        return None
+    depth = 0
+    for i in range(start, len(stripped)):
+        ch = stripped[i]
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                candidate = stripped[start:i+1]
+                try:
+                    return json.loads(candidate)
+                except Exception:
+                    # try ast literal on candidate
+                    try:
+                        obj = ast.literal_eval(candidate)
+                        if isinstance(obj, dict):
+                            return obj
+                    except Exception:
+                        continue
+    return None
+
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def start_with_role(request):
     """Crea una nueva GameSession y devuelve el primer mensaje del antagonista (Gemini). Nunca reanuda sesiones."""
     from apps.cyberUser.models import CyberUser
@@ -84,14 +139,18 @@ def start_with_role(request):
     except Exception:
         ai_response = '{"reply": "Hola, ¿tienes un momento?", "reply_user": "Hola, ¿tienes un momento?"}'
 
-    # Intentar deserializar la respuesta
+    # Intentar deserializar la respuesta (usar helper compartido)
     reply = ""
     reply_user = ""
     try:
         if isinstance(ai_response, str):
-            obj = json.loads(ai_response)
-            reply = obj.get('reply', '')
-            reply_user = obj.get('reply_user', '')
+            parsed = _extract_json_from_text(ai_response)
+            if isinstance(parsed, dict):
+                reply = parsed.get('reply', '')
+                reply_user = parsed.get('reply_user', '')
+            else:
+                reply = ai_response
+                reply_user = ai_response
         elif isinstance(ai_response, dict):
             reply = ai_response.get('reply', '')
             reply_user = ai_response.get('reply_user', '')
@@ -335,21 +394,21 @@ def chat(request):
         display_text = reply['reply']
     elif isinstance(reply, str):
         # Si es un string que parece un JSON, intenta extraer el campo 'reply' (soporta comillas simples)
-        try:
-            possible_json = json.loads(reply)
-            if isinstance(possible_json, dict) and 'reply' in possible_json:
-                display_text = possible_json['reply']
-            else:
-                display_text = reply
-        except Exception:
-            try:
-                possible_json = eval(reply, {"__builtins__": None}, {})
-                if isinstance(possible_json, dict) and 'reply' in possible_json:
-                    display_text = possible_json['reply']
-                else:
-                    display_text = reply
-            except Exception:
-                display_text = reply
+                try:
+                    possible_json = json.loads(reply)
+                    if isinstance(possible_json, dict) and 'reply' in possible_json:
+                        display_text = possible_json['reply']
+                    else:
+                        display_text = reply
+                except Exception:
+                    try:
+                        possible_json = ast.literal_eval(reply)
+                        if isinstance(possible_json, dict) and 'reply' in possible_json:
+                            display_text = possible_json['reply']
+                        else:
+                            display_text = reply
+                    except Exception:
+                        display_text = reply
     else:
         display_text = str(reply)
     disclosure = False
@@ -403,7 +462,11 @@ def chat(request):
                                 continue
                 return None
 
-            parsed_reply = _extract_json_from_text(reply)
+            # If the reply is already a dict (some providers/clients return dicts), accept it
+            if isinstance(reply, dict):
+                parsed_reply = reply
+            else:
+                parsed_reply = _extract_json_from_text(reply)
 
             display_text = None
             disclosure = False
@@ -607,14 +670,92 @@ def _call_ai_provider(model: str, prompt: str, max_tokens: int = 256) -> str:
         gemini = genai.GenerativeModel(model)
         # No limitar max_output_tokens para dejar que Gemini responda lo máximo posible
         response = gemini.generate_content(prompt)
-        return response.text.strip() if hasattr(response, 'text') else str(response)
+        # Primero intento el acceso rápido `.text`, pero puede lanzar ValueError si no hay Part
+        try:
+            if hasattr(response, 'text'):
+                return response.text.strip()
+        except Exception as e_text:
+            logger.warning('response.text accessor failed: %s', e_text)
+
+        # Intentar extraer texto de estructuras alternativas
+        try:
+            # candidatos comunes
+            candidates = getattr(response, 'candidates', None)
+            if candidates:
+                # candidates may be list of objects with .content or dicts
+                first = candidates[0]
+                if isinstance(first, dict):
+                    content = first.get('content') or first.get('text')
+                    if content:
+                        return str(content).strip()
+                else:
+                    content = getattr(first, 'content', None) or getattr(first, 'text', None)
+                    if content:
+                        return str(content).strip()
+        except Exception as e_cand:
+            logger.debug('candidates extraction failed: %s', e_cand)
+
+        try:
+            # some responses provide an 'output' or 'result' attribute
+            out = getattr(response, 'output', None) or getattr(response, 'result', None)
+            if out:
+                # if it's a list of parts, join text parts
+                if isinstance(out, (list, tuple)):
+                    parts = []
+                    for p in out:
+                        if isinstance(p, dict):
+                            parts.append(p.get('content') or p.get('text') or '')
+                        else:
+                            parts.append(getattr(p, 'content', None) or getattr(p, 'text', None) or '')
+                    joined = ' '.join([p for p in parts if p])
+                    if joined.strip():
+                        return joined.strip()
+                elif isinstance(out, dict):
+                    txt = out.get('content') or out.get('text')
+                    if txt:
+                        return str(txt).strip()
+        except Exception as e_out:
+            logger.debug('output/result extraction failed: %s', e_out)
+
+        # Fallback: intentar serializar el objeto de respuesta y extraer el primer string JSON-like
+        try:
+            s = str(response)
+            # intentar localizar un JSON en el string
+            start = s.find('{')
+            if start != -1:
+                # intentar parsear el primer objeto JSON encontrado
+                depth = 0
+                for i in range(start, len(s)):
+                    ch = s[i]
+                    if ch == '{':
+                        depth += 1
+                    elif ch == '}':
+                        depth -= 1
+                        if depth == 0:
+                            candidate = s[start:i+1]
+                            try:
+                                obj = json.loads(candidate)
+                                # si tiene campo 'reply' o 'text'
+                                if isinstance(obj, dict):
+                                    for key in ('reply', 'text', 'content'):
+                                        if key in obj and isinstance(obj[key], str):
+                                            return obj[key].strip()
+                                # si no, devolver el objeto string
+                                return json.dumps(obj)
+                            except Exception:
+                                continue
+            # si no hay JSON parseable, devolver el str completo
+            return s
+        except Exception as e_final:
+            logger.exception('Final fallback failed while parsing response: %s', e_final)
+            return str(response)
     except Exception as e:
         logger.exception('Gemini API call failed: %s', e)
         raise
 
 
-@require_GET
-@permission_classes([permissions.AllowAny])
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def resume_session(request):
     """Busca y retorna la sesión activa (is_game_over=None) para el usuario autenticado (JWT) o el primero disponible."""
     from apps.cyberUser.models import CyberUser
