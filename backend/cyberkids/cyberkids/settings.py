@@ -5,6 +5,10 @@ import os
 
 import cloudinary
 
+# Load Gemini API key from environment (.env)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GOOGLE_GENAI_API_KEY = GEMINI_API_KEY
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
