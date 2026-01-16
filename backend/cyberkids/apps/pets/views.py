@@ -22,7 +22,9 @@ class PetViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def shop(self, request):
-        """Lista mascotas disponibles para comprar."""
+        """Lista mascotas disponibles para comprar.
+        NOTA: Para comprar mascotas, usa el endpoint /api/progression/shop/buy-pet/
+        """
         pets = Pet.objects.filter(is_default=False)
         return Response(PetSerializer(pets, many=True).data)
 
@@ -40,6 +42,10 @@ class PetStateViewSet(viewsets.ModelViewSet):
 
 
 class UserPetViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar las mascotas del usuario.
+    NOTA: Para comprar mascotas, usa /api/progression/shop/buy-pet/
+    """
     queryset = UserPet.objects.all()
     serializer_class = UserPetSerializer
 
@@ -49,52 +55,6 @@ class UserPetViewSet(viewsets.ModelViewSet):
         if user_id:
             queryset = queryset.filter(user_id=user_id)
         return queryset
-
-    @action(detail=False, methods=['post'])
-    def buy(self, request):
-        """Comprar una mascota con cybercreds."""
-        user_id = request.data.get('user_id')
-        pet_id = request.data.get('pet_id')
-
-        user = get_object_or_404(CyberUser, pk=user_id)
-        pet = get_object_or_404(Pet, pk=pet_id)
-
-        # Verificar si ya tiene la mascota
-        if UserPet.objects.filter(user=user, pet=pet).exists():
-            return Response({'error': 'Ya tienes esta mascota'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Verificar cybercreds
-        if user.cybercreds < pet.cybercreds_cost:
-            return Response({'error': 'No tienes suficientes cybercreds'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Descontar y crear
-        user.cybercreds -= pet.cybercreds_cost
-        user.save(update_fields=['cybercreds'])
-
-        user_pet = UserPet.objects.create(user=user, pet=pet)
-        return Response(UserPetSerializer(user_pet).data, status=status.HTTP_201_CREATED)
-
-    @action(detail=False, methods=['post'])
-    def equip(self, request):
-        """Equipar una mascota."""
-        user_id = request.data.get('user_id')
-        pet_id = request.data.get('pet_id')
-
-        user = get_object_or_404(CyberUser, pk=user_id)
-
-        # Desequipar todas las mascotas del usuario
-        UserPet.objects.filter(user=user).update(is_equipped=False)
-
-        # Equipar la seleccionada
-        user_pet = get_object_or_404(UserPet, user_id=user_id, pet_id=pet_id)
-        user_pet.is_equipped = True
-        user_pet.save(update_fields=['is_equipped'])
-
-        # Actualizar pet_id en usuario
-        user.pet_id = pet_id
-        user.save(update_fields=['pet_id'])
-
-        return Response(UserPetSerializer(user_pet).data)
 
     @action(detail=False, methods=['get'], url_path='equipped/(?P<user_id>[^/.]+)')
     def equipped(self, request, user_id=None):
