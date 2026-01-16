@@ -888,9 +888,6 @@ def session_messages(request, session_id: int):
     })
 
 
-# --- AI provider helper: SOLO GEMINI ---
-import google.generativeai as genai
-
 def _call_ai_provider(model: str, prompt: str, max_tokens: int = 256) -> str:
     """Llama solo a Gemini usando la API key del entorno/configuración o .env."""
     api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "GOOGLE_GENAI_API_KEY", None)
