@@ -1,9 +1,10 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes, action
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import permissions
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from django.conf import settings
 from rest_framework import viewsets
 import logging
@@ -1033,11 +1034,101 @@ def resume_session(request):
     })
 
 
+from .models import Scenario
+from .serializers import ScenarioSerializer
+
+
+class ScenarioViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet para listar escenarios disponibles."""
+    queryset = Scenario.objects.filter(is_active=True).order_by('difficulty_level')
+    serializer_class = ScenarioSerializer
+    permission_classes = [permissions.AllowAny]
+
+    @action(detail=False, methods=['get'])
+    def active(self, request):
+        """Lista todos los escenarios activos."""
+        scenarios = Scenario.objects.filter(is_active=True).order_by('difficulty_level')
+        return Response(ScenarioSerializer(scenarios, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def by_difficulty(self, request):
+        """Lista escenarios agrupados por dificultad."""
+        scenarios = Scenario.objects.filter(is_active=True).order_by('difficulty_level')
+        result = {}
+        for s in scenarios:
+            level = f"level_{s.difficulty_level}"
+            if level not in result:
+                result[level] = []
+            result[level].append(ScenarioSerializer(s).data)
+        return Response(result)
+
 
 class GameSessionViewSet(viewsets.ModelViewSet):
     queryset = GameSession.objects.all()
     serializer_class = GameSessionSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        queryset = GameSession.objects.all().order_by('-started_at')
+        user_id = self.request.query_params.get('user_id')
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
+        return queryset
+
+    @action(detail=False, methods=['get'])
+    def my_sessions(self, request):
+        """Lista las sesiones del usuario autenticado."""
+        if not request.user.is_authenticated:
+            return Response({'error': 'Autenticación requerida'}, status=401)
+        
+        sessions = GameSession.objects.filter(user=request.user).order_by('-started_at')
+        return Response(GameSessionSerializer(sessions, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def my_stats(self, request):
+        """Estadísticas del usuario autenticado en simulaciones."""
+        if not request.user.is_authenticated:
+            return Response({'error': 'Autenticación requerida'}, status=401)
+        
+        user = request.user
+        sessions = GameSession.objects.filter(user=user)
+        
+        total = sessions.count()
+        won = sessions.filter(outcome='won').count()
+        lost = sessions.filter(outcome='failed').count()
+        in_progress = sessions.filter(is_game_over__isnull=True).count()
+        total_points = sum(s.points_earned or 0 for s in sessions)
+        
+        return Response({
+            'total_sessions': total,
+            'won': won,
+            'lost': lost,
+            'in_progress': in_progress,
+            'win_rate': round((won / total * 100) if total > 0 else 0, 1),
+            'total_points_earned': total_points
+        })
+
+    @action(detail=False, methods=['get'])
+    def history(self, request):
+        """Historial completo de sesiones del usuario con detalles."""
+        if not request.user.is_authenticated:
+            return Response({'error': 'Autenticación requerida'}, status=401)
+        
+        sessions = GameSession.objects.filter(user=request.user).order_by('-started_at')[:20]
+        
+        result = []
+        for session in sessions:
+            result.append({
+                'session_id': session.session_id,
+                'scenario_name': session.scenario.name if session.scenario else 'Desconocido',
+                'started_at': session.started_at.isoformat(),
+                'ended_at': session.ended_at.isoformat() if session.ended_at else None,
+                'outcome': session.outcome,
+                'points_earned': session.points_earned,
+                'is_game_over': session.is_game_over,
+            })
+        
+        return Response(result)
 
 
 class ChatMessageViewSet(viewsets.ModelViewSet):

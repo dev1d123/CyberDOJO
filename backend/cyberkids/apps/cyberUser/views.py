@@ -289,3 +289,91 @@ class CountryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Country.objects.filter(is_active=True).order_by('name')
     serializer_class = CountrySerializer
     lookup_field = 'country_id'
+
+
+class DashboardView(APIView):
+    """
+    Dashboard del usuario con resumen completo de su progreso y estado.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # Importar modelos necesarios
+        from apps.progression.models import UserProgress, CreditTransaction, UserInventory
+        from apps.pets.models import UserPet
+        from apps.simulation.models import GameSession
+        from apps.minigames.models import MinigameSession
+        from apps.onboarding.models import OnboardingQuestion, OnboardingResponse
+        
+        # Progreso del usuario
+        progress = UserProgress.objects.filter(user=user).select_related('current_level').first()
+        
+        # Estadísticas de simulación
+        simulation_sessions = GameSession.objects.filter(user=user)
+        simulation_stats = {
+            'total_sessions': simulation_sessions.count(),
+            'won': simulation_sessions.filter(outcome='won').count(),
+            'lost': simulation_sessions.filter(outcome='failed').count(),
+            'in_progress': simulation_sessions.filter(is_game_over__isnull=True).count(),
+        }
+        
+        # Estadísticas de minijuegos
+        minigame_sessions = MinigameSession.objects.filter(user=user)
+        minigame_stats = {
+            'total_sessions': minigame_sessions.count(),
+            'total_points': sum(s.points_earned or 0 for s in minigame_sessions),
+            'total_correct': sum(s.correct_answers or 0 for s in minigame_sessions),
+        }
+        
+        # Estado del onboarding
+        total_questions = OnboardingQuestion.objects.filter(is_active=True).count()
+        answered_questions = OnboardingResponse.objects.filter(user=user).count()
+        onboarding_complete = answered_questions >= total_questions if total_questions > 0 else False
+        
+        # Mascotas y cosméticos
+        pets_owned = UserPet.objects.filter(user=user).count()
+        equipped_pet = UserPet.objects.filter(user=user, is_equipped=True).select_related('pet').first()
+        cosmetics_owned = UserInventory.objects.filter(user=user).count()
+        
+        # Últimas transacciones
+        recent_transactions = CreditTransaction.objects.filter(user=user).order_by('-created_at')[:5]
+        
+        return Response({
+            'user': {
+                'user_id': user.user_id,
+                'username': user.username,
+                'email': user.email,
+                'cybercreds': user.cybercreds,
+                'risk_level': user.risk_level.name if user.risk_level else None,
+                'country': user.country.name if user.country else None,
+            },
+            'progress': {
+                'current_level': progress.current_level.level_number if progress and progress.current_level else 1,
+                'level_name': progress.current_level.name if progress and progress.current_level else 'Principiante',
+                'current_xp': progress.current_xp if progress else 0,
+                'games_played': progress.games_played if progress else 0,
+                'games_won': progress.games_won if progress else 0,
+            },
+            'simulation': simulation_stats,
+            'minigames': minigame_stats,
+            'onboarding': {
+                'is_complete': onboarding_complete,
+                'progress': f'{answered_questions}/{total_questions}',
+                'percentage': round((answered_questions / total_questions * 100) if total_questions > 0 else 0, 1)
+            },
+            'inventory': {
+                'pets_owned': pets_owned,
+                'equipped_pet': equipped_pet.pet.name if equipped_pet else None,
+                'cosmetics_owned': cosmetics_owned,
+            },
+            'recent_transactions': [
+                {
+                    'amount': t.amount,
+                    'type': t.transaction_type,
+                    'description': t.description,
+                    'date': t.created_at.isoformat()
+                } for t in recent_transactions
+            ]
+        })

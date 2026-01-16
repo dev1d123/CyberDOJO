@@ -2,8 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, RegisterView, LoginView, MeView, RefreshTokenView,
-    UpdateProfileView, UpdatePreferencesView, ChangePasswordView
-    , CountryViewSet
+    UpdateProfileView, UpdatePreferencesView, ChangePasswordView,
+    CountryViewSet, DashboardView
 )
 
 router = DefaultRouter()
@@ -18,5 +18,6 @@ urlpatterns = [
     path('auth/me/update/', UpdateProfileView.as_view(), name='update_profile'),
     path('auth/me/preferences/', UpdatePreferencesView.as_view(), name='update_preferences'),
     path('auth/me/change-password/', ChangePasswordView.as_view(), name='change_password'),
+    path('auth/dashboard/', DashboardView.as_view(), name='dashboard'),
     path('', include(router.urls)),
 ]

@@ -3,10 +3,9 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
-# TODO: Register viewsets
+router.register(r'scenarios', views.ScenarioViewSet, basename='scenarios')
 router.register(r'game-sessions', views.GameSessionViewSet)
 router.register(r'chat-messages', views.ChatMessageViewSet)
-# Optionally register Scenario and SensitivePattern viewsets later
 
 urlpatterns = [
     path('', include(router.urls)),
