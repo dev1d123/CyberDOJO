@@ -53,7 +53,7 @@ const getRiskColor = (riskValue: number): string => {
     '#fb923c', // Naranja
     '#f87171'  // Rojo
   ];
-  return colors[riskValue - 1] || colors[0];
+  return colors[riskValue - 1] ?? colors[0] ?? '#4ade80';
 };
 </script>
 

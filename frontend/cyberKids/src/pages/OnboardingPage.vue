@@ -12,7 +12,7 @@
       <button @click="loadQuestions" class="retry-button">Intentar de nuevo</button>
     </div>
 
-    <div v-else-if="questions.length > 0" class="questionnaire-container">
+    <div v-else-if="questions.length > 0 && currentQuestion" class="questionnaire-container">
       <!-- Progress Bar -->
       <div class="progress-container">
         <div class="progress-bar">
@@ -63,7 +63,7 @@
           v-if="currentQuestionIndex < questions.length - 1"
           @click="nextQuestion"
           class="nav-button next-button"
-          :disabled="!answers[currentQuestion.question_id]"
+          :disabled="answers[currentQuestion.question_id] == null"
         >
           Siguiente →
         </button>
@@ -72,7 +72,7 @@
           v-else
           @click="submitAnswers"
           class="nav-button submit-button"
-          :disabled="!answers[currentQuestion.question_id] || submitting"
+          :disabled="answers[currentQuestion.question_id] == null || submitting"
         >
           {{ submitting ? 'Enviando...' : '✓ Terminar' }}
         </button>
@@ -94,12 +94,14 @@ const router = useRouter();
 
 const questions = ref<OnboardingQuestion[]>([]);
 const currentQuestionIndex = ref(0);
-const answers = ref<Record<number, number>>({});
+const answers = ref<Record<number, number | null>>({});
 const loading = ref(true);
 const error = ref<string | null>(null);
 const submitting = ref(false);
 
-const currentQuestion = computed(() => questions.value[currentQuestionIndex.value]);
+const currentQuestion = computed<OnboardingQuestion | null>(
+  () => questions.value[currentQuestionIndex.value] ?? null
+);
 
 const progressPercentage = computed(() => {
   return ((currentQuestionIndex.value + 1) / questions.value.length) * 100;
@@ -142,7 +144,11 @@ const submitAnswers = async () => {
       const token = localStorage.getItem('access_token');
       if (token) {
         try {
-          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+          const payloadPart = token.split('.')[1];
+          if (!payloadPart) {
+            throw new Error('Token inválido: no payload');
+          }
+          const tokenPayload = JSON.parse(atob(payloadPart));
           userId = tokenPayload.user_id?.toString();
         } catch (e) {
           console.error('Error al decodificar token:', e);
@@ -157,8 +163,11 @@ const submitAnswers = async () => {
     const userIdNum = parseInt(userId);
 
     // Enviar cada respuesta al backend
-    const responsePromises = questions.value.map(question => {
+    const responsePromises = questions.value.map((question) => {
       const selectedOptionId = answers.value[question.question_id];
+      if (selectedOptionId == null) {
+        throw new Error('Faltan respuestas. Por favor completa todas las preguntas.');
+      }
       const response: OnboardingResponse = {
         user: userIdNum,
         question: question.question_id,
@@ -170,9 +179,16 @@ const submitAnswers = async () => {
     await Promise.all(responsePromises);
 
     // Preparar datos para el dashboard
-    const userAnswers: UserAnswer[] = questions.value.map(question => {
+    const userAnswers: UserAnswer[] = questions.value.map((question) => {
       const selectedOptionId = answers.value[question.question_id];
-      const selectedOption = question.options.find(opt => opt.option_id === selectedOptionId)!;
+      if (selectedOptionId == null) {
+        throw new Error('Faltan respuestas. Por favor completa todas las preguntas.');
+      }
+
+      const selectedOption = question.options.find((opt) => opt.option_id === selectedOptionId);
+      if (!selectedOption) {
+        throw new Error('Respuesta inválida. Por favor intenta nuevamente.');
+      }
       
       return {
         question_id: question.question_id,
