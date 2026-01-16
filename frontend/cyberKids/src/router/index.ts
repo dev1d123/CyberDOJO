@@ -7,6 +7,7 @@ import ProfileSetupPage from '../pages/ProfileSetupPage.vue';
 import DashboardPage from '../pages/DashboardPage.vue';
 import HistoryModePage from '../pages/HistoryModePage.vue';
 import { UserService } from '../services/user.service';
+import ShopPage from '../pages/ShopPage.vue';
 
 const routes = [
   {
@@ -48,9 +49,19 @@ const routes = [
     component: DashboardPage,
   },
   {
+    path: '/challenges',
+    name: 'Challenges',
+    component: () => import('../pages/ChallengesPage.vue'),
+  },
+  {
     path: '/history',
     name: 'History',
     component: HistoryModePage,
+  },
+  {
+    path: '/shop',
+    name: 'Shop',
+    component: ShopPage,
   },
 ];
 
@@ -60,7 +71,7 @@ const router = createRouter({
 });
 
 // Navigation guard para manejar autenticación y flujo
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const token = localStorage.getItem('access_token');
   const userId = localStorage.getItem('user_id');
 
