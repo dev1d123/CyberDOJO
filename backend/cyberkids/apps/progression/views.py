@@ -119,6 +119,28 @@ class CreditTransactionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(user_id=user_id)
         return queryset
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_transactions(self, request):
+        """Lista las transacciones del usuario autenticado."""
+        transactions = CreditTransaction.objects.filter(user=request.user).order_by('-created_at')[:50]
+        return Response(CreditTransactionSerializer(transactions, many=True).data)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_balance(self, request):
+        """Muestra el balance y resumen de transacciones del usuario."""
+        user = request.user
+        transactions = CreditTransaction.objects.filter(user=user)
+        
+        total_earned = sum(t.amount for t in transactions if t.amount > 0)
+        total_spent = abs(sum(t.amount for t in transactions if t.amount < 0))
+        
+        return Response({
+            'current_balance': user.cybercreds,
+            'total_earned': total_earned,
+            'total_spent': total_spent,
+            'transaction_count': transactions.count()
+        })
+
 
 class UserProgressViewSet(viewsets.ModelViewSet):
     queryset = UserProgress.objects.all()
@@ -176,6 +198,104 @@ class UserProgressViewSet(viewsets.ModelViewSet):
             'progress': UserProgressSerializer(progress).data,
             'leveled_up': leveled_up,
             'new_level': next_level.level_number if leveled_up else None
+        })
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_progress(self, request):
+        """Obtener progreso del usuario autenticado."""
+        progress = UserProgress.objects.filter(user=request.user).select_related('current_level').first()
+        
+        if not progress:
+            # Crear progreso inicial si no existe
+            first_level = ProgressionLevel.objects.filter(level_number=1).first()
+            progress = UserProgress.objects.create(
+                user=request.user,
+                current_level=first_level,
+                current_xp=0
+            )
+        
+        # Calcular XP necesario para siguiente nivel
+        next_level = ProgressionLevel.objects.filter(
+            level_number__gt=progress.current_level.level_number if progress.current_level else 0
+        ).order_by('level_number').first()
+        
+        xp_for_next = next_level.required_xp if next_level else None
+        xp_progress = progress.current_xp - (progress.current_level.required_xp if progress.current_level else 0)
+        xp_needed = (next_level.required_xp - progress.current_level.required_xp) if next_level and progress.current_level else 0
+        
+        return Response({
+            'progress': UserProgressSerializer(progress).data,
+            'next_level': next_level.level_number if next_level else None,
+            'xp_for_next_level': xp_for_next,
+            'xp_progress_to_next': xp_progress,
+            'xp_needed_for_next': xp_needed,
+            'percentage_to_next': round((xp_progress / xp_needed * 100) if xp_needed > 0 else 100, 1)
+        })
+
+    @action(detail=False, methods=['get'])
+    def leaderboard(self, request):
+        """Top 20 usuarios por nivel y XP."""
+        top_users = UserProgress.objects.select_related('user', 'current_level').order_by(
+            '-current_level__level_number', '-current_xp'
+        )[:20]
+        
+        result = []
+        for i, progress in enumerate(top_users, 1):
+            result.append({
+                'rank': i,
+                'username': progress.user.username,
+                'level': progress.current_level.level_number if progress.current_level else 1,
+                'level_name': progress.current_level.name if progress.current_level else 'Principiante',
+                'xp': progress.current_xp,
+                'games_won': progress.games_won,
+            })
+        
+        return Response(result)
+
+    @action(detail=False, methods=['get'])
+    def leaderboard_cybercreds(self, request):
+        """Top 20 usuarios por cybercreds."""
+        top_users = CyberUser.objects.filter(is_active=True).order_by('-cybercreds')[:20]
+        
+        result = []
+        for i, user in enumerate(top_users, 1):
+            result.append({
+                'rank': i,
+                'username': user.username,
+                'cybercreds': user.cybercreds,
+            })
+        
+        return Response(result)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_rank(self, request):
+        """Obtener el ranking del usuario autenticado."""
+        user = request.user
+        progress = UserProgress.objects.filter(user=user).first()
+        
+        if not progress:
+            return Response({
+                'rank': None,
+                'message': 'Sin progreso registrado'
+            })
+        
+        # Contar usuarios con mejor nivel/XP
+        better_users = UserProgress.objects.filter(
+            current_level__level_number__gt=progress.current_level.level_number if progress.current_level else 0
+        ).count()
+        
+        same_level_better_xp = UserProgress.objects.filter(
+            current_level=progress.current_level,
+            current_xp__gt=progress.current_xp
+        ).count()
+        
+        rank = better_users + same_level_better_xp + 1
+        total_users = UserProgress.objects.count()
+        
+        return Response({
+            'rank': rank,
+            'total_users': total_users,
+            'percentile': round((1 - rank / total_users) * 100, 1) if total_users > 0 else 0
         })
 
     @action(detail=False, methods=['get'], url_path='user/(?P<user_id>[^/.]+)')
