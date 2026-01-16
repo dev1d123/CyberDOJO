@@ -7,8 +7,8 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r'', UserViewSet)
 router.register(r'countries', CountryViewSet, basename='country')
+router.register(r'', UserViewSet)
 
 urlpatterns = [
     path('auth/register/', RegisterView.as_view(), name='register'),
