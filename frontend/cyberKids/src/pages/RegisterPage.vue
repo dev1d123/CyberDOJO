@@ -82,9 +82,23 @@ const handleRegister = async () => {
     if (error && typeof error === 'object') {
       // Traducir mensajes del backend si es necesario
       const translatedErrors: ValidationErrors = {};
+
+      const arrayFields = new Set<Exclude<keyof ValidationErrors, 'error'>>([
+        'username',
+        'email',
+        'password',
+        'password_confirm',
+        'non_field_errors',
+      ]);
+
       for (const [key, value] of Object.entries(error)) {
-        if (Array.isArray(value)) {
-          translatedErrors[key as keyof ValidationErrors] = value.map((msg: string) => {
+        if (key === 'error' && typeof value === 'string') {
+          translatedErrors.non_field_errors = [value];
+          continue;
+        }
+
+        if (Array.isArray(value) && arrayFields.has(key as Exclude<keyof ValidationErrors, 'error'>)) {
+          (translatedErrors[key as Exclude<keyof ValidationErrors, 'error'>] as string[]) = value.map((msg: string) => {
             // Traducir mensajes comunes del backend
             if (msg.includes('This field is required') || msg.includes('required')) {
               return 'Este campo es obligatorio';

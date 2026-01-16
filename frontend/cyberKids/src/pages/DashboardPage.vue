@@ -124,13 +124,11 @@ const goToStoryMode = () => {
 };
 
 const goToChallenges = () => {
-  // TODO: Implementar navegación a desafíos
-  alert('¡Los desafíos estarán disponibles pronto! 🏆');
+  router.push('/challenges');
 };
 
 const goToShop = () => {
-  // TODO: Implementar navegación a la tienda
-  alert('¡La tienda estará disponible pronto! 🛍️');
+  router.push('/shop');
 };
 
 const goToProfile = () => {
