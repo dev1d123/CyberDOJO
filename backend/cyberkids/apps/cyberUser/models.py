@@ -60,8 +60,11 @@ class Preferences(models.Model):
         db_table = 'preferences'
 
     def __str__(self):
-        return f"Preferences for {self.cyberuser.username}"
-
+        user = getattr(self, 'cyberuser', None)
+        if user and hasattr(user, 'username'):
+            return f"Preferences for {user.username}"
+        return f"Preferences #{self.preference_id}"
+    
 class CyberUser(models.Model):
     user_id = models.AutoField(primary_key=True)
     username = models.CharField(max_length=50)
