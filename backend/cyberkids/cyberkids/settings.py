@@ -159,6 +159,14 @@ CLOUDINARY_CLOUD_NAME = 'dsvynqyq5'
 CLOUDINARY_API_KEY = '537782675375588'
 CLOUDINARY_API_SECRET = '9tbhQfQOxFjU1Xb-yZZiyXvM72I'
 
+import os
+PYTHONANYWHERE_DOMAIN = os.environ.get('PYTHONANYWHERE_DOMAIN')
+
+if PYTHONANYWHERE_DOMAIN:
+    PYTHONANYWHERE_PROXY = 'http://proxy.server:3128'
+    os.environ['HTTP_PROXY'] = PYTHONANYWHERE_PROXY
+    os.environ['HTTPS_PROXY'] = PYTHONANYWHERE_PROXY
+
 cloudinary.config(
     cloud_name='dsvynqyq5',
     api_key='537782675375588',
