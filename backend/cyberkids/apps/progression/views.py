@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 
 from .models import ProgressionLevel, CosmeticItem, UserInventory, CreditTransaction, UserProgress
@@ -17,11 +18,13 @@ from apps.pets.serializers import PetSerializer, UserPetSerializer
 class ProgressionLevelViewSet(viewsets.ModelViewSet):
     queryset = ProgressionLevel.objects.all().order_by('level_number')
     serializer_class = ProgressionLevelSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
 
 class CosmeticItemViewSet(viewsets.ModelViewSet):
     queryset = CosmeticItem.objects.all()
     serializer_class = CosmeticItemSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         queryset = CosmeticItem.objects.filter(is_active=True)

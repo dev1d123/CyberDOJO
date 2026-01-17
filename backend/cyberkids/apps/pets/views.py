@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
 
 from .models import Pet, PetState, UserPet
@@ -11,6 +12,7 @@ from apps.cyberUser.models import CyberUser
 class PetViewSet(viewsets.ModelViewSet):
     queryset = Pet.objects.prefetch_related('states').all()
     serializer_class = PetSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     @action(detail=False, methods=['get'])
     def default(self, request):
@@ -32,6 +34,7 @@ class PetViewSet(viewsets.ModelViewSet):
 class PetStateViewSet(viewsets.ModelViewSet):
     queryset = PetState.objects.all()
     serializer_class = PetStateSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         queryset = PetState.objects.all()
