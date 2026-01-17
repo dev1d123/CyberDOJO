@@ -1,6 +1,7 @@
 <template>
   <div class="history-page" :style="{ backgroundImage: `url(${historyBackgroundUrl})` }">
     <div class="history-overlay">
+      <BackToDashboardButton />
       <header class="history-header">
         <h1 class="history-title">Modo Historia</h1>
         <p class="history-subtitle">Elige una isla para comenzar tu aventura</p>
@@ -53,6 +54,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import BackToDashboardButton from '../components/BackToDashboardButton.vue';
 import HistoryMap from '../components/history/HistoryMap.vue';
 import type { HistoryLevelDto } from '../dto/history.dto';
 

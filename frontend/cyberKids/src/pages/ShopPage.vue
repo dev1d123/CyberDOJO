@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import BackToDashboardButton from '../components/BackToDashboardButton.vue';
 import ShopCategoryMenu from '../components/shop/ShopCategoryMenu.vue';
 import ShopItemGrid from '../components/shop/ShopItemGrid.vue';
 import ShopItemDetails from '../components/shop/ShopItemDetails.vue';
@@ -11,8 +11,6 @@ import pet2Img from '@/assets/images/pet2.png';
 import pet3Img from '@/assets/images/pet3.png';
 import pet4Img from '@/assets/images/pet4.png';
 import pet5Img from '@/assets/images/pet5.png';
-
-const router = useRouter();
 
 const activeCategory = ref<ShopCategory>('pets');
 
@@ -123,15 +121,12 @@ const handleBuy = (item: ShopItem) => {
   alert(`Compra (demo): ${item.name} por ${item.price} CyberCredits`);
 };
 
-const goBack = () => {
-  router.push('/dashboard');
-};
 </script>
 
 <template>
   <div class="shop-page">
+    <BackToDashboardButton />
     <header class="topbar">
-      <button class="back" type="button" @click="goBack">⟵ Volver</button>
       <div class="title-wrap">
         <h1 class="title">Tienda</h1>
         <p class="subtitle">Pets y Sonidos para personalizar tu aventura</p>
@@ -195,7 +190,7 @@ const goBack = () => {
 .topbar {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 160px 1fr 170px;
+  grid-template-columns: 1fr 170px;
   align-items: center;
   gap: 12px;
 
@@ -205,24 +200,6 @@ const goBack = () => {
   border: 2px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(10px);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-}
-
-.back {
-  justify-self: start;
-  border: 0;
-  border-radius: 16px;
-  padding: 12px 14px;
-  cursor: pointer;
-  font-weight: 1000;
-  color: #111;
-  background: #fee440;
-  box-shadow: 0 14px 26px rgba(254, 228, 64, 0.22);
-  transition: transform 160ms ease, filter 160ms ease;
-}
-
-.back:hover {
-  transform: translateY(-3px);
-  filter: saturate(1.05);
 }
 
 .title-wrap {
@@ -319,13 +296,13 @@ const goBack = () => {
 
 @media (max-width: 980px) {
   .topbar {
-    grid-template-columns: 140px 1fr;
+    grid-template-columns: 1fr;
     grid-template-rows: auto auto;
   }
 
   .credits-chip {
     justify-self: end;
-    grid-column: 2;
+    grid-column: 1;
     grid-row: 1;
   }
 

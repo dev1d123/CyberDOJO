@@ -1,19 +1,116 @@
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
+import AccountOpenAlert from '../components/AccountOpenAlert.vue';
 
 const router = useRouter();
+const route = useRoute();
+
+const isAuthenticated = computed(() => Boolean(localStorage.getItem('access_token')));
+
+const sessionAlertOpen = ref(false);
+const pendingTarget = ref<'login' | 'register' | null>(null);
+
+const openSessionAlert = (target: 'login' | 'register' | null) => {
+  pendingTarget.value = target;
+  sessionAlertOpen.value = true;
+};
+
+const clearSession = () => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user_id');
+};
+
+const consumeQueryAlert = () => {
+  // Si el router guard redirige con query, mostramos la alerta aquí.
+  const wantsAlert = route.query?.sessionOpen === '1';
+  const target = route.query?.target;
+
+  if (wantsAlert && isAuthenticated.value) {
+    if (target === 'login' || target === 'register') {
+      openSessionAlert(target);
+    } else {
+      openSessionAlert(null);
+    }
+  }
+};
+
+onMounted(() => {
+  consumeQueryAlert();
+});
+
+watch(
+  () => route.query,
+  () => {
+    consumeQueryAlert();
+  }
+);
+
+const closeSessionAlert = () => {
+  sessionAlertOpen.value = false;
+  pendingTarget.value = null;
+  // Limpia el query para evitar re-abrir el modal al refrescar.
+  if (route.query?.sessionOpen || route.query?.target) {
+    router.replace({ path: '/', query: {} });
+  }
+};
+
+const confirmCloseSession = () => {
+  clearSession();
+
+  const target = pendingTarget.value;
+  closeSessionAlert();
+
+  // Si venía de un intento de login/register, ahora sí lo llevamos.
+  if (target === 'login') router.push('/login');
+  if (target === 'register') router.push('/register');
+};
+
+const goToDashboard = () => {
+  router.push('/dashboard');
+};
 
 const goToRegister = () => {
+  if (isAuthenticated.value) {
+    openSessionAlert('register');
+    return;
+  }
   router.push('/register');
 };
 
 const goToLogin = () => {
+  if (isAuthenticated.value) {
+    openSessionAlert('login');
+    return;
+  }
   router.push('/login');
 };
 </script>
 
 <template>
   <div class="home-page">
+    <AccountOpenAlert
+      v-model="sessionAlertOpen"
+      message="Todavia hay una cuenta abierta. Cierra sesion para continuar."
+      confirm-text="Cerrar sesión"
+      cancel-text="Cancelar"
+      @confirm="confirmCloseSession"
+      @cancel="closeSessionAlert"
+    />
+
+    <button
+      v-if="isAuthenticated"
+      class="floating-dashboard-btn"
+      type="button"
+      aria-label="Ir al dashboard"
+      @click="goToDashboard"
+    >
+      <span class="floating-icon" aria-hidden="true">🚀</span>
+      Dashboard
+    </button>
+
     <div class="content-container">
       <!-- Hero Section with GIF -->
       <div class="hero-container">
@@ -69,6 +166,36 @@ const goToLogin = () => {
   justify-content: center;
   padding: 2rem;
   overflow: hidden;
+}
+
+.floating-dashboard-btn {
+  position: fixed;
+  right: 2rem;
+  bottom: 2rem;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1rem 1.4rem;
+  border-radius: 999px;
+  border: 4px solid rgba(255, 255, 255, 0.6);
+  color: white;
+  font-size: 1.25rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #48c6ef 0%, #6f86d6 100%);
+  box-shadow: 0 18px 45px rgba(72, 198, 239, 0.55);
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.floating-dashboard-btn:hover {
+  transform: translateY(-6px) scale(1.06);
+  box-shadow: 0 22px 60px rgba(72, 198, 239, 0.7);
+  background: linear-gradient(135deg, #6f86d6 0%, #48c6ef 100%);
+}
+
+.floating-icon {
+  font-size: 1.5rem;
 }
 
 .content-container {
@@ -401,6 +528,13 @@ const goToLogin = () => {
   
   .help-text {
     font-size: 1.2rem;
+  }
+
+  .floating-dashboard-btn {
+    right: 1rem;
+    bottom: 1rem;
+    font-size: 1.1rem;
+    padding: 0.9rem 1.2rem;
   }
 }
 </style>

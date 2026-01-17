@@ -17,6 +17,21 @@ const errors = ref<ValidationErrors>({});
 const isLoading = ref(false);
 const successMessage = ref('');
 
+const decodeJwtPayload = (token: string): any | null => {
+  try {
+    const payloadPart = token.split('.')[1];
+    if (!payloadPart) return null;
+
+    // base64url -> base64
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    return JSON.parse(atob(padded));
+  } catch (e) {
+    console.error('❌ Error decodificando JWT:', e);
+    return null;
+  }
+};
+
 const handleRegister = async () => {
   errors.value = {};
   successMessage.value = '';
@@ -61,6 +76,7 @@ const handleRegister = async () => {
   
   try {
     const response = await AuthService.register(formData.value);
+    console.log('✅ Register response (page):', response);
     
     // Guardar tokens
     if (response.tokens) {
@@ -71,6 +87,25 @@ const handleRegister = async () => {
     // Guardar información del usuario
     if (response.user) {
       localStorage.setItem('user_id', response.user.user_id.toString());
+    }
+
+    // Fallback: si no viene user, intentar extraer user_id del access_token
+    if (!localStorage.getItem('user_id') && response.tokens?.access) {
+      const payload = decodeJwtPayload(response.tokens.access);
+      const tokenUserId = payload?.user_id;
+      if (tokenUserId) {
+        localStorage.setItem('user_id', String(tokenUserId));
+        console.log('🧩 user_id obtenido desde access_token:', tokenUserId);
+      } else {
+        console.warn('⚠️ No se pudo obtener user_id desde access_token');
+      }
+    }
+
+    // Fallback extra: algunos backends retornan user_id al nivel raíz
+    const rootUserId = (response as any)?.user_id;
+    if (!localStorage.getItem('user_id') && rootUserId) {
+      localStorage.setItem('user_id', String(rootUserId));
+      console.log('🧩 user_id obtenido desde respuesta raíz:', rootUserId);
     }
     
     successMessage.value = '¡Cuenta creada exitosamente! Redirigiendo...';

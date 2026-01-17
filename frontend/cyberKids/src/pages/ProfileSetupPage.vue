@@ -24,11 +24,37 @@
               :key="avatar"
               class="avatar-option"
               :class="{ selected: formData.avatar === avatar }"
-              @click="formData.avatar = avatar"
+              @click="selectAvatar(avatar)"
             >
               <img :src="avatar" :alt="`Avatar ${avatar}`" />
             </div>
+
+            <div
+              class="avatar-option upload-option"
+              :class="{ selected: isUploadedAvatarSelected }"
+              @click="triggerAvatarUpload"
+            >
+              <img
+                v-if="uploadedAvatarPreviewUrl"
+                :src="uploadedAvatarPreviewUrl"
+                alt="Avatar subido"
+              />
+              <div v-else class="upload-placeholder">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">Subir foto</div>
+              </div>
+            </div>
           </div>
+
+          <input
+            ref="avatarFileInput"
+            class="hidden-file"
+            type="file"
+            accept="image/*"
+            @change="onAvatarFileChange"
+          />
+
+          <p v-if="errors.avatar" class="error-text">{{ errors.avatar }}</p>
         </div>
 
         <!-- Username Field -->
@@ -74,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { UserService } from '../services/user.service';
 import { CountryService } from '../services/country.service';
@@ -92,20 +118,54 @@ const formData = ref<ProfileSetupDto>({
 const errors = ref<{ username?: string; country?: string; avatar?: string }>({});
 const isLoading = ref(false);
 
+const avatarFileInput = ref<HTMLInputElement | null>(null);
+const uploadedAvatarFile = ref<File | null>(null);
+const uploadedAvatarPreviewUrl = ref<string>('');
+const originalAvatarUrl = ref<string>('');
+
+const isUploadedAvatarSelected = computed(() => !!uploadedAvatarFile.value);
+
 // Opciones de avatares
 const avatarOptions = ref([
-  'https://api.dicebear.com/7.x/adventurer/svg?seed=Felix',
-  'https://api.dicebear.com/7.x/adventurer/svg?seed=Luna',
-  'https://api.dicebear.com/7.x/adventurer/svg?seed=Max',
-  'https://api.dicebear.com/7.x/adventurer/svg?seed=Sophie',
-  'https://api.dicebear.com/7.x/adventurer/svg?seed=Leo',
-  'https://api.dicebear.com/7.x/adventurer/svg?seed=Mia',
-  'https://api.dicebear.com/7.x/adventurer/svg?seed=Oliver',
-  'https://api.dicebear.com/7.x/adventurer/svg?seed=Emma',
+  // Usar PNG (no SVG) para que el backend (ImageField/Pillow) lo acepte como imagen
+  'https://api.dicebear.com/7.x/adventurer/png?seed=Felix',
+  'https://api.dicebear.com/7.x/adventurer/png?seed=Luna',
+  'https://api.dicebear.com/7.x/adventurer/png?seed=Max',
+  'https://api.dicebear.com/7.x/adventurer/png?seed=Sophie',
+  'https://api.dicebear.com/7.x/adventurer/png?seed=Leo',
+  'https://api.dicebear.com/7.x/adventurer/png?seed=Mia',
+  'https://api.dicebear.com/7.x/adventurer/png?seed=Oliver',
+  'https://api.dicebear.com/7.x/adventurer/png?seed=Emma',
 ]);
 
 // Lista de países desde el backend
 const countries = ref<CountryDto[]>([]);
+
+const decodeJwtPayload = (token: string): any | null => {
+  try {
+    const payloadPart = token.split('.')[1];
+    if (!payloadPart) return null;
+
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    return JSON.parse(atob(padded));
+  } catch (e) {
+    console.error('❌ Error decodificando JWT:', e);
+    return null;
+  }
+};
+
+const downloadImageAsFile = async (url: string): Promise<File> => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`No se pudo descargar el avatar (status ${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const contentType = blob.type || 'image/png';
+  const extension = contentType.includes('png') ? 'png' : contentType.includes('jpeg') ? 'jpg' : 'img';
+  return new File([blob], `avatar.${extension}`, { type: contentType });
+};
 
 onMounted(async () => {
   console.log('🚀 ProfileSetupPage mounted');
@@ -118,24 +178,26 @@ onMounted(async () => {
     console.error('❌ Error cargando países:', error);
   }
   
-  // Cargar el username actual del usuario si existe
+  // Cargar el usuario autenticado
   try {
-    const userId = localStorage.getItem('user_id');
-    console.log('👤 User ID:', userId);
-    
-    if (userId) {
-      const user = await UserService.getUserById(parseInt(userId));
-      console.log('👤 Usuario cargado:', user);
-      
-      if (user.username) {
-        formData.value.username = user.username;
-      }
-      if (user.country) {
-        formData.value.country = user.country;
-      }
-      if (user.avatar) {
-        formData.value.avatar = user.avatar;
-      }
+    const me = await UserService.getCurrentUser();
+    console.log('👤 Usuario autenticado cargado (/auth/me/):', me);
+
+    if (me?.user_id) {
+      localStorage.setItem('user_id', String(me.user_id));
+    }
+
+    if (me?.username) {
+      formData.value.username = me.username;
+    }
+
+    if (me?.country) {
+      formData.value.country = me.country;
+    }
+
+    if (me?.avatar) {
+      formData.value.avatar = me.avatar;
+      originalAvatarUrl.value = me.avatar;
     }
   } catch (error) {
     console.error('❌ Error loading user data:', error);
@@ -147,6 +209,57 @@ onMounted(async () => {
     console.log('🎨 Avatar por defecto seleccionado:', formData.value.avatar);
   }
 });
+
+onBeforeUnmount(() => {
+  if (uploadedAvatarPreviewUrl.value) {
+    URL.revokeObjectURL(uploadedAvatarPreviewUrl.value);
+  }
+});
+
+const clearUploadedAvatar = () => {
+  if (uploadedAvatarPreviewUrl.value) {
+    URL.revokeObjectURL(uploadedAvatarPreviewUrl.value);
+  }
+  uploadedAvatarPreviewUrl.value = '';
+  uploadedAvatarFile.value = null;
+  if (avatarFileInput.value) {
+    avatarFileInput.value.value = '';
+  }
+};
+
+const selectAvatar = (avatar: string) => {
+  clearUploadedAvatar();
+  formData.value.avatar = avatar;
+  console.log('🎭 Avatar seleccionado (URL):', avatar);
+};
+
+const triggerAvatarUpload = () => {
+  errors.value.avatar = undefined;
+  avatarFileInput.value?.click();
+};
+
+const onAvatarFileChange = (e: Event) => {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0] ?? null;
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    errors.value.avatar = 'Por favor selecciona un archivo de imagen válido';
+    console.error('❌ Archivo inválido:', { type: file.type, name: file.name });
+    return;
+  }
+
+  clearUploadedAvatar();
+  uploadedAvatarFile.value = file;
+  uploadedAvatarPreviewUrl.value = URL.createObjectURL(file);
+  formData.value.avatar = uploadedAvatarPreviewUrl.value;
+
+  console.log('📷 Avatar file seleccionado:', {
+    name: file.name,
+    type: file.type,
+    size: file.size,
+  });
+};
 
 const validateForm = (): boolean => {
   console.log('🔍 Validando formulario...');
@@ -161,7 +274,7 @@ const validateForm = (): boolean => {
     isValid = false;
   }
 
-  if (!formData.value.country) {
+  if (formData.value.country === '' || formData.value.country == null) {
     errors.value.country = 'Por favor selecciona tu país';
     isValid = false;
   }
@@ -186,28 +299,67 @@ const handleSubmit = async () => {
   isLoading.value = true;
 
   try {
-    const userId = localStorage.getItem('user_id');
-    if (!userId) {
-      throw new Error('No se encontró el ID de usuario');
+    const countryId = typeof formData.value.country === 'string'
+      ? Number(formData.value.country)
+      : formData.value.country;
+
+    if (!countryId || Number.isNaN(countryId)) {
+      errors.value.country = 'Por favor selecciona tu país';
+      throw new Error('country_id inválido');
     }
 
     console.log('📤 Datos a enviar:', {
       username: formData.value.username,
-      country: formData.value.country,
+      country: countryId,
       avatar: formData.value.avatar,
+      avatarFile: uploadedAvatarFile.value
+        ? { name: uploadedAvatarFile.value.name, type: uploadedAvatarFile.value.type, size: uploadedAvatarFile.value.size }
+        : null,
     });
 
-    // Actualizar el perfil del usuario con el country_id
-    const updateData = {
+    // Siempre usar multipart: backend espera ImageField para avatar
+    let avatarFileToUpload: File | undefined;
+    if (uploadedAvatarFile.value) {
+      avatarFileToUpload = uploadedAvatarFile.value;
+    } else {
+      const selected = formData.value.avatar;
+      const isPreset = !!selected && avatarOptions.value.includes(selected);
+      const changedFromOriginal = !!selected && selected !== originalAvatarUrl.value;
+      if (isPreset && changedFromOriginal) {
+        try {
+          console.log('🧩 Descargando avatar preset para subirlo como archivo...');
+          avatarFileToUpload = await downloadImageAsFile(selected);
+          console.log('✅ Avatar preset convertido a File:', {
+            name: avatarFileToUpload.name,
+            type: avatarFileToUpload.type,
+            size: avatarFileToUpload.size,
+          });
+        } catch (e) {
+          console.error('❌ No se pudo descargar el avatar preset:', e);
+          errors.value.avatar = 'No se pudo descargar el avatar seleccionado. Intenta con otro o sube una foto.';
+          throw e;
+        }
+      }
+    }
+
+    console.log('🧩 Enviando update multipart (/auth/me/update/) ...');
+    const response = await UserService.updateMeMultipart({
       username: formData.value.username,
-      country: formData.value.country,
-      avatar: formData.value.avatar,
-    };
-    
-    console.log('📦 Payload final:', updateData);
-    
-    const response = await UserService.updateUser(parseInt(userId), updateData);
+      country: countryId,
+      avatarFile: avatarFileToUpload,
+    });
+
     console.log('✅ Respuesta del servidor:', response);
+
+    if (response?.tokens?.access && response?.tokens?.refresh) {
+      localStorage.setItem('access_token', response.tokens.access);
+      localStorage.setItem('refresh_token', response.tokens.refresh);
+
+      const payload = decodeJwtPayload(response.tokens.access);
+      if (payload?.user_id) {
+        localStorage.setItem('user_id', String(payload.user_id));
+      }
+    }
 
     // Ir a la página de onboarding
     console.log('➡️ Redirigiendo a onboarding...');
@@ -221,6 +373,9 @@ const handleSubmit = async () => {
     }
     if (error.country) {
       errors.value.country = Array.isArray(error.country) ? error.country[0] : error.country;
+    }
+    if (error.avatar) {
+      errors.value.avatar = Array.isArray(error.avatar) ? error.avatar[0] : error.avatar;
     }
   } finally {
     isLoading.value = false;
@@ -403,6 +558,37 @@ const handleSubmit = async () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.upload-option {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(254, 228, 64, 0.35) 0%, rgba(255, 107, 107, 0.15) 60%, rgba(102, 126, 234, 0.18) 100%);
+}
+
+.upload-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 10px;
+  text-align: center;
+}
+
+.upload-icon {
+  font-size: 1.8rem;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.upload-text {
+  font-weight: 900;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.hidden-file {
+  display: none;
 }
 
 .form-group {
