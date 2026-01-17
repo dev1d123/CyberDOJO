@@ -32,19 +32,19 @@
           <QuestionMultipleChoice
             v-if="currentQuestion.response_type === 'multiple_choice'"
             :question="currentQuestion"
-            v-model="answers[currentQuestion.question_id]"
+            v-model="currentAnswer"
           />
           
           <QuestionYesNo
             v-else-if="currentQuestion.response_type === 'yes_no'"
             :question="currentQuestion"
-            v-model="answers[currentQuestion.question_id]"
+            v-model="currentAnswer"
           />
           
           <QuestionScale
             v-else-if="currentQuestion.response_type === 'scale'"
             :question="currentQuestion"
-            v-model="answers[currentQuestion.question_id]"
+            v-model="currentAnswer"
           />
         </div>
       </transition>
@@ -88,7 +88,7 @@ import QuestionMultipleChoice from '@/components/QuestionMultipleChoice.vue';
 import QuestionYesNo from '@/components/QuestionYesNo.vue';
 import QuestionScale from '@/components/QuestionScale.vue';
 import { OnboardingService } from '@/services/onboarding.service';
-import type { OnboardingQuestion, OnboardingResponse, UserAnswer } from '@/dto/onboarding.dto';
+import type { OnboardingQuestion, UserAnswer } from '@/dto/onboarding.dto';
 
 const router = useRouter();
 
@@ -102,6 +102,19 @@ const submitting = ref(false);
 const currentQuestion = computed<OnboardingQuestion | null>(
   () => questions.value[currentQuestionIndex.value] ?? null
 );
+
+const currentAnswer = computed<number | null>({
+  get() {
+    const q = currentQuestion.value;
+    if (!q) return null;
+    return answers.value[q.question_id] ?? null;
+  },
+  set(value) {
+    const q = currentQuestion.value;
+    if (!q) return;
+    answers.value[q.question_id] = value;
+  },
+});
 
 const progressPercentage = computed(() => {
   return ((currentQuestionIndex.value + 1) / questions.value.length) * 100;
@@ -135,48 +148,27 @@ const previousQuestion = () => {
 const submitAnswers = async () => {
   try {
     submitting.value = true;
-    
-    // Obtener user_id del localStorage
-    let userId = localStorage.getItem('user_id');
-    
-    // Si no está en localStorage, intentar extraer del token
-    if (!userId) {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        try {
-          const payloadPart = token.split('.')[1];
-          if (!payloadPart) {
-            throw new Error('Token inválido: no payload');
-          }
-          const tokenPayload = JSON.parse(atob(payloadPart));
-          userId = tokenPayload.user_id?.toString();
-        } catch (e) {
-          console.error('Error al decodificar token:', e);
-        }
-      }
-    }
-    
-    if (!userId) {
-      throw new Error('No se encontró información del usuario. Por favor, inicia sesión nuevamente.');
-    }
-    
-    const userIdNum = parseInt(userId);
 
-    // Enviar cada respuesta al backend
-    const responsePromises = questions.value.map((question) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('No hay sesión activa. Por favor, inicia sesión nuevamente.');
+    }
+
+    // Enviar en lote usando el endpoint upsert del backend (evita unique_together user+question)
+    const batchPayload = questions.value.map((question) => {
       const selectedOptionId = answers.value[question.question_id];
       if (selectedOptionId == null) {
         throw new Error('Faltan respuestas. Por favor completa todas las preguntas.');
       }
-      const response: OnboardingResponse = {
-        user: userIdNum,
-        question: question.question_id,
-        option: selectedOptionId
+      return {
+        question_id: question.question_id,
+        option_id: selectedOptionId,
       };
-      return OnboardingService.submitResponse(response);
     });
 
-    await Promise.all(responsePromises);
+    console.log('📤 OnboardingPage.submitAnswers batchPayload:', batchPayload);
+    const submitResult = await OnboardingService.submitBatch(batchPayload);
+    console.log('✅ Onboarding batch submit result:', submitResult);
 
     // Preparar datos para el dashboard
     const userAnswers: UserAnswer[] = questions.value.map((question) => {

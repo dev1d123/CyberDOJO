@@ -33,29 +33,79 @@ export class OnboardingService {
   /**
    * Envía una respuesta de onboarding
    */
-  static async submitResponse(response: OnboardingResponse): Promise<void> {
+  static async submitResponse(response: OnboardingResponse): Promise<unknown> {
     try {
       const token = localStorage.getItem('access_token');
+
+      // ⚠️ IMPORTANTE: el endpoint /responses/ (POST) crea y falla si ya existe
+      // El backend expone /responses/submit/ que hace update_or_create usando request.user
+      const payload = {
+        question_id: response.question,
+        option_id: response.option,
+        open_answer: response.open_answer,
+      };
+
+      console.log('📤 OnboardingService.submitResponse payload:', payload);
       
-      const result = await fetch(`${API_BASE_URL}/onboarding/responses/`, {
+      const result = await fetch(`${API_BASE_URL}/onboarding/responses/submit/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(response),
+        body: JSON.stringify(payload),
       });
 
+      console.log('📥 OnboardingService.submitResponse status:', result.status);
+
+      const contentType = result.headers.get('content-type') || '';
+      const body = contentType.includes('application/json') ? await result.json() : await result.text();
+      console.log('📥 OnboardingService.submitResponse body:', body);
+
       if (!result.ok) {
-        const errorData = await result.json();
-        throw new Error(JSON.stringify(errorData));
+        throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
       }
 
-      return await result.json();
+      return body;
     } catch (error) {
       console.error('Error en submitResponse:', error);
       throw error;
     }
+  }
+
+  /**
+   * Envía múltiples respuestas en lote (upsert) para el usuario autenticado.
+   * Backend: POST /api/onboarding/responses/submit-batch/
+   */
+  static async submitBatch(responses: Array<{ question_id: number; option_id: number }>): Promise<unknown> {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('No hay token de acceso');
+    }
+
+    const payload = { responses };
+    console.log('📤 OnboardingService.submitBatch payload:', payload);
+
+    const result = await fetch(`${API_BASE_URL}/onboarding/responses/submit-batch/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    console.log('📥 OnboardingService.submitBatch status:', result.status);
+
+    const contentType = result.headers.get('content-type') || '';
+    const body = contentType.includes('application/json') ? await result.json() : await result.text();
+    console.log('📥 OnboardingService.submitBatch body:', body);
+
+    if (!result.ok) {
+      throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
+    }
+
+    return body;
   }
 
   /**
