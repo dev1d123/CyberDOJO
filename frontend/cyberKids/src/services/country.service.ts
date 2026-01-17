@@ -3,6 +3,13 @@ import type { CountryDto } from '../dto/country.dto';
 
 const API_BASE_URL = 'https://juliojc.pythonanywhere.com/api';
 
+type PaginatedResponse<T> = {
+  count?: number;
+  next?: string | null;
+  previous?: string | null;
+  results?: T[];
+};
+
 class CountryServiceClass {
   /**
    * Obtiene todos los países disponibles
@@ -10,26 +17,42 @@ class CountryServiceClass {
   async getAllCountries(): Promise<CountryDto[]> {
     try {
       console.log('🌎 Obteniendo países del backend...');
-      
-      // Intentamos obtener países desde diferentes posibles endpoints
-      const possibleEndpoints = [
-        '/countries/',
-        '/users/countries/',
-        '/cyberUser/countries/'
-      ];
 
-      for (const endpoint of possibleEndpoints) {
-        try {
-          const response = await axios.get(`${API_BASE_URL}${endpoint}`);
-          console.log('✅ Países obtenidos:', response.data);
+      const endpoint = '/users/countries/';
+      let url: string | null = `${API_BASE_URL}${endpoint}`;
+      const allCountries: CountryDto[] = [];
+
+      while (url) {
+        console.log('📤 Countries request:', { url });
+
+        const response = await axios.get<CountryDto[] | PaginatedResponse<CountryDto>>(url);
+        console.log('📥 Countries response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: response.data,
+        });
+
+        if (Array.isArray(response.data)) {
           return response.data;
-        } catch (err) {
-          console.log(`❌ Endpoint ${endpoint} no disponible`);
+        }
+
+        const data = response.data as PaginatedResponse<CountryDto>;
+        if (Array.isArray(data.results)) {
+          allCountries.push(...data.results);
+        }
+
+        if (data.next) {
+          url = data.next.startsWith('http') ? data.next : `${API_BASE_URL}${data.next}`;
+        } else {
+          url = null;
         }
       }
 
-      // Si no hay endpoint, devolvemos países por defecto
-      console.log('⚠️ No se encontró endpoint de países, usando lista por defecto');
+      if (allCountries.length > 0) {
+        return allCountries;
+      }
+
+      console.log('⚠️ Countries endpoint respondió sin resultados, usando lista por defecto');
       return this.getDefaultCountries();
       
     } catch (error: any) {
