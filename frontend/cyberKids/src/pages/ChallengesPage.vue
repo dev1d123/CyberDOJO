@@ -1,7 +1,8 @@
 <template>
   <div class="challenges-page" :style="pageStyle">
     <div class="overlay">
-      <ChallengesHeader @back="goBack" />
+      <BackToDashboardButton />
+      <ChallengesHeader />
 
       <main class="content">
         <section class="grid" aria-label="Minijuegos de desafíos">
@@ -46,11 +47,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
+import BackToDashboardButton from '../components/BackToDashboardButton.vue';
 import ChallengeGameCard from '../components/challenges/ChallengeGameCard.vue';
 import ChallengesHeader from '../components/challenges/ChallengesHeader.vue';
-
-const router = useRouter();
 
 // Nota: el usuario indicó que el fondo está en /src/assets/images/challengeBackground.png.
 // En este repo aún no existe, así que lo referenciamos como string (no rompe el build).
@@ -79,9 +78,6 @@ const start = (id: ChallengeId) => {
   alert(`Abrir minijuego: ${map[id]} (pronto)`);
 };
 
-const goBack = () => {
-  router.push('/dashboard');
-};
 </script>
 
 <style scoped>
