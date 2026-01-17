@@ -8,6 +8,7 @@ import DashboardPage from '../pages/DashboardPage.vue';
 import HistoryModePage from '../pages/HistoryModePage.vue';
 import { UserService } from '../services/user.service';
 import ShopPage from '../pages/ShopPage.vue';
+import ProfilePage from '../pages/ProfilePage.vue';
 
 const routes = [
   {
@@ -47,6 +48,7 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: DashboardPage,
+    meta: { requiresAuth: true },
   },
   {
     path: '/challenges',
@@ -63,6 +65,12 @@ const routes = [
     name: 'Shop',
     component: ShopPage,
   },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: ProfilePage,
+    meta: { requiresAuth: true },
+  },
 ];
 
 const router = createRouter({
@@ -73,7 +81,6 @@ const router = createRouter({
 // Navigation guard para manejar autenticación y flujo
 router.beforeEach(async (to, _from, next) => {
   const token = localStorage.getItem('access_token');
-  const userId = localStorage.getItem('user_id');
 
   // Si la ruta requiere autenticación
   if (to.meta.requiresAuth && !token) {
@@ -83,20 +90,28 @@ router.beforeEach(async (to, _from, next) => {
 
   // Si está autenticado y trata de ir a login o register, redirigir al dashboard
   if ((to.name === 'Login' || to.name === 'Register') && token) {
-    next('/dashboard');
+    // En vez de redirigir silenciosamente, mostramos una alerta bloqueante en Home.
+    // Home lee el query y muestra el modal.
+    const target = to.name === 'Login' ? 'login' : 'register';
+    next({ path: '/', query: { sessionOpen: '1', target } });
     return;
   }
 
   // Verificar el estado del usuario cuando navega a rutas autenticadas
-  if (to.meta.requiresAuth && token && userId) {
+  if (to.meta.requiresAuth && token) {
     try {
-      const user = await UserService.getUserById(parseInt(userId));
+      const user = await UserService.getCurrentUser();
+      if (user?.user_id) {
+        localStorage.setItem('user_id', String(user.user_id));
+      }
       
       // Si no tiene país o username, necesita completar el perfil
       const needsProfileSetup = !user.country || !user.username || user.username.length < 3;
       
       // Verificar estado del onboarding
-      const onboardingStatus = await UserService.checkOnboardingStatus(parseInt(userId));
+      const onboardingStatus = user?.user_id
+        ? await UserService.checkOnboardingStatus(user.user_id)
+        : { completed: false, has_responses: false };
       
       // Flujo de navegación:
       // 1. Si necesita setup de perfil y no está yendo ahí, redirigir

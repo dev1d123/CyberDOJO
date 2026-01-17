@@ -78,6 +78,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import type { UserDto } from '../dto/user.dto';
+import { UserService } from '../services/user.service';
 
 const router = useRouter();
 
@@ -92,7 +93,7 @@ const user = ref<UserDto>({
 const loading = ref(true);
 const error = ref<string | null>(null);
 
-const placeholderAvatar = 'https://api.dicebear.com/7.x/adventurer/svg?seed=Default';
+const placeholderAvatar = 'https://api.dicebear.com/7.x/adventurer/png?seed=Default';
 
 onMounted(async () => {
   await loadUserData();
@@ -103,14 +104,22 @@ const loadUserData = async () => {
   error.value = null;
 
   try {
-    // Mock data incrustado: no requiere backend
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    const me = await UserService.getCurrentUser();
+    console.log('👤 Dashboard /auth/me/ response:', me);
     user.value = {
-      user_id: 1,
-      username: 'Invitado',
-      email: 'invitado@example.com',
-      avatar: '',
-      cybercreds: 250,
+      ...user.value,
+      ...me,
     };
+
+    if (me?.user_id) {
+      localStorage.setItem('user_id', String(me.user_id));
+    }
   } catch (err: any) {
     console.error('Error loading user data:', err);
     error.value = 'No se pudo cargar tu información. Por favor, intenta de nuevo.';
@@ -132,8 +141,7 @@ const goToShop = () => {
 };
 
 const goToProfile = () => {
-  // TODO: Implementar navegación al perfil
-  alert('¡El perfil estará disponible pronto! ⚙️');
+  router.push('/profile');
 };
 
 const handleLogout = () => {
