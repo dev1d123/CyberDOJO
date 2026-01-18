@@ -54,9 +54,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import BackToDashboardButton from '../components/BackToDashboardButton.vue';
 import HistoryMap from '../components/history/HistoryMap.vue';
 import type { HistoryLevelDto } from '../dto/history.dto';
+
+const router = useRouter();
 
 const historyBackgroundUrl = new URL('../assets/images/historyBackground.png', import.meta.url).href;
 const islandUrl = new URL('../assets/images/island.png', import.meta.url).href;
@@ -78,7 +81,9 @@ const selectLevel = (level: HistoryLevelDto) => {
 
 const startLevel = () => {
   if (!selectedLevel.value) return;
-  alert(`Acceder a Nivel ${selectedLevel.value.id} - ${selectedLevel.value.name}`);
+  
+  // Redirect to simulation page with scenario ID
+  router.push(`/simulation/${selectedLevel.value.id}`);
 };
 </script>
 

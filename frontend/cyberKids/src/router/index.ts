@@ -6,6 +6,7 @@ import ResultsPage from '../pages/ResultsPage.vue';
 import ProfileSetupPage from '../pages/ProfileSetupPage.vue';
 import DashboardPage from '../pages/DashboardPage.vue';
 import HistoryModePage from '../pages/HistoryModePage.vue';
+import SimulationPage from '../pages/SimulationPage.vue';
 import { UserService } from '../services/user.service';
 import ShopPage from '../pages/ShopPage.vue';
 import ProfilePage from '../pages/ProfilePage.vue';
@@ -59,6 +60,12 @@ const routes = [
     path: '/history',
     name: 'History',
     component: HistoryModePage,
+  },
+  {
+    path: '/simulation/:scenarioId',
+    name: 'Simulation',
+    component: SimulationPage,
+    meta: { requiresAuth: true },
   },
   {
     path: '/shop',
