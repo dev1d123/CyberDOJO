@@ -159,7 +159,14 @@ def get_display_text(obj):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def start_with_role(request):
-    """Crea una nueva GameSession y devuelve el primer mensaje del antagonista (Gemini). Nunca reanuda sesiones."""
+    """Crea una nueva GameSession y devuelve el primer mensaje del antagonista (Gemini). 
+    
+    Request body (JSON):
+        - scenario_id (int, opcional): ID del escenario específico a usar
+    
+    Si no se especifica scenario_id, se asigna automáticamente el siguiente no completado.
+    Nunca reanuda sesiones.
+    """
     from apps.cyberUser.models import CyberUser
     user = None
     # request.user es establecido por JWTCustomAuthentication y ya es un CyberUser
@@ -177,15 +184,33 @@ def start_with_role(request):
                 user = None
     if not user:
         return JsonResponse({'error': 'authentication_required'}, status=401)
+    
     from apps.simulation.models import Scenario, GameSession, ChatMessage
+    
+    # Obtener scenario_id del request body si se proporciona
+    data = request.data if isinstance(request.data, dict) else {}
+    scenario_id = data.get('scenario_id')
+    
     scenario = None
-    try:
-        completed_ids = list(GameSession.objects.filter(user=user, outcome='won').values_list('scenario_id', flat=True))
-    except Exception:
-        completed_ids = []
-    scenario = Scenario.objects.filter(is_active=True).exclude(scenario_id__in=completed_ids).order_by('difficulty_level', 'scenario_id').first()
-    if not scenario:
-        scenario = Scenario.objects.filter(is_active=True).order_by('scenario_id').first()
+    
+    # Si se especifica un scenario_id, intentar usarlo
+    if scenario_id:
+        try:
+            scenario = Scenario.objects.get(scenario_id=int(scenario_id), is_active=True)
+        except Scenario.DoesNotExist:
+            return JsonResponse({'error': 'scenario_not_found', 'message': f'Escenario {scenario_id} no existe o no está activo'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': 'invalid_scenario_id', 'message': str(e)}, status=400)
+    else:
+        # Selección automática: buscar escenarios no completados
+        try:
+            completed_ids = list(GameSession.objects.filter(user=user, outcome='won').values_list('scenario_id', flat=True))
+        except Exception:
+            completed_ids = []
+        scenario = Scenario.objects.filter(is_active=True).exclude(scenario_id__in=completed_ids).order_by('difficulty_level', 'scenario_id').first()
+        if not scenario:
+            scenario = Scenario.objects.filter(is_active=True).order_by('scenario_id').first()
+    
     if not scenario:
         return JsonResponse({'error': 'no_active_scenario'}, status=404)
     # Crear la sesión y guardar snapshot
@@ -1033,13 +1058,28 @@ def resume_session(request):
 
 from .models import Scenario
 from .serializers import ScenarioSerializer
+from rest_framework.permissions import IsAdminUser
 
 
-class ScenarioViewSet(viewsets.ReadOnlyModelViewSet):
-    """ViewSet para listar escenarios disponibles."""
-    queryset = Scenario.objects.filter(is_active=True).order_by('difficulty_level')
+class ScenarioViewSet(viewsets.ModelViewSet):
+    """ViewSet completo para gestión de escenarios.
+    
+    - GET (list/retrieve): Público, solo escenarios activos
+    - POST/PUT/PATCH/DELETE: Solo administradores
+    """
     serializer_class = ScenarioSerializer
-    permission_classes = [permissions.AllowAny]
+    
+    def get_queryset(self):
+        """Admins ven todos los escenarios, usuarios regulares solo activos."""
+        if self.request.user and self.request.user.is_authenticated and getattr(self.request.user, 'is_staff', False):
+            return Scenario.objects.all().order_by('difficulty_level', 'scenario_id')
+        return Scenario.objects.filter(is_active=True).order_by('difficulty_level', 'scenario_id')
+    
+    def get_permissions(self):
+        """Permitir lectura a todos, escritura solo a admins."""
+        if self.action in ['list', 'retrieve', 'active', 'by_difficulty']:
+            return [permissions.AllowAny()]
+        return [IsAdminUser()]
 
     @action(detail=False, methods=['get'])
     def active(self, request):
