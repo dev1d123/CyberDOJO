@@ -62,14 +62,12 @@ const historyBackgroundUrl = new URL('../assets/images/historyBackground.png', i
 const islandUrl = new URL('../assets/images/island.png', import.meta.url).href;
 
 const levels: HistoryLevelDto[] = [
-  { id: 1, name: 'Bienvenida', details: 'Aprende lo básico para comenzar tu entrenamiento.', currentScore: 120, totalScore: 200, x: '8%', y: '86%' },
-  { id: 2, name: 'Contraseñas', details: 'Crea contraseñas fuertes y seguras.', currentScore: 60, totalScore: 180, x: '26%', y: '72%' },
-  { id: 3, name: 'Phishing', details: 'Identifica mensajes y enlaces sospechosos.', currentScore: 0, totalScore: 220, x: '12%', y: '52%' },
-  { id: 4, name: 'Privacidad', details: 'Configura tu privacidad en internet.', currentScore: 0, totalScore: 240, x: '34%', y: '34%' },
-  { id: 5, name: 'Redes Sociales', details: 'Publica con cuidado y protege tu información.', currentScore: 0, totalScore: 260, x: '56%', y: '50%' },
-  { id: 6, name: 'Dispositivos', details: 'Mantén tus dispositivos protegidos y actualizados.', currentScore: 0, totalScore: 280, x: '76%', y: '30%' },
-  { id: 7, name: 'Ciberacoso', details: 'Aprende cómo actuar ante situaciones peligrosas.', currentScore: 0, totalScore: 300, x: '92%', y: '58%' },
-  { id: 8, name: 'Final', details: 'Demuestra todo lo aprendido en el reto final.', currentScore: 0, totalScore: 350, x: '68%', y: '84%' },
+  { id: 1, name: 'Ingeniería Social', details: 'Detecta y resiste técnicas de manipulación en conversaciones.', currentScore: 60, totalScore: 180, x: '26%', y: '72%' },
+  { id: 2, name: 'Suplantación Digital', details: 'Identifica ataques de phishing y enlaces maliciosos.', currentScore: 0, totalScore: 220, x: '12%', y: '52%' },
+  { id: 3, name: 'Fuga de Datos', details: 'Protege información sensible en tus comunicaciones.', currentScore: 0, totalScore: 240, x: '34%', y: '34%' },
+  { id: 4, name: 'Pretextos Falsos', details: 'Reconoce cuando alguien crea escenarios falsos para engañarte.', currentScore: 0, totalScore: 260, x: '56%', y: '50%' },
+  { id: 5, name: 'Trampas Digitales', details: 'Evita caer en señuelos y ofertas demasiado buenas.', currentScore: 0, totalScore: 280, x: '76%', y: '30%' },
+  { id: 6, name: 'Suplantación de Identidad', details: 'Verifica identidades y detecta impostores en línea.', currentScore: 0, totalScore: 300, x: '92%', y: '58%' },
 ];
 
 const selectedLevel = ref<HistoryLevelDto | null>(null);
