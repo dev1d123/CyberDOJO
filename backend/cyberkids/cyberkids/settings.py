@@ -171,5 +171,6 @@ cloudinary.config(
     cloud_name='dsvynqyq5',
     api_key='537782675375588',
     api_secret='9tbhQfQOxFjU1Xb-yZZiyXvM72I',
+    api_proxy = "http://proxy.server:3128",
 )
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
