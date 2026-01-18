@@ -18,47 +18,47 @@ const pets: ShopItem[] = [
   {
     id: 'pet1',
     category: 'pets',
-    name: 'Perrito Guardián',
-    description: 'Un perrito súper fiel que te acompaña en tus misiones. ¡Da puntos extra de ternura!',
-    price: 120,
+    name: 'Espada del Titán',
+    description: 'Acero contra acero. Un guerrero valiente que te acompaña en cada batalla. ¡Enfrenta cada desafío con honor y valentía!',
+    price: 150,
     imageSrc: pet1Img,
-    alt: 'Pet1: un perrito',
+    alt: 'Pet1: Guerrero',
   },
   {
     id: 'pet2',
     category: 'pets',
-    name: 'Gata Ninja',
-    description: 'Silenciosa, curiosa y rápida. Ideal para explorar secretos del ciber-dojo sin hacer ruido.',
-    price: 110,
+    name: 'Marcha Victoriosa',
+    description: 'Pasos firmes y disciplina de hierro. Un soldado leal que nunca falla. ¡El deber te llama!',
+    price: 140,
     imageSrc: pet2Img,
-    alt: 'Pet2: una gata',
+    alt: 'Pet2: Soldado',
   },
   {
     id: 'pet3',
     category: 'pets',
-    name: 'Sapo Saltarín',
-    description: '¡Boing! Un sapo divertido que salta de alegría cuando aprendes algo nuevo.',
-    price: 90,
+    name: 'Grimorio Místico',
+    description: 'Hechizos ancestrales y energía arcana. Un mago sabio que canaliza el poder del conocimiento. ¡Domina las artes místicas!',
+    price: 180,
     imageSrc: pet3Img,
-    alt: 'Pet3: un sapo',
+    alt: 'Pet3: Mago',
   },
   {
     id: 'pet4',
     category: 'pets',
-    name: 'Pingüino Explorador',
-    description: 'Un pingüino con espíritu aventurero. Perfecto para viajes helados y retos épicos.',
+    name: 'Sombra Furtiva',
+    description: 'Sigiloso y astuto. Un bandido maestro de las sombras que nunca deja rastro. ¡Nadie te verá venir!',
     price: 130,
     imageSrc: pet4Img,
-    alt: 'Pet4: un pingüino',
+    alt: 'Pet4: Bandido',
   },
   {
     id: 'pet5',
     category: 'pets',
-    name: 'Zorro Astuto',
-    description: 'Rápido de mente y de patas. Un compañero brillante para estrategias y desafíos.',
-    price: 150,
+    name: 'Flecha Precisa',
+    description: 'Arco tensado, objetivo fijo. Un arquero legendario con puntería perfecta. ¡Nunca falles tu blanco!',
+    price: 160,
     imageSrc: pet5Img,
-    alt: 'Pet5: un zorro',
+    alt: 'Pet5: Arquero',
   },
 ];
 
@@ -177,14 +177,24 @@ const handleBuy = (item: ShopItem) => {
   background-image:
     linear-gradient(135deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.12)),
     url('@/assets/images/shopBackground.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: auto 100%;
+  background-position: 0% center;
+  background-repeat: repeat-x;
+  animation: scrollBackground 30s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
 
   position: relative;
   display: flex;
   flex-direction: column;
   gap: clamp(10px, 1.6vh, 14px);
+}
+
+@keyframes scrollBackground {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 100% center;
+  }
 }
 
 .topbar {

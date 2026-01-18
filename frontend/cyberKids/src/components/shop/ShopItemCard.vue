@@ -95,14 +95,25 @@ const themeClass = computed(() => {
   place-items: center;
   min-height: 150px;
   overflow: hidden;
+  position: relative;
 }
 
 .pet-img {
-  width: min(180px, 88%);
+  width: 90%;
   height: auto;
+  max-height: none;
   object-fit: contain;
   filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.25));
-  animation: floaty 2.8s ease-in-out infinite;
+  animation: slideVertical 8s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+}
+
+@keyframes slideVertical {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-30%);
+  }
 }
 
 @keyframes floaty {
