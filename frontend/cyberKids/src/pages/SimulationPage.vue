@@ -8,14 +8,48 @@
         </button>
         <div class="scenario-info">
           <h2 class="scenario-title">{{ scenarioName }}</h2>
-          <div class="attempts-indicator">
+          <div v-if="!showInitScreen" class="attempts-indicator">
             Intentos del antagonista: {{ antagonistAttempts }}/3
           </div>
         </div>
       </header>
 
+      <!-- Initial Screen: Continue or Start New -->
+      <div v-if="showInitScreen" class="init-screen">
+        <div class="init-card">
+          <h2 class="init-title">{{ scenarioName }}</h2>
+          <p class="init-description">Prepárate para enfrentar un escenario de ingeniería social</p>
+          
+          <div class="init-actions">
+            <button 
+              v-if="hasActiveSession" 
+              class="continue-button" 
+              @click="continueSession"
+              :disabled="loading"
+            >
+              <span class="button-icon">▶️</span>
+              Continuar Conversación
+            </button>
+            
+            <button 
+              class="new-session-button" 
+              @click="confirmNewSession"
+              :disabled="loading"
+            >
+              <span class="button-icon">🆕</span>
+              Nueva Conversación
+            </button>
+          </div>
+          
+          <div v-if="loading" class="init-loading">
+            <div class="spinner"></div>
+            <p>Cargando...</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Chat Area -->
-      <div class="chat-container" ref="chatContainer">
+      <div v-else class="chat-container" ref="chatContainer">
         <div v-if="loading" class="loading">
           <div class="spinner"></div>
           <p>Cargando conversación...</p>
@@ -63,7 +97,7 @@
       </div>
 
       <!-- Input Area -->
-      <div v-if="!gameOver" class="input-container">
+      <div v-if="!gameOver && !showInitScreen" class="input-container">
         <textarea
           v-model="userInput"
           @keydown.enter.prevent="sendMessage"
@@ -105,6 +139,8 @@ const gameOverMessage = ref('');
 const pointsEarned = ref(0);
 const antagonistAttempts = ref(0);
 const chatContainer = ref<HTMLElement | null>(null);
+const showInitScreen = ref(true);
+const hasActiveSession = ref(false);
 
 const scenarioNames: Record<number, string> = {
   1: 'Ingeniería Social',
@@ -117,14 +153,67 @@ const scenarioNames: Record<number, string> = {
 
 onMounted(async () => {
   scenarioName.value = scenarioNames[scenarioId.value] || 'Simulación';
-  await initializeSession();
+  await checkActiveSession();
 });
 
-async function initializeSession() {
+async function checkActiveSession() {
   try {
     loading.value = true;
+    
+    // Check if there's an active session for this scenario
+    const resumeResponse = await SimulationService.resumeSession(scenarioId.value);
+    
+    // If we get here, there's an active session
+    hasActiveSession.value = true;
+    loading.value = false;
+  } catch (error) {
+    // No active session found
+    hasActiveSession.value = false;
+    loading.value = false;
+  }
+}
 
-    // Always start a new session with the selected scenario
+async function continueSession() {
+  try {
+    loading.value = true;
+    showInitScreen.value = false;
+
+    const resumeResponse = await SimulationService.resumeSession(scenarioId.value);
+    sessionId.value = resumeResponse.session_id;
+    messages.value = resumeResponse.messages;
+    antagonistAttempts.value = resumeResponse.antagonist_attempts || 0;
+
+    loading.value = false;
+    await scrollToBottom();
+  } catch (error: any) {
+    console.error('Error continuing session:', error);
+    alert('Error al continuar la sesión: ' + error.message);
+    showInitScreen.value = true;
+    loading.value = false;
+  }
+}
+
+async function confirmNewSession() {
+  if (hasActiveSession.value) {
+    const confirmed = confirm(
+      '⚠️ Ya tienes una conversación activa en este nivel.\n\n' +
+      'Si inicias una nueva conversación, perderás el progreso de la conversación actual.\n\n' +
+      '¿Estás seguro de que deseas comenzar de nuevo?'
+    );
+    
+    if (!confirmed) {
+      return;
+    }
+  }
+  
+  await startNewSession();
+}
+
+async function startNewSession() {
+  try {
+    loading.value = true;
+    showInitScreen.value = false;
+
     const startResponse = await SimulationService.startSession(scenarioId.value);
     sessionId.value = startResponse.session_id;
     messages.value = [
@@ -134,13 +223,16 @@ async function initializeSession() {
         sent_at: new Date().toISOString(),
       },
     ];
+    antagonistAttempts.value = 0;
+    hasActiveSession.value = true;
 
     loading.value = false;
     await scrollToBottom();
   } catch (error: any) {
-    console.error('Error initializing session:', error);
-    alert('Error al iniciar la sesión: ' + error.message);
-    goBack();
+    console.error('Error starting new session:', error);
+    alert('Error al iniciar nueva sesión: ' + error.message);
+    showInitScreen.value = true;
+    loading.value = false;
   }
 }
 
@@ -282,6 +374,110 @@ function retryLevel() {
 .attempts-indicator {
   font-size: 0.9rem;
   opacity: 0.9;
+}
+
+.init-screen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: #f5f5f5;
+}
+
+.init-card {
+  background: white;
+  padding: 48px;
+  border-radius: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+.init-title {
+  margin: 0 0 16px 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.init-description {
+  margin: 0 0 32px 0;
+  font-size: 1.1rem;
+  color: #666;
+  line-height: 1.6;
+}
+
+.init-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.continue-button,
+.new-session-button {
+  padding: 16px 32px;
+  border-radius: 16px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.continue-button {
+  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  color: white;
+}
+
+.continue-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(82, 196, 26, 0.4);
+}
+
+.new-session-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.new-session-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+}
+
+.continue-button:disabled,
+.new-session-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.button-icon {
+  font-size: 1.3rem;
+}
+
+.init-loading {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #666;
+}
+
+.init-loading .spinner {
+  width: 32px;
+  height: 32px;
+}
+
+.init-loading p {
+  margin: 0;
+  font-size: 0.95rem;
 }
 
 .chat-container {

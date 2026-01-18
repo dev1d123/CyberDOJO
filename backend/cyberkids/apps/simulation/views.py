@@ -1019,7 +1019,11 @@ def _call_ai_provider(model: str, prompt: str, max_tokens: int = 256) -> str:
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def resume_session(request):
-    """Busca y retorna la sesión activa (is_game_over=None) para el usuario autenticado (JWT)."""
+    """Busca y retorna la sesión activa (is_game_over=None) para el usuario autenticado (JWT).
+    
+    Query params:
+        - scenario_id (optional): Si se proporciona, busca sesión activa de ese escenario específico
+    """
     from apps.cyberUser.models import CyberUser
     user = None
     # request.user es establecido por JWTCustomAuthentication y ya es un CyberUser
@@ -1035,10 +1039,24 @@ def resume_session(request):
                 user = None
     if not user:
         return JsonResponse({'error': 'authentication_required'}, status=401)
+    
     from apps.simulation.models import GameSession, ChatMessage
-    session = GameSession.objects.filter(user=user, is_game_over__isnull=True).order_by('-started_at').first()
+    
+    # Filtrar por scenario_id si se proporciona
+    scenario_id = request.GET.get('scenario_id')
+    filters = {'user': user, 'is_game_over__isnull': True}
+    
+    if scenario_id:
+        try:
+            filters['scenario_id'] = int(scenario_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'invalid_scenario_id'}, status=400)
+    
+    session = GameSession.objects.filter(**filters).order_by('-started_at').first()
+    
     if not session:
-        return JsonResponse({'error': 'no_active_session'}, status=404)
+        return JsonResponse({'error': 'no_active_session', 'has_active_session': False}, status=404)
+    
     # Obtener todos los mensajes de la sesión
     messages = ChatMessage.objects.filter(session=session).order_by('sent_at')
 
@@ -1049,9 +1067,13 @@ def resume_session(request):
             'sent_at': m.sent_at.isoformat()
         } for m in messages
     ]
+    
     return JsonResponse({
         'session_id': session.session_id,
+        'scenario_id': session.scenario_id,
+        'antagonist_attempts': session.antagonist_attempts or 0,
         'messages': messages_data,
+        'has_active_session': True,
         'resumed': True
     })
 

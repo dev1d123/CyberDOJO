@@ -65,10 +65,14 @@ export class SimulationService {
     return data;
   }
 
-  static async resumeSession(): Promise<ResumeSessionResponse> {
-    console.log('🔄 [RESUME SESSION] Request');
+  static async resumeSession(scenarioId?: number): Promise<ResumeSessionResponse> {
+    console.log('🔄 [RESUME SESSION] Request:', scenarioId ? { scenario_id: scenarioId } : {});
     
-    const response = await fetch(`${API_BASE_URL}/session/resume/`, {
+    const url = scenarioId 
+      ? `${API_BASE_URL}/session/resume/?scenario_id=${scenarioId}`
+      : `${API_BASE_URL}/session/resume/`;
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: this.getAuthHeaders(),
     });
