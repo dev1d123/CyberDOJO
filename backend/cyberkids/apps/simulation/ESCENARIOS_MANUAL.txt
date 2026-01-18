@@ -1,0 +1,51 @@
+# Datos para crear escenarios manualmente en Django Admin
+# URL: https://juliojc.pythonanywhere.com/admin/simulation/scenario/add/
+
+# ESCENARIO 1
+Ingeniería Social
+Un desconocido intenta establecer una conversación amigable contigo para ganarse tu confianza. Usa técnicas de manipulación psicológica para hacerte sentir cómodo y eventualmente obtener información personal. Debes identificar estas tácticas y resistir compartir datos sensibles.
+número de teléfono
+1
+180
+social_engineering
+
+# ESCENARIO 2
+Suplantación Digital
+Alguien se hace pasar por una persona o entidad confiable (empresa, banco, soporte técnico) para engañarte. Intentará que hagas clic en enlaces sospechosos o que compartas credenciales. Aprende a verificar identidades y detectar señales de phishing.
+correo electrónico
+2
+220
+phishing
+
+# ESCENARIO 3
+Fuga de Datos
+El atacante busca que reveles información personal sensible durante una conversación aparentemente casual. Puede preguntar sobre tu ubicación, dirección, datos familiares o información financiera de forma sutil. Debes proteger tu privacidad sin ser obvio.
+dirección de residencia
+3
+240
+data_leakage
+
+# ESCENARIO 4
+Pretextos Falsos
+El antagonista crea una historia elaborada o situación de emergencia falsa para presionarte a actuar rápido y compartir información. Puede fingir ser un amigo en problemas, un familiar o alguien que necesita ayuda urgente. Mantén la calma y verifica antes de actuar.
+nombre completo y edad
+4
+260
+pretexting
+
+# ESCENARIO 5
+Trampas Digitales
+Te ofrecen algo demasiado bueno para ser verdad: premios gratuitos, descuentos exclusivos, acceso a contenido premium, o beneficios especiales. A cambio, necesitan solo un pequeño dato para verificarte. Reconoce estas trampas y resiste la tentación.
+contraseña o código de verificación
+5
+280
+baiting
+
+# ESCENARIO 6
+Suplantación de Identidad
+El atacante se hace pasar por alguien específico que conoces o deberías conocer: un compañero de clase, un profesor, un administrador del juego, o incluso un familiar. Usa información pública sobre ti para parecer legítimo. Verifica siempre la identidad real de quien te contacta.
+usuario y contraseña de cuenta
+6
+300
+impersonation
+
