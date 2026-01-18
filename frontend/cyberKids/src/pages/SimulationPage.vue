@@ -124,23 +124,16 @@ async function initializeSession() {
   try {
     loading.value = true;
 
-    // Try to resume an active session first
-    try {
-      const resumeResponse = await SimulationService.resumeSession();
-      sessionId.value = resumeResponse.session_id;
-      messages.value = resumeResponse.messages;
-    } catch (resumeError) {
-      // No active session, start a new one
-      const startResponse = await SimulationService.startSession(scenarioId.value);
-      sessionId.value = startResponse.session_id;
-      messages.value = [
-        {
-          role: 'antagonist',
-          content: startResponse.initial_message,
-          sent_at: new Date().toISOString(),
-        },
-      ];
-    }
+    // Always start a new session with the selected scenario
+    const startResponse = await SimulationService.startSession(scenarioId.value);
+    sessionId.value = startResponse.session_id;
+    messages.value = [
+      {
+        role: 'antagonist',
+        content: startResponse.initial_message,
+        sent_at: new Date().toISOString(),
+      },
+    ];
 
     loading.value = false;
     await scrollToBottom();
