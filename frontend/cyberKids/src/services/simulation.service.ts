@@ -33,7 +33,10 @@ interface ResumeSessionResponse {
 
 export class SimulationService {
   private static getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('No hay token de autenticación. Por favor inicia sesión.');
+    }
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
