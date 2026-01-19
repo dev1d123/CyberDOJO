@@ -2,14 +2,21 @@
 import type { ShopItem } from './shop.types';
 import ShopItemCard from './ShopItemCard.vue';
 
-defineProps<{
+const props = defineProps<{
   items: ShopItem[];
   selectedId?: string;
+  ownedPetIds?: number[];
 }>();
 
 defineEmits<{
   (e: 'select', value: ShopItem): void;
 }>();
+
+const isOwned = (item: ShopItem): boolean => {
+  if (item.category !== 'pets') return false;
+  const petId = (item as any).petId;
+  return petId ? (props.ownedPetIds || []).includes(petId) : false;
+};
 </script>
 
 <template>
@@ -20,6 +27,7 @@ defineEmits<{
         :key="item.id"
         :item="item"
         :selected="item.id === selectedId"
+        :owned="isOwned(item)"
         role="listitem"
         @select="$emit('select', $event)"
       />

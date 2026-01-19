@@ -12,6 +12,8 @@ export interface ShopPetItem extends ShopItemBase {
   category: 'pets';
   imageSrc: string;
   alt: string;
+  petId?: number;
+  isDefault?: boolean;
 }
 
 export type SoundTheme = 'normal' | 'fun' | 'retro' | 'epic';
