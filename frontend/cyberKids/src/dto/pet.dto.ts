@@ -19,10 +19,10 @@ export interface UserPet {
 export interface BuyPetResponse {
   message: string;
   user_pet: UserPet;
-  cybercreds: number;
+  remaining_cybercreds: number;
 }
 
 export interface EquipPetResponse {
   message: string;
-  equipped_pet: UserPet;
+  user_pet: UserPet;
 }
