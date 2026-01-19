@@ -48,10 +48,12 @@ const loadDebugData = async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
 
+    console.log('🐾 [DebugMenu] Respuesta my-purchases:', petsResponse.data);
     ownedPets.value = petsResponse.data.pets || [];
+    console.log('🐾 [DebugMenu] Mascotas extraídas:', ownedPets.value);
     
     if (ownedPets.value.length > 0 && !selectedPetToEquip.value) {
-      selectedPetToEquip.value = ownedPets.value[0].pet.pet_id;
+      selectedPetToEquip.value = ownedPets.value[0].pet;
     }
 
   } catch (error: any) {
@@ -125,7 +127,7 @@ const toggleMenu = () => {
   }
 };
 
-const ownedPetIds = computed(() => ownedPets.value.map(up => up.pet.pet_id).join(', '));
+const ownedPetIds = computed(() => ownedPets.value.map(up => up.pet).join(', '));
 </script>
 
 <template>
@@ -180,8 +182,8 @@ const ownedPetIds = computed(() => ownedPets.value.map(up => up.pet.pet_id).join
             </div>
             <div class="pets-list">
               <div v-for="userPet in ownedPets" :key="userPet.user_pet_id" class="pet-item">
-                <span class="pet-name">{{ userPet.pet.name }}</span>
-                <span class="pet-id">#{{ userPet.pet.pet_id }}</span>
+                <span class="pet-name">{{ userPet.pet_name }}</span>
+                <span class="pet-id">#{{ userPet.pet }}</span>
                 <span v-if="userPet.is_equipped" class="equipped-badge">✓ Equipada</span>
               </div>
             </div>
@@ -196,8 +198,8 @@ const ownedPetIds = computed(() => ownedPets.value.map(up => up.pet.pet_id).join
           </div>
           <div v-else class="action-group">
             <select v-model="selectedPetToEquip" class="debug-select">
-              <option v-for="userPet in ownedPets" :key="userPet.pet.pet_id" :value="userPet.pet.pet_id">
-                {{ userPet.pet.name }} (#{{ userPet.pet.pet_id }})
+              <option v-for="userPet in ownedPets" :key="userPet.pet" :value="userPet.pet">
+                {{ userPet.pet_name }} (#{{ userPet.pet }})
               </option>
             </select>
             <button @click="handleEquipPet" class="action-btn equip-btn" :disabled="loading">
