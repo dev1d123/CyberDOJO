@@ -159,15 +159,19 @@ const handleBuy = async (item: ShopItem) => {
   }
 
   try {
+    console.log('💳 [ShopPage] Intentando comprar pet_id:', petItem.petId);
     const response = await PetService.buyPet(petItem.petId);
+    console.log('✅ [ShopPage] Respuesta de compra:', response);
+    
     userPetIds.value.push(petItem.petId);
-    currentCybercreds.value = response.cybercreds;
+    // El backend devuelve 'remaining_cybercreds', no 'cybercreds'
+    currentCybercreds.value = response.remaining_cybercreds || response.cybercreds || currentCybercreds.value;
     
     // Mostrar confeti y toast
     triggerConfetti();
     showToast(`¡Compraste ${item.name}! 🎉`);
   } catch (error: any) {
-    console.error('Error comprando pet:', error);
+    console.error('❌ [ShopPage] Error comprando pet:', error);
     showToast(error?.error || 'Error al comprar la mascota');
   }
 };
