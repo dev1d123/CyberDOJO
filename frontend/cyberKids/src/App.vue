@@ -3,11 +3,18 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import AnimatedBackground from './components/AnimatedBackground.vue';
 import Navbar from './components/Navbar.vue';
+import PetViewer from './components/PetViewer.vue';
 
 const route = useRoute();
 
 // Solo mostrar el background y navbar en la página principal
 const showLayout = computed(() => route.path === '/');
+
+// Mostrar PetViewer en todas las páginas excepto home y login/register
+const showPetViewer = computed(() => {
+  const hiddenRoutes = ['/', '/login', '/register'];
+  return !hiddenRoutes.includes(route.path);
+});
 </script>
 
 <template>
@@ -17,6 +24,7 @@ const showLayout = computed(() => route.path === '/');
       <Navbar v-if="showLayout" />
       <router-view />
     </div>
+    <PetViewer v-if="showPetViewer" />
   </div>
 </template>
 
