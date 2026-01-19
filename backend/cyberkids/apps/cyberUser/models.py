@@ -46,6 +46,20 @@ class CyberUserManager(models.Manager):
         if password:
             user.set_password(password)
         user.save(using=self._db)
+        
+        # Asignar mascota por defecto (pet_id=7)
+        try:
+            from apps.pets.models import Pet, UserPet
+            default_pet = Pet.objects.filter(is_default=True).first()
+            if default_pet:
+                UserPet.objects.create(
+                    user=user,
+                    pet=default_pet,
+                    is_equipped=True
+                )
+        except Exception as e:
+            print(f"Error asignando mascota por defecto: {e}")
+        
         return user
     
 class Preferences(models.Model):
