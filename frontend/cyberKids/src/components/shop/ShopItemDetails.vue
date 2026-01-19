@@ -4,6 +4,7 @@ import type { ShopItem } from './shop.types';
 
 const props = defineProps<{
   item: ShopItem | null;
+  isOwned?: boolean;
 }>();
 
 defineEmits<{
@@ -23,6 +24,10 @@ const isEmpty = computed(() => !props.item);
 
     <div v-else class="content">
       <div class="preview" :class="{ 'is-sound': item!.category === 'sounds' }">
+        <div v-if="isOwned" class="owned-overlay">
+          <span class="owned-icon">✓</span>
+          <span class="owned-text">YA LO TIENES</span>
+        </div>
         <img
           v-if="item!.category === 'pets'"
           class="preview-img"
@@ -57,11 +62,17 @@ const isEmpty = computed(() => !props.item);
         </div>
       </div>
 
-      <button class="buy" type="button" @click="$emit('buy', item!)">
-        Comprar
+      <button 
+        class="buy" 
+        type="button" 
+        :disabled="isOwned"
+        :class="{ owned: isOwned }"
+        @click="$emit('buy', item!)"
+      >
+        {{ isOwned ? '✓ Ya Comprado' : 'Comprar' }}
       </button>
 
-      <p class="legal">* Demo: por ahora solo muestra un alert.</p>
+      <p v-if="!isOwned" class="legal">* Asegúrate de tener suficientes CyberCredits</p>
     </div>
   </aside>
 </template>
@@ -291,6 +302,47 @@ const isEmpty = computed(() => !props.item);
   transform: translateY(-4px) scale(1.02);
   filter: saturate(1.1);
   box-shadow: 0 20px 44px rgba(255, 107, 107, 0.42);
+}
+
+.buy:disabled,
+.buy.owned {
+  background: rgba(80, 227, 194, 0.8);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.buy:disabled:hover,
+.buy.owned:hover {
+  transform: none;
+  filter: none;
+  box-shadow: 0 16px 34px rgba(80, 227, 194, 0.25);
+}
+
+.owned-overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(80, 227, 194, 0.95);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.owned-icon {
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.owned-text {
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
 }
 
 .buy:active {

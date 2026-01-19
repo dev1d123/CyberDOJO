@@ -3,8 +3,17 @@ import { computed, onMounted, ref } from 'vue';
 import BackToDashboardButton from '../components/BackToDashboardButton.vue';
 import type { CountryDto } from '../dto/country.dto';
 import type { UserDto, UserPreferencesDto } from '../dto/user.dto';
+import type { UserPet } from '../dto/pet.dto';
 import { CountryService } from '../services/country.service';
 import { UserService } from '../services/user.service';
+import { PetService } from '../services/pet.service';
+import petsData from '../data/pets.json';
+
+import pet1Img from '@/assets/images/pet1.png';
+import pet2Img from '@/assets/images/pet2.png';
+import pet3Img from '@/assets/images/pet3.png';
+import pet4Img from '@/assets/images/pet4.png';
+import pet5Img from '@/assets/images/pet5.png';
 
 const loading = ref(true);
 const saving = ref(false);
@@ -13,6 +22,7 @@ const success = ref<string | null>(null);
 
 const user = ref<UserDto | null>(null);
 const countries = ref<CountryDto[]>([]);
+const userPets = ref<UserPet[]>([]);
 
 const prefs = ref<UserPreferencesDto | null>(null);
 
@@ -28,6 +38,14 @@ const age = ref<number | ''>('');
 const passwordCurrent = ref('');
 const passwordNew = ref('');
 const passwordNewConfirm = ref('');
+
+const petImageMap: Record<number, string> = {
+  7: pet1Img,
+  8: pet2Img,
+  9: pet3Img,
+  10: pet4Img,
+  11: pet5Img,
+};
 
 const countryName = computed(() => {
   if (!user.value?.country) return '—';
@@ -76,11 +94,62 @@ const loadAll = async () => {
     receiveNewsletters.value = Boolean(prefs.value.receive_newsletters);
     darkMode.value = Boolean(prefs.value.dark_mode);
     age.value = prefs.value.age ?? '';
+
+    // Cargar mascotas del usuario
+    console.log('🐾 [ProfilePage] Obteniendo mascotas del usuario con user_id:', me.user_id);
+    const response = await PetService.getUserPets(me.user_id);
+    console.log('✅ [ProfilePage] Respuesta de mascotas del backend:', response);
+    
+    // El backend devuelve una respuesta paginada con structure: { count, next, previous, results }
+    const pets = Array.isArray(response) ? response : (response.results || []);
+    console.log('📊 [ProfilePage] Mascotas extraídas:', pets);
+    console.log('📊 [ProfilePage] Cantidad de mascotas:', pets.length);
+    console.log('🔍 [ProfilePage] Detalles de cada mascota:', pets.map(p => ({
+      user_pet_id: p.user_pet_id,
+      pet_id: p.pet,
+      is_equipped: p.is_equipped
+    })));
+    userPets.value = pets;
+    console.log('💾 [ProfilePage] userPets.value actualizado:', userPets.value);
   } catch (e: any) {
-    console.error(e);
+    console.error('❌ [ProfilePage] Error:', e);
     error.value = 'No se pudo cargar tu perfil. Intenta de nuevo.';
   } finally {
     loading.value = false;
+  }
+};
+
+const ownedPetsWithImages = computed(() => {
+  if (!Array.isArray(userPets.value)) return [];
+  return userPets.value.map((userPet) => {
+    const petData = petsData.find(p => p.pet_id === userPet.pet);
+    return {
+      ...userPet,
+      name: petData?.name || `Pet ${userPet.pet}`,
+      image: petImageMap[userPet.pet] || pet1Img,
+    };
+  });
+});
+
+const equipPet = async (petId: number) => {
+  saving.value = true;
+  clearMessages();
+
+  try {
+    await PetService.equipPet(petId);
+    
+    // Actualizar estado local
+    userPets.value = userPets.value.map(p => ({
+      ...p,
+      is_equipped: p.pet === petId,
+    }));
+    
+    success.value = '¡Mascota equipada!';
+  } catch (e: any) {
+    console.error(e);
+    error.value = 'No se pudo equipar la mascota.';
+  } finally {
+    saving.value = false;
   }
 };
 
@@ -333,6 +402,45 @@ const changePassword = async () => {
               <button class="danger" type="button" :disabled="saving" @click="changePassword">
                 {{ saving ? 'Actualizando…' : 'Actualizar contraseña' }}
               </button>
+            </div>
+          </div>
+
+          <!-- Card: Mascotas -->
+          <div class="card card-wide">
+            <div class="card-header">
+              <h2 class="card-title">🐾 Mis Mascotas</h2>
+              <span class="hint">Equipa tu mascota favorita</span>
+            </div>
+
+            <div v-if="ownedPetsWithImages.length === 0" class="empty-pets">
+              <p>No tienes mascotas aún. ¡Visita la tienda para comprar algunas!</p>
+            </div>
+
+            <div v-else class="pets-grid">
+              <div
+                v-for="pet in ownedPetsWithImages"
+                :key="pet.user_pet_id"
+                class="pet-card"
+                :class="{ equipped: pet.is_equipped }"
+              >
+                <div class="pet-image-wrapper">
+                  <img :src="pet.image" :alt="pet.name" class="pet-image" />
+                  <div v-if="pet.is_equipped" class="equipped-badge">✓ EQUIPADO</div>
+                </div>
+                <div class="pet-info">
+                  <h3 class="pet-name">{{ pet.name }}</h3>
+                  <button
+                    v-if="!pet.is_equipped"
+                    class="equip-btn"
+                    type="button"
+                    :disabled="saving"
+                    @click="equipPet(pet.pet)"
+                  >
+                    Equipar
+                  </button>
+                  <span v-else class="equipped-text">Actualmente equipado</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -659,5 +767,128 @@ const changePassword = async () => {
   .form.three {
     grid-template-columns: 1fr;
   }
+}
+
+/* Pet styles */
+.empty-pets {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 700;
+}
+
+.pets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.pet-card {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+}
+
+.pet-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.pet-card.equipped {
+  border-color: rgba(80, 227, 194, 0.8);
+  background: rgba(80, 227, 194, 0.15);
+}
+
+.pet-image-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 140px;
+}
+
+.pet-image {
+  max-width: 120px;
+  height: auto;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  animation: petFloat 3s ease-in-out infinite;
+}
+
+@keyframes petFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.equipped-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: rgba(80, 227, 194, 0.95);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.pet-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.pet-name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-align: center;
+  color: white;
+}
+
+.equip-btn {
+  width: 100%;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  background: linear-gradient(135deg, #48c6ef 0%, #6f86d6 100%);
+  color: white;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(72, 198, 239, 0.3);
+}
+
+.equip-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(72, 198, 239, 0.4);
+}
+
+.equip-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.equipped-text {
+  color: rgba(80, 227, 194, 0.95);
+  font-weight: 900;
+  font-size: 0.9rem;
+  text-align: center;
 }
 </style>

@@ -5,6 +5,7 @@ import type { ShopItem } from './shop.types';
 const props = defineProps<{
   item: ShopItem;
   selected?: boolean;
+  owned?: boolean;
 }>();
 
 defineEmits<{
@@ -20,10 +21,11 @@ const themeClass = computed(() => {
 <template>
   <button
     class="card"
-    :class="[{ selected: !!selected }, themeClass]"
+    :class="[{ selected: !!selected, owned: !!owned }, themeClass]"
     type="button"
     @click="$emit('select', item)"
   >
+    <div v-if="owned" class="owned-badge">✓ COMPRADO</div>
     <div class="media" :class="{ 'is-sound': item.category === 'sounds' }">
       <img
         v-if="item.category === 'pets'"
@@ -63,6 +65,7 @@ const themeClass = computed(() => {
   padding: 12px;
   border-radius: 22px;
   cursor: pointer;
+  position: relative;
 
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
@@ -72,7 +75,7 @@ const themeClass = computed(() => {
   gap: 10px;
 
   transform: translateZ(0);
-  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease, opacity 180ms ease;
 }
 
 .card:hover {
@@ -85,6 +88,31 @@ const themeClass = computed(() => {
   outline: 4px solid rgba(80, 227, 194, 0.95);
   box-shadow: 0 22px 46px rgba(80, 227, 194, 0.22);
   transform: translateY(-8px) scale(1.02);
+}
+
+.card.owned {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
+.card.owned:hover {
+  transform: translateY(-2px);
+  opacity: 0.6;
+}
+
+.owned-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  background: rgba(80, 227, 194, 0.95);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
 }
 
 .media {

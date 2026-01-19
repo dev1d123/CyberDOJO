@@ -1,0 +1,47 @@
+[
+  {
+    "pet_id": 7,
+    "name": "Espada del Titán",
+    "description": "Acero contra acero. Un guerrero valiente que te acompaña en cada batalla. ¡Enfrenta cada desafío con honor y valentía!",
+    "base_sprite": null,
+    "cybercreds_cost": 0,
+    "is_default": true,
+    "states": []
+  },
+  {
+    "pet_id": 8,
+    "name": "Marcha Victoriosa",
+    "description": "Pasos firmes y disciplina de hierro. Un soldado leal que nunca falla. ¡El deber te llama!",
+    "base_sprite": null,
+    "cybercreds_cost": 140,
+    "is_default": false,
+    "states": []
+  },
+  {
+    "pet_id": 9,
+    "name": "Grimorio Místico",
+    "description": "Hechizos ancestrales y energía arcana. Un mago sabio que canaliza el poder del conocimiento. ¡Domina las artes místicas!",
+    "base_sprite": null,
+    "cybercreds_cost": 180,
+    "is_default": false,
+    "states": []
+  },
+  {
+    "pet_id": 10,
+    "name": "Sombra Furtiva",
+    "description": "Sigiloso y astuto. Un bandido maestro de las sombras que nunca deja rastro. ¡Nadie te verá venir!",
+    "base_sprite": null,
+    "cybercreds_cost": 130,
+    "is_default": false,
+    "states": []
+  },
+  {
+    "pet_id": 11,
+    "name": "Flecha Precisa",
+    "description": "Arco tensado, objetivo fijo. Un arquero legendario con puntería perfecta. ¡Nunca falles tu blanco!",
+    "base_sprite": null,
+    "cybercreds_cost": 160,
+    "is_default": false,
+    "states": []
+  }
+]

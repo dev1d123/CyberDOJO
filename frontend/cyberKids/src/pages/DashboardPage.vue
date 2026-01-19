@@ -1,5 +1,8 @@
 <template>
   <div class="dashboard-page">
+    <!-- Debug Menu -->
+    <DebugMenu />
+    
     <div v-if="loading" class="loading-container">
       <div class="spinner"></div>
       <p>Cargando...</p>
@@ -79,6 +82,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import type { UserDto } from '../dto/user.dto';
 import { UserService } from '../services/user.service';
+import DebugMenu from '../components/DebugMenu.vue';
 
 const router = useRouter();
 
