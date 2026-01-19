@@ -108,6 +108,31 @@ const handleRegister = async () => {
       console.log('🧩 user_id obtenido desde respuesta raíz:', rootUserId);
     }
     
+    // Asignar mascota por defecto (gratis - costo 0)
+    try {
+      const accessToken = localStorage.getItem('access_token');
+      console.log('🔑 Token disponible:', accessToken ? 'Sí' : 'No');
+      if (accessToken) {
+        const petResponse = await fetch('https://juliojc.pythonanywhere.com/api/progression/shop/buy-pet/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({ pet_id: 7 })
+        });
+        const petData = await petResponse.json();
+        console.log('🐾 Respuesta del servidor:', petResponse.status, petData);
+        if (petResponse.ok) {
+          console.log('✅ Pet por defecto asignado correctamente');
+        } else {
+          console.error('❌ Error del servidor:', petData);
+        }
+      }
+    } catch (petError) {
+      console.error('❌ Error asignando pet por defecto:', petError);
+    }
+    
     successMessage.value = '¡Cuenta creada exitosamente! Redirigiendo...';
     
     setTimeout(() => {
