@@ -1,11 +1,22 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import AnimatedBackground from './components/AnimatedBackground.vue';
 import Navbar from './components/Navbar.vue';
 import PetViewer from './components/PetViewer.vue';
+import AudioControls from './components/AudioControls.vue';
+import { AudioService } from './services/audio.service';
 
 const route = useRoute();
+
+// Inicializar sistema de audio
+onMounted(() => {
+  // Agregar event listener global para clicks
+  document.addEventListener('click', () => {
+    AudioService.playClick();
+    AudioService.playBackgroundMusic(); // Siempre intentar reproducir background
+  });
+});
 
 // Solo mostrar el background y navbar en la página principal
 const showLayout = computed(() => route.path === '/');
@@ -25,6 +36,7 @@ const showPetViewer = computed(() => {
       <router-view />
     </div>
     <PetViewer v-if="showPetViewer" />
+    <AudioControls />
   </div>
 </template>
 
