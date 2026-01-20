@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "behaviors": {
+    "idle": [
+      "Estoy aquí si me necesitas.",
+      "¿Qué tal si exploramos un módulo?",
+      "Recuerda: si algo parece sospechoso, mejor duda.",
+      "Puedo darte pistas cuando pases el mouse por botones.",
+      "Tip: revisa bien los mensajes antes de responder."
+    ],
+    "hover": [
+      "Eso es: {target}.",
+      "Si pasas el mouse por cosas, te explico qué hacen.",
+      "Veo que estás mirando: {target}.",
+      "¿Quieres entrar a {target}?"
+    ],
+    "hover_module": [
+      "Este módulo trata sobre {target}.",
+      "En {target} vas a practicar para estar más seguro.",
+      "¡Buenísimo! {target} te ayuda a aprender paso a paso.",
+      "Si te trabas en {target}, puedo darte pistas."
+    ],
+    "hover_button": [
+      "Ese botón sirve para {target}.",
+      "Si haces click en {target}, avanzas.",
+      "Tip: {target} es una acción importante.",
+      "¿Seguro que quieres {target}?"
+    ],
+    "click": [
+      "¡Click! Vamos con {target}.",
+      "Listo, ejecutando: {target}.",
+      "Ok, hiciste click en {target}.",
+      "¡Hecho! {target}."
+    ],
+    "click_screen": [
+      "¡Te vi! ¿Necesitas ayuda?",
+      "Estoy atento a lo que haces.",
+      "¿Quieres que te explique algo de la pantalla?"
+    ],
+    "open_page": [
+      "Entrando a {target}.",
+      "Cambiando a {target}.",
+      "Vamos a {target}."
+    ],
+    "start_challenge": [
+      "¡Reto iniciado! {target}.",
+      "A concentrarse: {target}.",
+      "Este desafío te va a enseñar muchísimo."
+    ],
+    "submit_answer": [
+      "Respuesta enviada. Veamos qué pasa…",
+      "Ok, registré tu respuesta.",
+      "¡Bien! Ahora revisamos el resultado."
+    ],
+    "send_message": [
+      "Enviando tu mensaje…",
+      "Listo, mensaje enviado.",
+      "Recuerda: no compartas datos personales.",
+      "Antes de enviar, revisa si te piden algo raro."
+    ],
+    "receive_message": [
+      "Llegó un mensaje nuevo.",
+      "Mensaje recibido. Léelo con cuidado.",
+      "Ojo: si hay urgencia o presión, puede ser trampa.",
+      "Si te piden códigos o contraseñas, es sospechoso."
+    ],
+    "edit": [
+      "Editando: {target}.",
+      "Ok, puedes cambiar {target}.",
+      "Asegúrate de guardar los cambios."
+    ],
+    "save": [
+      "Guardando cambios…",
+      "¡Guardado!",
+      "Listo, tus cambios quedaron guardados."
+    ],
+    "error": [
+      "Uy… algo falló. Probemos de nuevo.",
+      "Hubo un error. Respira y reintenta.",
+      "Si se repite, revisemos tu conexión o el servidor."
+    ],
+    "success": [
+      "¡Excelente!",
+      "¡Lo hiciste muy bien!",
+      "¡Buen trabajo! Sigue así."
+    ],
+    "loading": [
+      "Cargando…",
+      "Un segundo…",
+      "Estoy preparando todo."
+    ],
+    "logout_hover": [
+      "¿Te vas? Si cierras sesión, asegúrate de estar en tu cuenta.",
+      "Cerrar sesión es buena idea si compartes la compu.",
+      "Tip: no dejes tu sesión abierta en público."
+    ],
+    "pet_shown": [
+      "¡Volví!",
+      "Aquí estoy.",
+      "¿Seguimos?"
+    ]
+  }
+}
