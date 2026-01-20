@@ -4,9 +4,13 @@ import BackToDashboardButton from '../components/BackToDashboardButton.vue';
 import type { CountryDto } from '../dto/country.dto';
 import type { UserDto, UserPreferencesDto } from '../dto/user.dto';
 import type { UserPet } from '../dto/pet.dto';
+import type { UserInventory } from '../dto/cosmetic.dto';
 import { CountryService } from '../services/country.service';
 import { UserService } from '../services/user.service';
 import { PetService } from '../services/pet.service';
+import { CosmeticService } from '../services/cosmetic.service';
+import { AudioService } from '../services/audio.service';
+import { API_CONFIG } from '../config/api.config';
 import petsData from '../data/pets.json';
 
 import pet1Img from '@/assets/images/pet1.png';
@@ -23,6 +27,7 @@ const success = ref<string | null>(null);
 const user = ref<UserDto | null>(null);
 const countries = ref<CountryDto[]>([]);
 const userPets = ref<UserPet[]>([]);
+const userCosmetics = ref<UserInventory[]>([]);
 
 const prefs = ref<UserPreferencesDto | null>(null);
 
@@ -111,6 +116,25 @@ const loadAll = async () => {
     })));
     userPets.value = pets;
     console.log('💾 [ProfilePage] userPets.value actualizado:', userPets.value);
+
+    // Cargar cosméticos del usuario
+    console.log('🎵 [ProfilePage] Obteniendo cosméticos del usuario...');
+    const purchases = await CosmeticService.getMyPurchases();
+    console.log('✅ [ProfilePage] Respuesta de compras:', purchases);
+    
+    // Filtrar solo audios (type: effect)
+    const shopCosmetics = await CosmeticService.getShopCosmetics();
+    userCosmetics.value = purchases.cosmetics
+      .map(inv => {
+        const detail = shopCosmetics.find(c => c.item_id === inv.item);
+        return {
+          ...inv,
+          item_name: detail?.name || `Audio #${inv.item}`,
+          item_type: detail?.type || 'effect'
+        };
+      })
+      .filter(c => c.item_type === 'effect');
+    console.log('🎵 [ProfilePage] Audios del usuario:', userCosmetics.value);
   } catch (e: any) {
     console.error('❌ [ProfilePage] Error:', e);
     error.value = 'No se pudo cargar tu perfil. Intenta de nuevo.';
@@ -148,6 +172,31 @@ const equipPet = async (petId: number) => {
   } catch (e: any) {
     console.error(e);
     error.value = 'No se pudo equipar la mascota.';
+  } finally {
+    saving.value = false;
+  }
+};
+
+const equipCosmetic = async (itemId: number) => {
+  saving.value = true;
+  clearMessages();
+
+  try {
+    await CosmeticService.equipCosmetic(itemId);
+    
+    // Actualizar estado local
+    userCosmetics.value = userCosmetics.value.map(c => ({
+      ...c,
+      is_equipped: c.item === itemId,
+    }));
+    
+    // Recargar tema de audio
+    await AudioService.reloadTheme();
+    
+    success.value = '¡Audio equipado!';
+  } catch (e: any) {
+    console.error(e);
+    error.value = 'No se pudo equipar el audio.';
   } finally {
     saving.value = false;
   }
@@ -245,7 +294,7 @@ const changePassword = async () => {
       return;
     }
 
-    const response = await fetch('https://juliojc.pythonanywhere.com/api/users/auth/me/change-password/', {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/users/auth/me/change-password/`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -443,6 +492,43 @@ const changePassword = async () => {
               </div>
             </div>
           </div>
+
+          <!-- Card: Audios -->
+          <div class="card card-wide">
+            <div class="card-header">
+              <h2 class="card-title">🎵 Mis Audios</h2>
+              <span class="hint">Cambia el pack de sonidos del juego</span>
+            </div>
+
+            <div v-if="userCosmetics.length === 0" class="empty-pets">
+              <p>No tienes audios aún. ¡Visita la tienda para comprar algunos!</p>
+            </div>
+
+            <div v-else class="cosmetics-list">
+              <div
+                v-for="cosmetic in userCosmetics"
+                :key="cosmetic.inventory_id"
+                class="cosmetic-item"
+                :class="{ equipped: cosmetic.is_equipped }"
+              >
+                <div class="cosmetic-icon">🎵</div>
+                <div class="cosmetic-details">
+                  <h3 class="cosmetic-name">{{ cosmetic.item_name }}</h3>
+                  <span v-if="cosmetic.is_equipped" class="equipped-label">✓ Equipado</span>
+                </div>
+                <button
+                  v-if="!cosmetic.is_equipped"
+                  class="equip-btn"
+                  type="button"
+                  :disabled="saving"
+                  @click="equipCosmetic(cosmetic.item)"
+                >
+                  Equipar
+                </button>
+                <span v-else class="equipped-text">En uso</span>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     </div>
@@ -453,13 +539,34 @@ const changePassword = async () => {
 .profile-page {
   width: 100vw;
   height: 100vh;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   box-sizing: border-box;
   padding: clamp(12px, 2.5vh, 24px);
 
   background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
   background-size: 200% 200%;
   animation: gradientMove 12s ease-in-out infinite;
+}
+
+/* Scrollbar personalizado */
+.profile-page::-webkit-scrollbar {
+  width: 10px;
+}
+
+.profile-page::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.profile-page::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.profile-page::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 @keyframes gradientMove {
@@ -471,10 +578,11 @@ const changePassword = async () => {
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  padding-bottom: 20px;
 }
 
 .header {
@@ -519,14 +627,11 @@ const changePassword = async () => {
 }
 
 .grid {
-  flex: 1 1 auto;
-  min-height: 0;
   display: grid;
   gap: 16px;
   grid-template-columns: 1fr 1fr;
   grid-auto-rows: min-content;
-  overflow: auto;
-  padding-bottom: 8px;
+  padding-bottom: 20px;
 }
 
 .card {
@@ -890,5 +995,65 @@ const changePassword = async () => {
   font-weight: 900;
   font-size: 0.9rem;
   text-align: center;
+}
+
+/* Cosmetics (Audios) styles */
+.cosmetics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.cosmetic-item {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.3s ease;
+}
+
+.cosmetic-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.cosmetic-item.equipped {
+  border-color: rgba(80, 227, 194, 0.8);
+  background: rgba(80, 227, 194, 0.15);
+}
+
+.cosmetic-icon {
+  font-size: 2.5rem;
+  min-width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.cosmetic-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cosmetic-name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: white;
+}
+
+.equipped-label {
+  color: rgba(80, 227, 194, 0.95);
+  font-weight: 900;
+  font-size: 0.85rem;
 }
 </style>
