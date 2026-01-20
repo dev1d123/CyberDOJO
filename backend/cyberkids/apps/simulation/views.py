@@ -359,6 +359,7 @@ def chat(request):
     has_disclosure = analysis.get('has_disclosure', False)
     disclosure_reason = analysis.get('disclosure_reason', '')
     is_attack_attempt = analysis.get('is_attack_attempt', False)
+    is_user_evasion = analysis.get('is_user_evasion', False)
     force_end_session = analysis.get('force_end_session', False)
 
     # Guardar respuesta del antagonista
@@ -401,6 +402,8 @@ def chat(request):
                     s.game_over_reason = disclosure_reason or 'sensitive_data'
                     s.ended_at = timezone.now()
                     s.save(update_fields=['is_game_over', 'outcome', 'game_over_reason', 'ended_at'])
+                # Asegurar que la respuesta use el estado persistido
+                session = s
         except Exception:
             logger.exception(f'Failed to mark session as failed for session {session.session_id}')
     else:
@@ -442,19 +445,35 @@ def chat(request):
                         s.game_over_reason = 'antagonist_exhausted_no_disclosure'
                         s.ended_at = timezone.now()
                         s.save(update_fields=['points_earned', 'points_awarded', 'is_game_over', 'outcome', 'game_over_reason', 'ended_at'])
+                    # Asegurar que la respuesta use el estado persistido
+                    session = s
             except Exception:
                 logger.exception(f'Error closing/awarding points for session {session.session_id}')
+
+    # Refrescar por seguridad si hubo cambios en DB fuera del objeto actual
+    try:
+        session.refresh_from_db()
+    except Exception:
+        pass
 
     # Preparar respuesta
     resp = {
         'reply': reply_text,
         'session_id': session.session_id,
+        'llm_analysis': {
+            'has_disclosure': bool(has_disclosure),
+            'disclosure_reason': disclosure_reason or '',
+            'is_attack_attempt': bool(is_attack_attempt),
+            'is_user_evasion': bool(is_user_evasion),
+            'force_end_session': bool(force_end_session),
+        },
         'disclosure': disclosure,
         'disclosure_reason': disclosure_reason,
         'antagonist_attempts': session.antagonist_attempts,
         'is_game_over': session.is_game_over,
         'outcome': session.outcome,
         'game_over_reason': session.game_over_reason,
+        'points_earned': getattr(session, 'points_earned', 0) or 0,
     }
 
     return JsonResponse(resp)

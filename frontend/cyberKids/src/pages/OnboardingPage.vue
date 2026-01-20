@@ -78,6 +78,14 @@
         </button>
       </div>
     </div>
+
+    <div v-else class="empty-container">
+      <h2>No hay preguntas de onboarding</h2>
+      <p>
+        No se encontraron preguntas activas. Si eres admin, revisa que estén cargadas en el backend.
+      </p>
+      <button @click="loadQuestions" class="retry-button">Reintentar</button>
+    </div>
   </div>
 </template>
 
@@ -251,6 +259,13 @@ onMounted(() => {
 .error-container {
   text-align: center;
   color: white;
+  animation: fadeIn 0.5s ease;
+}
+
+.empty-container {
+  text-align: center;
+  color: white;
+  max-width: 520px;
   animation: fadeIn 0.5s ease;
 }
 

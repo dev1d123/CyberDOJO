@@ -3,7 +3,7 @@
  * Elimina todas las preguntas y opciones existentes y crea nuevas
  */
 
-const API_BASE_URL = 'https://juliojc.pythonanywhere.com/api/onboarding';
+const API_BASE_URL = 'https://cyberdojo-production.up.railway.app/api/onboarding';
 
 const questions = [
   {
