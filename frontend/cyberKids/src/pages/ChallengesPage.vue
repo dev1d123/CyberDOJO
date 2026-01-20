@@ -6,32 +6,38 @@
 
       <main class="content">
         <section class="grid" aria-label="Minijuegos de desafíos">
-          <ChallengeGameCard
-            title="¿Confías o no?"
-            subtitle="Mensajes cortos: ¡elige si es seguro!"
-            mechanic="Aparecen chats/notificaciones. Desliza entre Seguro y Peligroso."
-            :gif-src="trustGif"
-            preview-type="trust"
-            @click="start('trust')"
-          />
+          <div v-pet-hint="{ behavior: 'hover_module', vars: { target: '¿Confías o no?' }, click: { behavior: 'start_challenge', vars: { target: '¿Confías o no?' }, ttlMs: 1800, priority: 1 } }">
+            <ChallengeGameCard
+              title="¿Confías o no?"
+              subtitle="Mensajes cortos: ¡elige si es seguro!"
+              mechanic="Aparecen chats/notificaciones. Desliza entre Seguro y Peligroso."
+              :gif-src="trustGif"
+              preview-type="trust"
+              @click="start('trust')"
+            />
+          </div>
 
-          <ChallengeGameCard
-            title="El chat sospechoso"
-            subtitle="Un NPC te escribe... ¿qué respondes?"
-            mechanic="Cada turno eliges una respuesta (o reportas) para mantenerte a salvo."
-            :gif-src="chatGif"
-            preview-type="chat"
-            @click="start('chat')"
-          />
+          <div v-pet-hint="{ behavior: 'hover_module', vars: { target: 'El chat sospechoso' }, click: { behavior: 'start_challenge', vars: { target: 'El chat sospechoso' }, ttlMs: 1800, priority: 1 } }">
+            <ChallengeGameCard
+              title="El chat sospechoso"
+              subtitle="Un NPC te escribe... ¿qué respondes?"
+              mechanic="Cada turno eliges una respuesta (o reportas) para mantenerte a salvo."
+              :gif-src="chatGif"
+              preview-type="chat"
+              @click="start('chat')"
+            />
+          </div>
 
-          <ChallengeGameCard
-            title="Caza el engaño"
-            subtitle="¡Toca lo peligroso antes del tiempo!"
-            mechanic="Se muestra una publicación/conversación. Marca frases peligrosas antes de que se acabe el tiempo."
-            :gif-src="huntGif"
-            preview-type="hunt"
-            @click="start('hunt')"
-          />
+          <div v-pet-hint="{ behavior: 'hover_module', vars: { target: 'Caza el engaño' }, click: { behavior: 'start_challenge', vars: { target: 'Caza el engaño' }, ttlMs: 1800, priority: 1 } }">
+            <ChallengeGameCard
+              title="Caza el engaño"
+              subtitle="¡Toca lo peligroso antes del tiempo!"
+              mechanic="Se muestra una publicación/conversación. Marca frases peligrosas antes de que se acabe el tiempo."
+              :gif-src="huntGif"
+              preview-type="hunt"
+              @click="start('hunt')"
+            />
+          </div>
         </section>
 
         <section class="hint" aria-label="Consejo">

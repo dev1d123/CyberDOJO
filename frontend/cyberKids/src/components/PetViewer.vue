@@ -4,6 +4,8 @@ import { useRoute } from 'vue-router';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { UserService } from '@/services/user.service';
+import PetSpeechBubble from './PetSpeechBubble.vue';
+import { PetSpeech } from '@/stores/petSpeech.store';
 
 const route = useRoute();
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -64,6 +66,9 @@ const contextAnimations = {
 let idleInterval: number | null = null;
 let randomGestureInterval: number | null = null;
 let petCheckInterval: number | null = null;
+let idleTalkInterval: number | null = null;
+let logoutCheckInterval: number | null = null;
+let chatCheckInterval: number | null = null;
 
 onMounted(async () => {
   await loadUserPet();
@@ -71,6 +76,9 @@ onMounted(async () => {
   startRandomWalking();
   setupClickListener();
   startPetChecker();
+  setupEventListeners();
+  PetSpeech.setPetVisible(isVisible.value);
+  startIdleTalk();
 });
 
 onUnmounted(() => {
@@ -79,6 +87,17 @@ onUnmounted(() => {
   if (idleInterval) clearInterval(idleInterval);
   if (randomGestureInterval) clearInterval(randomGestureInterval);
   if (petCheckInterval) clearInterval(petCheckInterval);
+  if (idleTalkInterval) clearInterval(idleTalkInterval);
+  if (logoutCheckInterval) clearInterval(logoutCheckInterval);
+  if (chatCheckInterval) clearInterval(chatCheckInterval);
+
+  if (logoutButton) logoutButton.removeEventListener('mouseenter', handleLogoutHover);
+  if (chatInputs) {
+    chatInputs.forEach(input => {
+      input.removeEventListener('focus', handleChatFocus);
+      input.removeEventListener('blur', handleChatBlur);
+    });
+  }
 });
 
 const loadUserPet = async () => {
@@ -319,6 +338,8 @@ const handleScreenClick = (event: MouseEvent) => {
   // Evitar clicks en el botón toggle
   const target = event.target as HTMLElement;
   if (target.closest('.toggle-btn')) return;
+
+  PetSpeech.speak({ behavior: 'click_screen', ttlMs: 1600, priority: 0 });
   
   // Calcular ángulo hacia el click
   const clickX = event.clientX;
@@ -410,31 +431,38 @@ let chatInputs: NodeListOf<HTMLInputElement> | null = null;
 
 const setupEventListeners = () => {
   // Detectar hover en logout
-  const checkLogout = setInterval(() => {
+  logoutCheckInterval = window.setInterval(() => {
+    if (logoutButton) return;
     logoutButton = document.querySelector('[data-logout-btn]') as HTMLElement;
     if (logoutButton) {
       logoutButton.addEventListener('mouseenter', handleLogoutHover);
-      clearInterval(checkLogout);
+      if (logoutCheckInterval) {
+        clearInterval(logoutCheckInterval);
+        logoutCheckInterval = null;
+      }
     }
   }, 1000);
-  
+
   // Detectar inputs de chat
-  const checkChatInputs = setInterval(() => {
+  chatCheckInterval = window.setInterval(() => {
+    if (chatInputs && chatInputs.length > 0) return;
     chatInputs = document.querySelectorAll('input[type="text"], textarea');
     if (chatInputs.length > 0) {
       chatInputs.forEach(input => {
         input.addEventListener('focus', handleChatFocus);
         input.addEventListener('blur', handleChatBlur);
       });
-      clearInterval(checkChatInputs);
+      if (chatCheckInterval) {
+        clearInterval(chatCheckInterval);
+        chatCheckInterval = null;
+      }
     }
   }, 1000);
-  
-  setupEventListeners();
 };
 
 const handleLogoutHover = () => {
   if (isVisible.value && !isPerformingGesture.value) {
+    PetSpeech.speak({ behavior: 'logout_hover', ttlMs: 3000, priority: 1 });
     isPerformingGesture.value = true;
     playRandomAnimation(contextAnimations.sadness);
     setTimeout(() => {
@@ -450,6 +478,7 @@ const handleLogoutHover = () => {
 
 const handleChatFocus = () => {
   if (isVisible.value && !isPerformingGesture.value) {
+    PetSpeech.speak({ behavior: 'hover', vars: { target: 'el chat' }, ttlMs: 2200, priority: 0 });
     isPerformingGesture.value = true;
     playRandomAnimation(contextAnimations.chatting);
   }
@@ -514,6 +543,22 @@ onUnmounted(() => {
 
 const toggleVisibility = () => {
   isVisible.value = !isVisible.value;
+  PetSpeech.setPetVisible(isVisible.value);
+  if (isVisible.value) {
+    PetSpeech.speak({ behavior: 'pet_shown', ttlMs: 1600, priority: 1 });
+  }
+};
+
+const startIdleTalk = () => {
+  idleTalkInterval = window.setInterval(() => {
+    if (!isVisible.value) return;
+    if (PetSpeech.isOpen.value) return;
+
+    // Hablar ocasionalmente, no siempre.
+    if (Math.random() > 0.75) {
+      PetSpeech.speak({ behavior: 'idle', ttlMs: 3200, priority: 0 });
+    }
+  }, 25000);
 };
 
 const petStyle = computed(() => ({
@@ -529,6 +574,8 @@ const petStyle = computed(() => ({
     <button class="toggle-btn" @click="toggleVisibility">
       {{ isVisible ? '👁️ Ocultar' : '👁️ Mostrar' }} Mascota
     </button>
+
+    <PetSpeechBubble :anchor-el="petContainer" :is-pet-visible="isVisible" />
 
     <div 
       ref="petContainer"

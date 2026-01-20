@@ -33,7 +33,11 @@
       <!-- Menu Grid -->
       <div class="menu-grid">
         <!-- Modo Historia -->
-        <div class="menu-card" @click="goToStoryMode">
+        <div
+          class="menu-card"
+          v-pet-hint="{ behavior: 'hover_module', vars: { target: 'Modo Historia' }, click: { behavior: 'open_page', vars: { target: 'Modo Historia' }, ttlMs: 1600, priority: 1 } }"
+          @click="goToStoryMode"
+        >
           <div class="card-gif-container">
             <img src="/src/assets/gif/historyGif.gif" alt="Modo Historia" class="card-gif" />
           </div>
@@ -42,7 +46,11 @@
         </div>
 
         <!-- Desafíos -->
-        <div class="menu-card" @click="goToChallenges">
+        <div
+          class="menu-card"
+          v-pet-hint="{ behavior: 'hover_module', vars: { target: 'Desafíos' }, click: { behavior: 'open_page', vars: { target: 'Desafíos' }, ttlMs: 1600, priority: 1 } }"
+          @click="goToChallenges"
+        >
           <div class="card-gif-container">
             <img src="/src/assets/gif/challengeGif.gif" alt="Desafíos" class="card-gif" />
           </div>
@@ -51,7 +59,11 @@
         </div>
 
         <!-- Tienda -->
-        <div class="menu-card" @click="goToShop">
+        <div
+          class="menu-card"
+          v-pet-hint="{ behavior: 'hover_module', vars: { target: 'Tienda' }, click: { behavior: 'open_page', vars: { target: 'Tienda' }, ttlMs: 1600, priority: 1 } }"
+          @click="goToShop"
+        >
           <div class="card-gif-container">
             <img src="/src/assets/gif/shopGif.gif" alt="Tienda" class="card-gif" />
           </div>
@@ -60,7 +72,11 @@
         </div>
 
         <!-- Perfil -->
-        <div class="menu-card" @click="goToProfile">
+        <div
+          class="menu-card"
+          v-pet-hint="{ behavior: 'hover_module', vars: { target: 'Perfil' }, click: { behavior: 'open_page', vars: { target: 'Perfil' }, ttlMs: 1600, priority: 1 } }"
+          @click="goToProfile"
+        >
           <div class="card-gif-container">
             <img src="/src/assets/gif/settingGif.gif" alt="Perfil" class="card-gif" />
           </div>
@@ -70,7 +86,12 @@
       </div>
 
       <!-- Logout Button -->
-      <button @click="handleLogout" class="logout-button">
+      <button
+        data-logout-btn
+        v-pet-hint="{ behavior: 'hover_button', vars: { target: 'cerrar sesión' } }"
+        @click="handleLogout"
+        class="logout-button"
+      >
         Cerrar Sesión
       </button>
     </div>
