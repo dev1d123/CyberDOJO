@@ -122,19 +122,21 @@ router.beforeEach(async (to, _from, next) => {
       
       // Flujo de navegación:
       // 1. Si necesita setup de perfil y no está yendo ahí, redirigir
-      if (needsProfileSetup && to.name !== 'ProfileSetup') {
+      //    (permitimos Dashboard/Onboarding/Results para el flujo post-login/register)
+      if (needsProfileSetup && to.name !== 'ProfileSetup' && to.name !== 'Onboarding' && to.name !== 'Results' && to.name !== 'Dashboard') {
         next('/profile-setup');
         return;
       }
       
       // 2. Si no necesita setup pero no ha completado onboarding y no está yendo ahí, redirigir
-      if (!needsProfileSetup && !onboardingStatus.completed && to.name !== 'Onboarding' && to.name !== 'Results') {
+      //    (permitimos Dashboard para que el login siempre lleve a /dashboard)
+      if (!needsProfileSetup && !onboardingStatus.completed && to.name !== 'Onboarding' && to.name !== 'Results' && to.name !== 'Dashboard') {
         next('/onboarding');
         return;
       }
       
       // 3. Si está en onboarding pero ya lo completó, ir al dashboard
-      if (onboardingStatus.completed && (to.name === 'Onboarding' || to.name === 'ProfileSetup')) {
+      if (onboardingStatus.completed && onboardingStatus.has_responses && (to.name === 'Onboarding' || to.name === 'ProfileSetup')) {
         next('/dashboard');
         return;
       }

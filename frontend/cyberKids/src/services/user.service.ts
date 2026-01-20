@@ -213,10 +213,12 @@ export class UserService {
 
       if (response.ok) {
         const data = await response.json();
-        // Backend devuelve: { is_complete, answered_questions, total_questions, ... }
-        const isComplete = Boolean((data as any)?.is_complete);
-        const answered = Number((data as any)?.answered_questions ?? 0);
-        return { completed: isComplete, has_responses: answered > 0 };
+        // Backend esperado: { is_complete, answered_questions, total_questions, ... }
+        const rawComplete = (data as any)?.is_complete;
+        const isComplete = rawComplete === true || rawComplete === 'true' || rawComplete === 1 || rawComplete === '1';
+        const answeredRaw = (data as any)?.answered_questions;
+        const answered = typeof answeredRaw === 'string' ? Number.parseInt(answeredRaw, 10) : Number(answeredRaw ?? 0);
+        return { completed: Boolean(isComplete), has_responses: Number.isFinite(answered) && answered > 0 };
       }
     } catch {
       // fallback below
@@ -236,8 +238,10 @@ export class UserService {
     }
 
     const legacyData = await legacyResponse.json();
-    const legacyIsComplete = Boolean((legacyData as any)?.is_complete);
-    const legacyAnswered = Number((legacyData as any)?.answered_questions ?? 0);
-    return { completed: legacyIsComplete, has_responses: legacyAnswered > 0 };
+    const legacyRawComplete = (legacyData as any)?.is_complete;
+    const legacyIsComplete = legacyRawComplete === true || legacyRawComplete === 'true' || legacyRawComplete === 1 || legacyRawComplete === '1';
+    const legacyAnsweredRaw = (legacyData as any)?.answered_questions;
+    const legacyAnswered = typeof legacyAnsweredRaw === 'string' ? Number.parseInt(legacyAnsweredRaw, 10) : Number(legacyAnsweredRaw ?? 0);
+    return { completed: Boolean(legacyIsComplete), has_responses: Number.isFinite(legacyAnswered) && legacyAnswered > 0 };
   }
 }
