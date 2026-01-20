@@ -7,7 +7,10 @@
         <p class="history-subtitle">Elige una isla para comenzar tu aventura</p>
       </header>
 
-      <main class="history-map-area">
+      <main
+        class="history-map-area"
+        v-pet-hint="{ behavior: 'hover', vars: { target: 'el mapa: elige una isla para ver detalles' } }"
+      >
         <HistoryMap
           :levels="levels"
           :selected-level-id="selectedLevel?.id ?? null"
@@ -35,7 +38,12 @@
               </div>
             </div>
 
-            <button class="start-button" type="button" @click="startLevel">
+            <button
+              class="start-button"
+              type="button"
+              v-pet-hint="{ behavior: 'hover_button', vars: { target: 'acceder a este nivel' }, click: { behavior: 'open_page', vars: { target: 'la simulación' }, ttlMs: 1600, priority: 1 } }"
+              @click="startLevel"
+            >
               Acceder a este nivel
             </button>
           </template>

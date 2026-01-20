@@ -100,6 +100,7 @@
       <div v-if="!gameOver && !showInitScreen" class="input-container">
         <textarea
           v-model="userInput"
+          v-pet-hint="{ behavior: 'hover', vars: { target: 'escribir tu respuesta' } }"
           @keydown.enter.prevent="sendMessage"
           placeholder="Escribe tu respuesta..."
           class="message-input"
@@ -108,6 +109,7 @@
         ></textarea>
         <button
           @click="sendMessage"
+          v-pet-hint="{ behavior: 'hover_button', vars: { target: 'enviar tu mensaje' }, click: { behavior: 'send_message', ttlMs: 2200, priority: 1 } }"
           :disabled="!userInput.trim() || sending"
           class="send-button"
         >
@@ -123,6 +125,7 @@ import { ref, onMounted, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { SimulationService } from '../services/simulation.service';
 import { useAudio } from '../composables/useAudio';
+import { PetSpeech } from '@/stores/petSpeech.store';
 
 const router = useRouter();
 const route = useRoute();
@@ -258,6 +261,7 @@ async function sendMessage() {
 
   // Reproducir sonido de enviar
   playSend();
+  PetSpeech.speak({ behavior: 'send_message', ttlMs: 2400, priority: 1 });
 
   // Add user message to UI
   messages.value.push({
@@ -273,6 +277,7 @@ async function sendMessage() {
 
     // Reproducir sonido de recibir
     playReceive();
+    PetSpeech.speak({ behavior: 'receive_message', ttlMs: 3200, priority: 1 });
 
     // Add antagonist response
     messages.value.push({
@@ -287,6 +292,12 @@ async function sendMessage() {
     if (response.is_game_over !== null) {
       gameOver.value = true;
       outcome.value = response.outcome;
+
+      PetSpeech.speak({
+        behavior: response.outcome === 'won' ? 'success' : 'error',
+        ttlMs: 2800,
+        priority: 2,
+      });
       
       if (response.outcome === 'won') {
         gameOverMessage.value = '¡Excelente trabajo! Resististe todos los intentos de ingeniería social.';
@@ -299,6 +310,7 @@ async function sendMessage() {
     await scrollToBottom();
   } catch (error: any) {
     console.error('Error sending message:', error);
+    PetSpeech.speak({ behavior: 'error', ttlMs: 2800, priority: 2 });
     alert('Error al enviar mensaje: ' + error.message);
   } finally {
     sending.value = false;

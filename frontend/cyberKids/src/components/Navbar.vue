@@ -16,12 +16,18 @@ const hideTooltipHandler = () => {
   <nav class="navbar">
     <div class="navbar-content">
       <div class="logo-container">
-        <img src="/src/assets/gif/logo.gif" alt="CyberDojo Logo" class="logo-img" />
+        <img
+          v-pet-hint="{ behavior: 'hover', vars: { target: 'el logo de CyberDojo' } }"
+          src="/src/assets/gif/logo.gif"
+          alt="CyberDojo Logo"
+          class="logo-img"
+        />
       </div>
       
       <div class="nav-buttons">
         <button 
           class="nav-btn"
+          v-pet-hint="{ behavior: 'hover_button', vars: { target: 'ver preguntas frecuentes' } }"
           @mouseenter="showTooltipHandler('faq')"
           @mouseleave="hideTooltipHandler"
         >
@@ -33,6 +39,7 @@ const hideTooltipHandler = () => {
         
         <button 
           class="nav-btn"
+          v-pet-hint="{ behavior: 'hover_button', vars: { target: 'conocer el proyecto' } }"
           @mouseenter="showTooltipHandler('about')"
           @mouseleave="hideTooltipHandler"
         >
@@ -44,6 +51,7 @@ const hideTooltipHandler = () => {
         
         <button 
           class="nav-btn"
+          v-pet-hint="{ behavior: 'hover_button', vars: { target: 'apoyar el proyecto' } }"
           @mouseenter="showTooltipHandler('support')"
           @mouseleave="hideTooltipHandler"
         >
