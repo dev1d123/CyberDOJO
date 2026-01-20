@@ -1,6 +1,7 @@
 // Service for simulation/game session API calls
+import { API_CONFIG } from '../config/api.config';
 
-const API_BASE_URL = 'https://juliojc.pythonanywhere.com/api/simulation';
+const API_BASE_URL = `${API_CONFIG.BASE_URL}/simulation`;
 
 interface StartSessionResponse {
   session_id: number;

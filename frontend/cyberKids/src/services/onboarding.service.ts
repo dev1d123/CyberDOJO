@@ -1,6 +1,8 @@
 import type { OnboardingQuestion, OnboardingResponse, UserAnswer } from '@/dto/onboarding.dto';
 
-const API_BASE_URL = 'https://juliojc.pythonanywhere.com/api';
+import { API_CONFIG } from '../config/api.config';
+
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 export class OnboardingService {
   /**

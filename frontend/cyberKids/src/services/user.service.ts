@@ -1,6 +1,8 @@
 import type { UserDto, UpdateUserDto, UpdateMeResponseDto, UpdatePreferencesDto } from '../dto/user.dto';
 
-const API_BASE_URL = 'https://juliojc.pythonanywhere.com/api/users';
+import { API_CONFIG } from '../config/api.config';
+
+const API_BASE_URL = `${API_CONFIG.BASE_URL}/users`;
 
 export class UserService {
   // Obtener información del usuario autenticado
@@ -201,7 +203,7 @@ export class UserService {
 
     // Preferir endpoint autenticado (no depende de userId y evita problemas de permisos)
     try {
-      const response = await fetch(`https://juliojc.pythonanywhere.com/api/onboarding/responses/my-status/`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/onboarding/responses/my-status/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -221,7 +223,7 @@ export class UserService {
     }
 
     // Fallback legacy: status/<user_id>/ (mapea is_complete -> completed)
-    const legacyResponse = await fetch(`https://juliojc.pythonanywhere.com/api/onboarding/responses/status/${userId}/`, {
+    const legacyResponse = await fetch(`${API_CONFIG.BASE_URL}/onboarding/responses/status/${userId}/`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
