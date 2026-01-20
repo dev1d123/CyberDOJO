@@ -122,16 +122,20 @@
 import { ref, onMounted, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { SimulationService } from '../services/simulation.service';
+import { useAudio } from '../composables/useAudio';
 
 const router = useRouter();
 const route = useRoute();
+
+// Audio service
+const { playSend, playReceive, playDialog } = useAudio();
 
 const scenarioId = ref<number>(parseInt(route.params.scenarioId as string));
 const scenarioName = ref<string>('');
 const sessionId = ref<number | null>(null);
 const messages = ref<any[]>([]);
 const userInput = ref('');
-const loading = ref(true);
+const loading = ref(false);
 const sending = ref(false);
 const gameOver = ref(false);
 const outcome = ref<string | null>(null);
@@ -151,9 +155,10 @@ const scenarioNames: Record<number, string> = {
   6: 'Suplantación de Identidad',
 };
 
-onMounted(async () => {
+// Initialize on mount
+onMounted(() => {
   scenarioName.value = scenarioNames[scenarioId.value] || 'Simulación';
-  await checkActiveSession();
+  checkActiveSession();
 });
 
 async function checkActiveSession() {
@@ -165,10 +170,12 @@ async function checkActiveSession() {
     
     // If we get here, there's an active session
     hasActiveSession.value = true;
-    loading.value = false;
   } catch (error) {
     // No active session found
+    console.log('No hay sesión activa, mostrando pantalla inicial');
     hasActiveSession.value = false;
+  } finally {
+    // SIEMPRE desactivar loading
     loading.value = false;
   }
 }
@@ -177,6 +184,9 @@ async function continueSession() {
   try {
     loading.value = true;
     showInitScreen.value = false;
+
+    // Reproducir sonido de diálogo
+    playDialog();
 
     const resumeResponse = await SimulationService.resumeSession(scenarioId.value);
     sessionId.value = resumeResponse.session_id;
@@ -214,6 +224,9 @@ async function startNewSession() {
     loading.value = true;
     showInitScreen.value = false;
 
+    // Reproducir sonido de diálogo
+    playDialog();
+
     const startResponse = await SimulationService.startSession(scenarioId.value);
     sessionId.value = startResponse.session_id;
     messages.value = [
@@ -243,6 +256,9 @@ async function sendMessage() {
   userInput.value = '';
   sending.value = true;
 
+  // Reproducir sonido de enviar
+  playSend();
+
   // Add user message to UI
   messages.value.push({
     role: 'user',
@@ -254,6 +270,9 @@ async function sendMessage() {
 
   try {
     const response = await SimulationService.sendMessage(sessionId.value, messageText);
+
+    // Reproducir sonido de recibir
+    playReceive();
 
     // Add antagonist response
     messages.value.push({

@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { AuthService } from '../services/auth.service';
+import { API_CONFIG } from '../config/api.config';
 import type { RegisterDto, ValidationErrors } from '../dto/auth.dto';
 
 const router = useRouter();
@@ -113,7 +114,7 @@ const handleRegister = async () => {
       const accessToken = localStorage.getItem('access_token');
       console.log('🔑 Token disponible:', accessToken ? 'Sí' : 'No');
       if (accessToken) {
-        const petResponse = await fetch('https://juliojc.pythonanywhere.com/api/progression/shop/buy-pet/', {
+        const petResponse = await fetch(`${API_CONFIG.BASE_URL}/progression/shop/buy-pet/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

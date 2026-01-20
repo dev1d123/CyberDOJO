@@ -82,6 +82,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import type { UserDto } from '../dto/user.dto';
 import { UserService } from '../services/user.service';
+import { AudioService } from '../services/audio.service';
 import DebugMenu from '../components/DebugMenu.vue';
 
 const router = useRouter();
@@ -149,6 +150,7 @@ const goToProfile = () => {
 };
 
 const handleLogout = () => {
+  AudioService.cleanup();
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user_id');
