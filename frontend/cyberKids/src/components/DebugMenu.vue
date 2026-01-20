@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { AudioService } from '../services/audio.service';
 
 const isOpen = ref(false);
 const loading = ref(false);
@@ -10,13 +11,18 @@ const message = ref('');
 const userId = ref<number | null>(null);
 const equippedPetId = ref<number | null>(null);
 const ownedPets = ref<any[]>([]);
+const ownedAudios = ref<any[]>([]);
+const equippedAudioName = ref<string>('Ninguno');
 const currentCybercreds = ref(0);
 
 // Form inputs
 const selectedPetToEquip = ref<number | null>(null);
+const selectedAudioToEquip = ref<number | null>(null);
 const creditsToAdd = ref(100);
 
-const API_BASE_URL = 'https://juliojc.pythonanywhere.com/api';
+import { API_CONFIG } from '../config/api.config';
+
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 onMounted(async () => {
   await loadDebugData();
@@ -56,6 +62,38 @@ const loadDebugData = async () => {
       selectedPetToEquip.value = ownedPets.value[0].pet;
     }
 
+    // Get user's cosmetics (audios)
+    const cosmetics = petsResponse.data.cosmetics || [];
+    console.log('🎵 [DebugMenu] Cosméticos obtenidos:', cosmetics);
+    
+    // Obtener detalles de los cosmetics desde la tienda para tener los nombres
+    const shopResponse = await axios.get(`${API_BASE_URL}/progression/cosmetics/shop/`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const shopCosmetics = shopResponse.data;
+    
+    // Mapear inventario con detalles del shop
+    ownedAudios.value = cosmetics
+      .map((inv: any) => {
+        const cosmeticDetail = shopCosmetics.find((c: any) => c.item_id === inv.item);
+        return {
+          ...inv,
+          name: cosmeticDetail?.name || `Audio #${inv.item}`,
+          type: cosmeticDetail?.type || 'effect'
+        };
+      })
+      .filter((c: any) => c.type === 'effect'); // Solo audios
+    
+    console.log('🎵 [DebugMenu] Audios del usuario:', ownedAudios.value);
+    
+    // Encontrar audio equipado
+    const equippedAudio = ownedAudios.value.find((a: any) => a.is_equipped);
+    equippedAudioName.value = equippedAudio ? equippedAudio.name : 'Ninguno';
+    
+    if (ownedAudios.value.length > 0 && !selectedAudioToEquip.value) {
+      selectedAudioToEquip.value = ownedAudios.value[0].item;
+    }
+
   } catch (error: any) {
     console.error('Error loading debug data:', error);
     message.value = `Error: ${error.response?.data?.error || error.message}`;
@@ -85,6 +123,37 @@ const handleEquipPet = async () => {
     await loadDebugData();
   } catch (error: any) {
     console.error('Error equipping pet:', error);
+    message.value = `✗ Error: ${error.response?.data?.error || error.message}`;
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleEquipAudio = async () => {
+  if (!selectedAudioToEquip.value) {
+    message.value = 'Selecciona un audio primero';
+    return;
+  }
+
+  loading.value = true;
+  message.value = '';
+
+  try {
+    const token = localStorage.getItem('access_token');
+    const response = await axios.post(
+      `${API_BASE_URL}/progression/shop/equip-cosmetic/`,
+      { item_id: selectedAudioToEquip.value },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    message.value = `✓ ${response.data.message}`;
+    
+    // Recargar tema de audio con fade in/out
+    await AudioService.reloadTheme();
+    
+    await loadDebugData();
+  } catch (error: any) {
+    console.error('Error equipping audio:', error);
     message.value = `✗ Error: ${error.response?.data?.error || error.message}`;
   } finally {
     loading.value = false;
@@ -128,6 +197,7 @@ const toggleMenu = () => {
 };
 
 const ownedPetIds = computed(() => ownedPets.value.map(up => up.pet).join(', '));
+const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', '));
 </script>
 
 <template>
@@ -169,6 +239,15 @@ const ownedPetIds = computed(() => ownedPets.value.map(up => up.pet).join(', '))
           </div>
         </div>
 
+        <!-- Equipped Audio Section -->
+        <div class="debug-section">
+          <h4>🎵 Audio Equipado</h4>
+          <div class="info-row">
+            <span class="label">Audio:</span>
+            <span class="value">{{ equippedAudioName }}</span>
+          </div>
+        </div>
+
         <!-- Owned Pets Section -->
         <div class="debug-section">
           <h4>🎒 Mascotas Adquiridas</h4>
@@ -190,6 +269,27 @@ const ownedPetIds = computed(() => ownedPets.value.map(up => up.pet).join(', '))
           </div>
         </div>
 
+        <!-- Owned Audios Section -->
+        <div class="debug-section">
+          <h4>🎵 Audios Adquiridos</h4>
+          <div v-if="ownedAudios.length === 0" class="empty-state">
+            No tienes audios
+          </div>
+          <div v-else>
+            <div class="info-row">
+              <span class="label">IDs:</span>
+              <span class="value">{{ ownedAudioIds }}</span>
+            </div>
+            <div class="pets-list">
+              <div v-for="audio in ownedAudios" :key="audio.inventory_id" class="pet-item">
+                <span class="pet-name">{{ audio.name }}</span>
+                <span class="pet-id">#{{ audio.item }}</span>
+                <span v-if="audio.is_equipped" class="equipped-badge">✓ Equipado</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Equip Pet Section -->
         <div class="debug-section">
           <h4>⚙️ Equipar Mascota</h4>
@@ -203,6 +303,24 @@ const ownedPetIds = computed(() => ownedPets.value.map(up => up.pet).join(', '))
               </option>
             </select>
             <button @click="handleEquipPet" class="action-btn equip-btn" :disabled="loading">
+              Equipar
+            </button>
+          </div>
+        </div>
+
+        <!-- Equip Audio Section -->
+        <div class="debug-section">
+          <h4>🎵 Equipar Audio</h4>
+          <div v-if="ownedAudios.length === 0" class="empty-state">
+            Compra audios en la tienda primero
+          </div>
+          <div v-else class="action-group">
+            <select v-model="selectedAudioToEquip" class="debug-select">
+              <option v-for="audio in ownedAudios" :key="audio.item" :value="audio.item">
+                {{ audio.name }} (#{{ audio.item }})
+              </option>
+            </select>
+            <button @click="handleEquipAudio" class="action-btn equip-btn" :disabled="loading">
               Equipar
             </button>
           </div>
