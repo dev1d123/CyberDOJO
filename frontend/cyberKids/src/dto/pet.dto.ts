@@ -16,6 +16,13 @@ export interface UserPet {
   acquired_at: string;
 }
 
+export interface PaginatedResponse<T> {
+  count?: number;
+  next?: string | null;
+  previous?: string | null;
+  results: T[];
+}
+
 export interface BuyPetResponse {
   message: string;
   user_pet: UserPet;

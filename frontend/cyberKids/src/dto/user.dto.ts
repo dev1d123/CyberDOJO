@@ -4,6 +4,7 @@ export interface UserDto {
   email: string;
   avatar?: string | null;
   country?: number | null;
+  pet_id?: number | null;
   cybercreds?: number;
   is_active?: boolean;
   date_joined?: string;

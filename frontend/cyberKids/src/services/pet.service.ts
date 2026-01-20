@@ -1,4 +1,4 @@
-import type { Pet, UserPet, BuyPetResponse, EquipPetResponse } from '../dto/pet.dto';
+import type { Pet, UserPet, BuyPetResponse, EquipPetResponse, PaginatedResponse } from '../dto/pet.dto';
 
 import { API_CONFIG } from '../config/api.config';
 
@@ -54,7 +54,7 @@ export class PetService {
   }
 
   // Obtener las mascotas del usuario
-  static async getUserPets(userId: number): Promise<UserPet[]> {
+  static async getUserPets(userId: number): Promise<UserPet[] | PaginatedResponse<UserPet>> {
     const token = localStorage.getItem('access_token');
     
     if (!token) {

@@ -3,12 +3,12 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import animationsData from '@/data/animations.json';
 import { UserService } from '@/services/user.service';
 
 const route = useRoute();
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const petContainer = ref<HTMLDivElement | null>(null);
+void petContainer;
 const isVisible = ref(true);
 const loading = ref(false);
 const petOpacity = ref(1);
@@ -19,9 +19,7 @@ let camera: THREE.PerspectiveCamera | null = null;
 let renderer: THREE.WebGLRenderer | null = null;
 let mixer: THREE.AnimationMixer | null = null;
 let clock: THREE.Clock | null = null;
-let currentGLTF: any = null;
 let animationFrame: number | null = null;
-let currentModel: string = '';
 let allAnimations: THREE.AnimationClip[] = [];
 let model3D: THREE.Group | null = null;
 
@@ -139,7 +137,6 @@ const loadModel = async (modelName: string) => {
   if (!canvasRef.value) return;
   
   loading.value = true;
-  currentModel = modelName;
   cleanup();
 
   // Configurar escena
@@ -169,7 +166,6 @@ const loadModel = async (modelName: string) => {
   try {
     const modelPath = new URL(`../assets/models/${modelName}.glb`, import.meta.url).href;
     const gltf = await loader.loadAsync(modelPath);
-    currentGLTF = gltf;
     
     model3D = gltf.scene;
     model3D.position.set(0, 0, 0);
@@ -207,7 +203,9 @@ const playAnimation = (animationName: string, loop: boolean = true) => {
 
 const playRandomAnimation = (animList: string[]) => {
   const randomAnim = animList[Math.floor(Math.random() * animList.length)];
-  playAnimation(randomAnim);
+  if (randomAnim) {
+    playAnimation(randomAnim);
+  }
 };
 
 const animate = () => {
@@ -269,11 +267,11 @@ const cleanup = () => {
   }
 
   if (scene) {
-    scene.traverse((object) => {
+    scene.traverse((object: any) => {
       if (object instanceof THREE.Mesh) {
         object.geometry.dispose();
         if (Array.isArray(object.material)) {
-          object.material.forEach(material => material.dispose());
+          object.material.forEach((material: any) => material.dispose());
         } else {
           object.material.dispose();
         }
@@ -283,7 +281,6 @@ const cleanup = () => {
   }
 
   clock = null;
-  currentGLTF = null;
   allAnimations = [];
   model3D = null;
 };
@@ -434,18 +431,6 @@ const setupEventListeners = () => {
   }, 1000);
   
   setupEventListeners();
-};
-
-const removeEventListeners = () => {
-  if (logoutButton) {
-    logoutButton.removeEventListener('mouseenter', handleLogoutHover);
-  }
-  if (chatInputs) {
-    chatInputs.forEach(input => {
-      input.removeEventListener('focus', handleChatFocus);
-      input.removeEventListener('blur', handleChatBlur);
-    });
-  }
 };
 
 const handleLogoutHover = () => {
