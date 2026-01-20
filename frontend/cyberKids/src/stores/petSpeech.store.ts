@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import dialoguesData from '@/data/pet_dialogues.json';
+import { hasPetEquipped } from './petState.store';
 
 export type PetSpeechBehavior = keyof typeof dialoguesData.behaviors | (string & {});
 
@@ -59,6 +60,8 @@ function setPetVisible(visible: boolean) {
 }
 
 function speak(options: PetSpeakOptions) {
+  // NO HABLAR SI NO HAY MASCOTA EQUIPADA
+  if (!hasPetEquipped.value) return;
   if (!petVisible.value) return;
 
   const priority = options.priority ?? 0;

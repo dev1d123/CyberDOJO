@@ -1,5 +1,6 @@
 import type { DirectiveBinding, ObjectDirective } from 'vue';
 import { PetSpeech, type PetSpeakOptions } from '@/stores/petSpeech.store';
+import { hasPetEquipped } from '@/stores/petState.store';
 
 type HintConfig =
   | string
@@ -97,7 +98,10 @@ export const petHintDirective: ObjectDirective<HTMLElement, HintConfig> = {
     const cfg = normalize(binding.value, el);
 
     const onEnter = () => {
-      if (cfg.hover) PetSpeech.speak(cfg.hover);
+      // Solo mostrar hints si hay una mascota equipada
+      if (cfg.hover && hasPetEquipped.value) {
+        PetSpeech.speak(cfg.hover);
+      }
     };
 
     const onLeave = () => {
@@ -108,7 +112,10 @@ export const petHintDirective: ObjectDirective<HTMLElement, HintConfig> = {
     };
 
     const onClick = () => {
-      if (cfg.click) PetSpeech.speak(cfg.click);
+      // Solo mostrar hints si hay una mascota equipada
+      if (cfg.click && hasPetEquipped.value) {
+        PetSpeech.speak(cfg.click);
+      }
     };
 
     (el as any)[HANDLERS] = { onEnter, onLeave, onClick };
@@ -143,7 +150,10 @@ export const petHintDirective: ObjectDirective<HTMLElement, HintConfig> = {
     const cfg = normalize(binding.value, el);
 
     const onEnter = () => {
-      if (cfg.hover) PetSpeech.speak(cfg.hover);
+      // Solo mostrar hints si hay una mascota equipada
+      if (cfg.hover && hasPetEquipped.value) {
+        PetSpeech.speak(cfg.hover);
+      }
     };
 
     const onLeave = () => {
@@ -154,7 +164,10 @@ export const petHintDirective: ObjectDirective<HTMLElement, HintConfig> = {
     };
 
     const onClick = () => {
-      if (cfg.click) PetSpeech.speak(cfg.click);
+      // Solo mostrar hints si hay una mascota equipada
+      if (cfg.click && hasPetEquipped.value) {
+        PetSpeech.speak(cfg.click);
+      }
     };
 
     (el as any)[HANDLERS] = { onEnter, onLeave, onClick };

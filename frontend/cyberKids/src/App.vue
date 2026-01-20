@@ -6,11 +6,15 @@ import Navbar from './components/Navbar.vue';
 import PetViewer from './components/PetViewer.vue';
 import AudioControls from './components/AudioControls.vue';
 import { AudioService } from './services/audio.service';
+import { setPetEquipped } from './stores/petState.store';
 
 const route = useRoute();
 
 // Inicializar sistema de audio
 onMounted(() => {
+  // Inicializar estado de mascota como no equipada por defecto
+  setPetEquipped(null);
+  
   // Agregar event listener global para clicks
   document.addEventListener('click', () => {
     AudioService.playClick();

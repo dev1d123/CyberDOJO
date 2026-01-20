@@ -6,6 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { UserService } from '@/services/user.service';
 import PetSpeechBubble from './PetSpeechBubble.vue';
 import { PetSpeech } from '@/stores/petSpeech.store';
+import { setPetEquipped } from '@/stores/petState.store';
 
 const route = useRoute();
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -104,6 +105,9 @@ const loadUserPet = async () => {
   try {
     const user = await UserService.getCurrentUser();
     if (user.pet_id) {
+      // Actualizar el store global
+      setPetEquipped(user.pet_id);
+      
       // Si cambió la mascota equipada, hacer transición
       if (currentPetId.value !== null && currentPetId.value !== user.pet_id) {
         await transitionToPet(user.pet_id);
@@ -114,9 +118,13 @@ const loadUserPet = async () => {
           await loadModel(modelName);
         }
       }
+    } else {
+      // No hay mascota equipada
+      setPetEquipped(null);
     }
   } catch (error) {
     console.error('Error cargando mascota:', error);
+    setPetEquipped(null);
   }
 };
 
@@ -143,8 +151,15 @@ const startPetChecker = () => {
   petCheckInterval = window.setInterval(async () => {
     try {
       const user = await UserService.getCurrentUser();
-      if (user.pet_id && currentPetId.value !== null && currentPetId.value !== user.pet_id) {
-        await transitionToPet(user.pet_id);
+      if (user.pet_id) {
+        // Si no hay mascota cargada, cargarla
+        if (currentPetId.value === null) {
+          await loadUserPet();
+        }
+        // Si cambió la mascota, hacer transición
+        else if (currentPetId.value !== user.pet_id) {
+          await transitionToPet(user.pet_id);
+        }
       }
     } catch (error) {
       // Ignorar errores silenciosamente

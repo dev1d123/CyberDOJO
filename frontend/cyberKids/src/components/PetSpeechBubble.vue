@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { PetSpeech } from '@/stores/petSpeech.store';
+import { hasPetEquipped } from '@/stores/petState.store';
 
 const props = defineProps<{
   anchorEl: HTMLElement | null;
@@ -11,7 +12,14 @@ const position = ref({ left: 0, top: 0 });
 let rafId: number | null = null;
 
 const shouldShow = computed(() => {
-  return Boolean(props.isPetVisible && props.anchorEl && PetSpeech.isOpen.value && PetSpeech.text.value);
+  // Solo mostrar si hay mascota equipada Y el resto de condiciones se cumplen
+  return Boolean(
+    hasPetEquipped.value && 
+    props.isPetVisible && 
+    props.anchorEl && 
+    PetSpeech.isOpen.value && 
+    PetSpeech.text.value
+  );
 });
 
 function updatePosition() {
