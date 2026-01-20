@@ -104,7 +104,7 @@ const themeClass = computed(() => {
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 10;
+  z-index: 100;
   background: rgba(80, 227, 194, 0.95);
   color: white;
   padding: 4px 10px;
@@ -113,6 +113,7 @@ const themeClass = computed(() => {
   font-weight: 900;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   letter-spacing: 0.5px;
+  pointer-events: none;
 }
 
 .media {
