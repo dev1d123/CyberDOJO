@@ -256,9 +256,7 @@ onMounted(async () => {
     const justCompletedOnboarding = localStorage.getItem('just_completed_onboarding');
     
     if (justCompletedOnboarding === 'true' || !tourCompleted) {
-      if (instance?.proxy?.$tours) {
-        instance.proxy.$tours['dashboardTour'].start();
-      }
+      instance?.proxy?.$tours?.['dashboardTour']?.start?.();
       localStorage.removeItem('just_completed_onboarding');
     }
   }, 1500);
