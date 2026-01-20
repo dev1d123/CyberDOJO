@@ -1,0 +1,49 @@
+{
+  "soundThemes": [
+    {
+      "item_id": 1,
+      "name": "NormalSound",
+      "sounds": {
+        "click": "/src/assets/sounds/normalClick.mp3",
+        "send": "/src/assets/sounds/normalSend.mp3",
+        "receive": "/src/assets/sounds/normalReceive.mp3",
+        "dialog": "/src/assets/sounds/normalDialog.mp3",
+        "background": "/src/assets/sounds/normalBackground.mp3"
+      }
+    },
+    {
+      "item_id": 2,
+      "name": "HappySound",
+      "sounds": {
+        "click": "/src/assets/sounds/funnyClick.mp3",
+        "send": "/src/assets/sounds/funnySend.mp3",
+        "receive": "/src/assets/sounds/funnyReceive.mp3",
+        "dialog": "/src/assets/sounds/happyDialog.mp3",
+        "background": "/src/assets/sounds/happyBackground.mp3"
+      }
+    },
+    {
+      "item_id": 3,
+      "name": "RetroSound",
+      "sounds": {
+        "click": "/src/assets/sounds/retroClick.mp3",
+        "send": "/src/assets/sounds/retroSend.mp3",
+        "receive": "/src/assets/sounds/retroReceive.mp3",
+        "dialog": "/src/assets/sounds/retroDialog.mp3",
+        "background": "/src/assets/sounds/retroBackground.mp3"
+      }
+    },
+    {
+      "item_id": 4,
+      "name": "EpicSound",
+      "sounds": {
+        "click": "/src/assets/sounds/epicClick.mp3",
+        "send": "/src/assets/sounds/epicSend.mp3",
+        "receive": "/src/assets/sounds/epicReceive.mp3",
+        "dialog": "/src/assets/sounds/epicDialog.mp3",
+        "background": "/src/assets/sounds/epicBackground.mp3"
+      }
+    }
+  ],
+  "defaultTheme": 1
+}
