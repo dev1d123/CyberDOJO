@@ -7,6 +7,7 @@ import ShopItemGrid from '../components/shop/ShopItemGrid.vue';
 import ShopItemDetails from '../components/shop/ShopItemDetails.vue';
 import type { ShopCategory, ShopItem } from '../components/shop/shop.types';
 import { PetService } from '../services/pet.service';
+import { CosmeticService } from '../services/cosmetic.service';
 import { UserService } from '../services/user.service';
 import petsData from '../data/pets.json';
 
@@ -18,6 +19,7 @@ import pet5Img from '@/assets/images/pet5.png';
 
 const activeCategory = ref<ShopCategory>('pets');
 const userPetIds = ref<number[]>([]);
+const userCosmeticIds = ref<number[]>([]);
 const currentCybercreds = ref<number>(0);
 const loading = ref(true);
 const toastMessage = ref<string>('');
@@ -43,48 +45,15 @@ const pets: ShopItem[] = petsData.map((pet) => ({
   isDefault: pet.is_default,
 }));
 
-const sounds: ShopItem[] = [
-  {
-    id: 'sound-normal',
-    category: 'sounds',
-    theme: 'normal',
-    name: 'Normal',
-    description: 'Sonidos suaves y claros para jugar tranqui. Ideal para concentrarte.',
-    price: 40,
-  },
-  {
-    id: 'sound-fun',
-    category: 'sounds',
-    theme: 'fun',
-    name: 'Divertidos',
-    description: 'Efectos graciosos y chispeantes. ¡Perfecto para reírte mientras aprendes!',
-    price: 75,
-  },
-  {
-    id: 'sound-retro',
-    category: 'sounds',
-    theme: 'retro',
-    name: 'Retro',
-    description: 'Bips y bloops estilo arcade. Convierte el dojo en un juego clásico.',
-    price: 90,
-  },
-  {
-    id: 'sound-epic',
-    category: 'sounds',
-    theme: 'epic',
-    name: 'Épico',
-    description: 'Golpes, fanfarrias y vibes heroicas. ¡Cada victoria se siente legendaria!',
-    price: 120,
-  },
-];
+const sounds = ref<ShopItem[]>([]);
 
-const itemsForCategory = computed(() => (activeCategory.value === 'pets' ? pets : sounds));
+const itemsForCategory = computed(() => (activeCategory.value === 'pets' ? pets : sounds.value));
 
 const selectedItemId = ref<string | undefined>(itemsForCategory.value[0]?.id);
 const selectedItem = computed<ShopItem | null>(() => {
   const id = selectedItemId.value;
   if (!id) return null;
-  return [...pets, ...sounds].find((x) => x.id === id) ?? null;
+  return [...pets, ...sounds.value].find((x) => x.id === id) ?? null;
 });
 
 watch(
@@ -135,23 +104,6 @@ const triggerConfetti = () => {
 };
 
 const handleBuy = async (item: ShopItem) => {
-  if (item.category !== 'pets') {
-    alert('Solo se pueden comprar pets por ahora');
-    return;
-  }
-
-  const petItem = item as any;
-  if (!petItem.petId) {
-    alert('Error: No se puede comprar este item');
-    return;
-  }
-
-  // Verificar si ya lo tiene
-  if (userPetIds.value.includes(petItem.petId)) {
-    showToast('¡Ya tienes esta mascota!');
-    return;
-  }
-
   // Verificar si tiene suficientes cybercreds
   if (currentCybercreds.value < item.price) {
     showToast('No tienes suficientes CyberCredits');
@@ -159,20 +111,56 @@ const handleBuy = async (item: ShopItem) => {
   }
 
   try {
-    console.log('💳 [ShopPage] Intentando comprar pet_id:', petItem.petId);
-    const response = await PetService.buyPet(petItem.petId);
-    console.log('✅ [ShopPage] Respuesta de compra:', response);
-    
-    userPetIds.value.push(petItem.petId);
-    // El backend devuelve 'remaining_cybercreds', no 'cybercreds'
-    currentCybercreds.value = response.remaining_cybercreds || response.cybercreds || currentCybercreds.value;
+    if (item.category === 'pets') {
+      const petItem = item as any;
+      if (!petItem.petId) {
+        alert('Error: No se puede comprar este item');
+        return;
+      }
+
+      // Verificar si ya lo tiene
+      if (userPetIds.value.includes(petItem.petId)) {
+        showToast('¡Ya tienes esta mascota!');
+        return;
+      }
+
+      console.log('💳 [ShopPage] Intentando comprar pet_id:', petItem.petId);
+      const response = await PetService.buyPet(petItem.petId);
+      console.log('✅ [ShopPage] Respuesta de compra:', response);
+      
+      userPetIds.value.push(petItem.petId);
+      currentCybercreds.value = response.remaining_cybercreds;
+      
+    } else if (item.category === 'sounds') {
+      const soundItem = item as any;
+      if (!soundItem.itemId) {
+        alert('Error: No se puede comprar este item');
+        return;
+      }
+
+      // Verificar si ya lo tiene
+      if (userCosmeticIds.value.includes(soundItem.itemId)) {
+        showToast('¡Ya tienes este audio!');
+        return;
+      }
+
+      console.log('💳 [ShopPage] Intentando comprar cosmetic item_id:', soundItem.itemId);
+      const response = await CosmeticService.buyCosmetic(soundItem.itemId);
+      console.log('✅ [ShopPage] Respuesta de compra cosmético:', response);
+      
+      userCosmeticIds.value.push(soundItem.itemId);
+      currentCybercreds.value = response.remaining_cybercreds;
+    } else {
+      alert('Categoría no soportada');
+      return;
+    }
     
     // Mostrar confeti y toast
     triggerConfetti();
     showToast(`¡Compraste ${item.name}! 🎉`);
   } catch (error: any) {
-    console.error('❌ [ShopPage] Error comprando pet:', error);
-    showToast(error?.error || 'Error al comprar la mascota');
+    console.error('❌ [ShopPage] Error comprando item:', error);
+    showToast(error?.error || 'Error al comprar el item');
   }
 };
 
@@ -185,20 +173,49 @@ const loadUserData = async () => {
     console.log('💰 [ShopPage] CyberCredits:', user.cybercreds);
     currentCybercreds.value = user.cybercreds || 0;
     
+    // Cargar mascotas del usuario
     console.log('🐾 [ShopPage] Obteniendo mascotas del usuario con user_id:', user.user_id);
-    const response = await PetService.getUserPets(user.user_id);
-    console.log('✅ [ShopPage] Respuesta de mascotas del backend:', response);
+    const petsResponse = await PetService.getUserPets(user.user_id);
+    console.log('✅ [ShopPage] Respuesta de mascotas del backend:', petsResponse);
     
-    // El backend devuelve una respuesta paginada con structure: { count, next, previous, results }
-    const userPets = Array.isArray(response) ? response : (response.results || []);
+    const userPets = Array.isArray(petsResponse) ? petsResponse : ((petsResponse as any).results || []);
     console.log('📊 [ShopPage] Mascotas extraídas:', userPets);
     console.log('📊 [ShopPage] Cantidad de mascotas:', userPets.length);
     
-    userPetIds.value = userPets.map((up) => up.pet);
+    userPetIds.value = userPets.map((up: any) => up.pet);
     console.log('🆔 [ShopPage] IDs de mascotas extraídos:', userPetIds.value);
+
+    // Cargar audios (cosmetics) de la tienda
+    console.log('🎵 [ShopPage] Cargando audios desde el backend...');
+    const cosmetics = await CosmeticService.getShopCosmetics();
+    console.log('✅ [ShopPage] Cosméticos obtenidos:', cosmetics);
+    
+    // Filtrar solo items de tipo 'effect' (audios)
+    const audioCosmetics = cosmetics.filter(c => c.type === 'effect');
+    console.log('🎵 [ShopPage] Audios filtrados:', audioCosmetics);
+    
+    sounds.value = audioCosmetics.map((cosmetic) => ({
+      id: `sound${cosmetic.item_id}`,
+      itemId: cosmetic.item_id,
+      category: 'sounds' as const,
+      name: cosmetic.name,
+      description: cosmetic.description,
+      price: cosmetic.cybercreds_cost,
+      theme: cosmetic.name.toLowerCase().replace('sound', '') as any,
+    }));
+    console.log('🎵 [ShopPage] Sounds mapeados:', sounds.value);
+
+    // Cargar inventario del usuario (para saber qué audios tiene)
+    console.log('🎒 [ShopPage] Cargando inventario del usuario...');
+    const purchases = await CosmeticService.getMyPurchases();
+    console.log('✅ [ShopPage] Compras del usuario:', purchases);
+    
+    userCosmeticIds.value = purchases.cosmetics.map((inv) => inv.item);
+    console.log('🆔 [ShopPage] IDs de cosméticos del usuario:', userCosmeticIds.value);
   } catch (error) {
     console.error('❌ [ShopPage] Error cargando datos del usuario:', error);
     userPetIds.value = [];
+    userCosmeticIds.value = [];
   } finally {
     loading.value = false;
   }
@@ -209,9 +226,14 @@ onMounted(() => {
 });
 
 const isPetOwned = (item: ShopItem): boolean => {
-  if (item.category !== 'pets') return false;
-  const petId = (item as any).petId;
-  return petId ? userPetIds.value.includes(petId) : false;
+  if (item.category === 'pets') {
+    const petId = (item as any).petId;
+    return petId ? userPetIds.value.includes(petId) : false;
+  } else if (item.category === 'sounds') {
+    const itemId = (item as any).itemId;
+    return itemId ? userCosmeticIds.value.includes(itemId) : false;
+  }
+  return false;
 };
 
 </script>
@@ -244,6 +266,7 @@ const isPetOwned = (item: ShopItem): boolean => {
         :items="itemsForCategory"
         :selected-id="selectedItemId"
         :owned-pet-ids="userPetIds"
+        :owned-cosmetic-ids="userCosmeticIds"
         @select="handleSelect"
       />
 

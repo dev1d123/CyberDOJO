@@ -1,6 +1,8 @@
 import type { RegisterDto, LoginDto, AuthResponse } from '../dto/auth.dto';
 
-const API_BASE_URL = 'https://juliojc.pythonanywhere.com/api/users/auth';
+import { API_CONFIG } from '../config/api.config';
+
+const API_BASE_URL = `${API_CONFIG.BASE_URL}/users/auth`;
 
 export class AuthService {
   static async register(data: RegisterDto): Promise<AuthResponse> {

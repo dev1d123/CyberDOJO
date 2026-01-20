@@ -6,6 +6,7 @@ const props = defineProps<{
   items: ShopItem[];
   selectedId?: string;
   ownedPetIds?: number[];
+  ownedCosmeticIds?: number[];
 }>();
 
 defineEmits<{
@@ -13,9 +14,14 @@ defineEmits<{
 }>();
 
 const isOwned = (item: ShopItem): boolean => {
-  if (item.category !== 'pets') return false;
-  const petId = (item as any).petId;
-  return petId ? (props.ownedPetIds || []).includes(petId) : false;
+  if (item.category === 'pets') {
+    const petId = (item as any).petId;
+    return petId ? (props.ownedPetIds || []).includes(petId) : false;
+  } else if (item.category === 'sounds') {
+    const itemId = (item as any).itemId;
+    return itemId ? (props.ownedCosmeticIds || []).includes(itemId) : false;
+  }
+  return false;
 };
 </script>
 
@@ -44,7 +50,7 @@ const isOwned = (item: ShopItem): boolean => {
   border: 2px solid rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(8px);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
-  overflow: hidden;
+  overflow: auto;
   min-height: 0;
 }
 
@@ -55,7 +61,7 @@ const isOwned = (item: ShopItem): boolean => {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-auto-rows: minmax(220px, 1fr);
   gap: 14px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 @media (max-width: 1200px) {
