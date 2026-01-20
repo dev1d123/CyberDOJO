@@ -53,18 +53,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import BackToDashboardButton from '../components/BackToDashboardButton.vue';
 import HistoryMap from '../components/history/HistoryMap.vue';
 import type { HistoryLevelDto } from '../dto/history.dto';
+import { SimulationService } from '../services/simulation.service';
 
 const router = useRouter();
 
 const historyBackgroundUrl = new URL('../assets/images/historyBackground.png', import.meta.url).href;
 const islandUrl = new URL('../assets/images/island.png', import.meta.url).href;
 
-const levels: HistoryLevelDto[] = [
+const fallbackLevels: HistoryLevelDto[] = [
   { id: 1, name: 'Ingeniería Social', details: 'Detecta y resiste técnicas de manipulación en conversaciones.', currentScore: 60, totalScore: 180, x: '26%', y: '72%' },
   { id: 2, name: 'Suplantación Digital', details: 'Identifica ataques de phishing y enlaces maliciosos.', currentScore: 0, totalScore: 220, x: '12%', y: '52%' },
   { id: 3, name: 'Fuga de Datos', details: 'Protege información sensible en tus comunicaciones.', currentScore: 0, totalScore: 240, x: '34%', y: '34%' },
@@ -73,7 +74,41 @@ const levels: HistoryLevelDto[] = [
   { id: 6, name: 'Suplantación de Identidad', details: 'Verifica identidades y detecta impostores en línea.', currentScore: 0, totalScore: 300, x: '92%', y: '58%' },
 ];
 
+const positionByScenarioId: Record<number, { x: string; y: string }> = {
+  1: { x: '26%', y: '72%' },
+  2: { x: '12%', y: '52%' },
+  3: { x: '34%', y: '34%' },
+  4: { x: '56%', y: '50%' },
+  5: { x: '76%', y: '30%' },
+  6: { x: '92%', y: '58%' },
+};
+
+const levels = ref<HistoryLevelDto[]>(fallbackLevels);
+
 const selectedLevel = ref<HistoryLevelDto | null>(null);
+
+onMounted(async () => {
+  try {
+    const scenarios = await SimulationService.getScenarios();
+    if (scenarios.length === 0) return;
+
+    levels.value = scenarios.map((s) => {
+      const pos = positionByScenarioId[s.scenario_id] || { x: '50%', y: '50%' };
+      return {
+        id: s.scenario_id,
+        name: s.name,
+        details: s.description || 'Prepárate para enfrentar un escenario de ingeniería social.',
+        currentScore: 0,
+        totalScore: s.base_points || 0,
+        x: pos.x,
+        y: pos.y,
+      };
+    });
+  } catch {
+    // Fallback a hardcoded (evita romper la UI si la API falla)
+    levels.value = fallbackLevels;
+  }
+});
 
 const selectLevel = (level: HistoryLevelDto) => {
   selectedLevel.value = level;

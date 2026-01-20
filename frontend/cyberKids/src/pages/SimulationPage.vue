@@ -146,7 +146,7 @@ const chatContainer = ref<HTMLElement | null>(null);
 const showInitScreen = ref(true);
 const hasActiveSession = ref(false);
 
-const scenarioNames: Record<number, string> = {
+const scenarioNamesFallback: Record<number, string> = {
   1: 'Ingeniería Social',
   2: 'Suplantación Digital',
   3: 'Fuga de Datos',
@@ -156,8 +156,14 @@ const scenarioNames: Record<number, string> = {
 };
 
 // Initialize on mount
-onMounted(() => {
-  scenarioName.value = scenarioNames[scenarioId.value] || 'Simulación';
+onMounted(async () => {
+  try {
+    const scenarios = await SimulationService.getScenarios();
+    const scenario = scenarios.find((s) => s.scenario_id === scenarioId.value);
+    scenarioName.value = scenario?.name || scenarioNamesFallback[scenarioId.value] || 'Simulación';
+  } catch {
+    scenarioName.value = scenarioNamesFallback[scenarioId.value] || 'Simulación';
+  }
   checkActiveSession();
 });
 
@@ -172,7 +178,9 @@ async function checkActiveSession() {
     hasActiveSession.value = true;
   } catch (error) {
     // No active session found
-    console.log('No hay sesión activa, mostrando pantalla inicial');
+    if ((error as any)?.message !== 'no_active_session') {
+      console.log('No hay sesión activa, mostrando pantalla inicial');
+    }
     hasActiveSession.value = false;
   } finally {
     // SIEMPRE desactivar loading
@@ -281,6 +289,10 @@ async function sendMessage() {
       sent_at: new Date().toISOString(),
     });
 
+    if (response.llm_analysis) {
+      console.log('🧠 [SimulationPage] LLM analysis:', response.llm_analysis);
+    }
+
     antagonistAttempts.value = response.antagonist_attempts;
 
     // Check if game is over
@@ -290,7 +302,7 @@ async function sendMessage() {
       
       if (response.outcome === 'won') {
         gameOverMessage.value = '¡Excelente trabajo! Resististe todos los intentos de ingeniería social.';
-        pointsEarned.value = 180; // Could get from response
+        pointsEarned.value = response.points_earned ?? 0;
       } else {
         gameOverMessage.value = response.game_over_reason || 'Compartiste información sensible. ¡Inténtalo de nuevo!';
       }

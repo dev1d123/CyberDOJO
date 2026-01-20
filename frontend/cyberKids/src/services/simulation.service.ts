@@ -3,6 +3,17 @@ import { API_CONFIG } from '../config/api.config';
 
 const API_BASE_URL = `${API_CONFIG.BASE_URL}/simulation`;
 
+export interface ScenarioDto {
+  scenario_id: number;
+  name: string;
+  description: string | null;
+  antagonist_goal: string;
+  difficulty_level: number;
+  base_points: number;
+  threat_type: string | null;
+  is_active: boolean;
+}
+
 interface StartSessionResponse {
   session_id: number;
   initial_message: string;
@@ -14,10 +25,18 @@ interface ChatResponse {
   session_id: number;
   disclosure: boolean;
   disclosure_reason: string | null;
+  llm_analysis?: {
+    has_disclosure: boolean;
+    disclosure_reason: string;
+    is_attack_attempt: boolean;
+    is_user_evasion: boolean;
+    force_end_session: boolean;
+  };
   antagonist_attempts: number;
   is_game_over: boolean | null;
   outcome: string | null;
   game_over_reason: string | null;
+  points_earned?: number;
 }
 
 interface ChatMessage {
@@ -43,6 +62,23 @@ export class SimulationService {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     };
+  }
+
+  static async getScenarios(): Promise<ScenarioDto[]> {
+    const response = await fetch(`${API_BASE_URL}/scenarios/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(text || `Error al obtener escenarios: ${response.status}`);
+    }
+
+    const data = (await response.json()) as ScenarioDto[];
+    return [...data].sort((a, b) => (a.difficulty_level - b.difficulty_level) || (a.scenario_id - b.scenario_id));
   }
 
   static async startSession(scenarioId: number): Promise<StartSessionResponse> {
@@ -82,9 +118,17 @@ export class SimulationService {
     console.log('📥 [RESUME SESSION] Response status:', response.status);
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('❌ [RESUME SESSION] Error:', error);
-      throw new Error(error.error || 'No hay sesión activa');
+      // Backend retorna 404 con { error: 'no_active_session' } cuando no hay sesión.
+      // Eso es un caso esperado; no lo tratamos como error ruidoso.
+      if (response.status === 404) {
+        const body: any = await response.json().catch(() => null);
+        if (body?.error === 'no_active_session') {
+          throw new Error('no_active_session');
+        }
+      }
+
+      const error: any = await response.json().catch(() => null);
+      throw new Error(error?.error || 'No hay sesión activa');
     }
 
     const data = await response.json();
@@ -106,14 +150,20 @@ export class SimulationService {
 
     console.log('📥 [SEND MESSAGE] Response status:', response.status);
 
+    const contentType = response.headers.get('content-type') || '';
+    const body = contentType.includes('application/json') ? await response.json() : await response.text();
+
     if (!response.ok) {
-      const error = await response.json();
-      console.error('❌ [SEND MESSAGE] Error:', error);
-      throw new Error(error.error || 'Error al enviar mensaje');
+      console.error('❌ [SEND MESSAGE] Error:', body);
+      const errObj: any = body;
+      throw new Error(errObj?.error || (typeof body === 'string' ? body : 'Error al enviar mensaje'));
     }
 
-    const data = await response.json();
+    const data = body as ChatResponse;
     console.log('✅ [SEND MESSAGE] Success:', data);
+    if (data.llm_analysis) {
+      console.log('🧠 [LLM] analysis:', data.llm_analysis);
+    }
     return data;
   }
 
