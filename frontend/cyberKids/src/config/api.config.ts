@@ -1,4 +1,4 @@
 // Configuración centralizada de la API
 export const API_CONFIG = {
-  BASE_URL: 'https://juliojc.pythonanywhere.com/api',
+  BASE_URL: 'http://cyberdojo-production.up.railway.app/api',
 } as const;
