@@ -109,7 +109,7 @@ const loadAll = async () => {
     const pets = Array.isArray(response) ? response : (response.results || []);
     console.log('📊 [ProfilePage] Mascotas extraídas:', pets);
     console.log('📊 [ProfilePage] Cantidad de mascotas:', pets.length);
-    console.log('🔍 [ProfilePage] Detalles de cada mascota:', pets.map(p => ({
+    console.log('🔍 [ProfilePage] Detalles de cada mascota:', pets.map((p: any) => ({
       user_pet_id: p.user_pet_id,
       pet_id: p.pet,
       is_equipped: p.is_equipped

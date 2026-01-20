@@ -166,7 +166,7 @@ async function checkActiveSession() {
     loading.value = true;
     
     // Check if there's an active session for this scenario
-    const resumeResponse = await SimulationService.resumeSession(scenarioId.value);
+    await SimulationService.resumeSession(scenarioId.value);
     
     // If we get here, there's an active session
     hasActiveSession.value = true;

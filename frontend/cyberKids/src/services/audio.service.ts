@@ -57,8 +57,13 @@ class AudioServiceClass {
     }
     
     // Siempre cargar tema por defecto (esté o no autenticado)
-    this.currentTheme = soundsData.soundThemes.find(t => t.item_id === soundsData.defaultTheme) || soundsData.soundThemes[0];
-    console.log('🎵 [AudioService] Usando tema por defecto:', this.currentTheme.name);
+    this.currentTheme =
+      soundsData.soundThemes.find(t => t.item_id === soundsData.defaultTheme) ??
+      soundsData.soundThemes[0] ??
+      null;
+    if (this.currentTheme) {
+      console.log('🎵 [AudioService] Usando tema por defecto:', this.currentTheme.name);
+    }
     this.preloadSounds();
   }
 

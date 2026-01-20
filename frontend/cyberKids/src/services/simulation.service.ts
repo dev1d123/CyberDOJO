@@ -30,6 +30,7 @@ interface ResumeSessionResponse {
   session_id: number;
   messages: ChatMessage[];
   resumed: boolean;
+  antagonist_attempts?: number;
 }
 
 export class SimulationService {

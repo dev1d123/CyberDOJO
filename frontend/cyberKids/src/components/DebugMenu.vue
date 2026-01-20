@@ -173,7 +173,7 @@ const handleAddCredits = async () => {
     const token = localStorage.getItem('access_token');
     
     // Usar el endpoint correcto de add_cybercreds
-    const response = await axios.post(
+    await axios.post(
       `${API_BASE_URL}/users/${userId.value}/add_cybercreds/`,
       { amount: creditsToAdd.value },
       { headers: { Authorization: `Bearer ${token}` } }
