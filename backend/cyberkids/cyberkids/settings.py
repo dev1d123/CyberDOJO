@@ -177,3 +177,7 @@ if PYTHONANYWHERE_DOMAIN:
 
 cloudinary.config(**cloudinary_config)
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://cyberdojo-production.up.railway.app",
+]
