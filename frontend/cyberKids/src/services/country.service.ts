@@ -1,7 +1,9 @@
 import axios from 'axios';
 import type { CountryDto } from '../dto/country.dto';
 
-const API_BASE_URL = 'https://juliojc.pythonanywhere.com/api';
+import { API_CONFIG } from '../config/api.config';
+
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 type PaginatedResponse<T> = {
   count?: number;

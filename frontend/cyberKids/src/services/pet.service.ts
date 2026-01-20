@@ -1,6 +1,8 @@
 import type { Pet, UserPet, BuyPetResponse, EquipPetResponse } from '../dto/pet.dto';
 
-const API_BASE_URL = 'https://juliojc.pythonanywhere.com/api';
+import { API_CONFIG } from '../config/api.config';
+
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 export class PetService {
   // Obtener todas las mascotas de la tienda
