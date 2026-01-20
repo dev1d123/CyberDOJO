@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { AuthService } from '../services/auth.service';
-import { API_CONFIG } from '../config/api.config';
+import { PetService } from '../services/pet.service';
 import type { RegisterDto, ValidationErrors } from '../dto/auth.dto';
 
 const router = useRouter();
@@ -112,22 +112,31 @@ const handleRegister = async () => {
     // Asignar mascota por defecto (gratis - costo 0)
     try {
       const accessToken = localStorage.getItem('access_token');
+      const userIdRaw = localStorage.getItem('user_id');
       console.log('🔑 Token disponible:', accessToken ? 'Sí' : 'No');
-      if (accessToken) {
-        const petResponse = await fetch(`${API_CONFIG.BASE_URL}/progression/shop/buy-pet/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
-          },
-          body: JSON.stringify({ pet_id: 7 })
-        });
-        const petData = await petResponse.json();
-        console.log('🐾 Respuesta del servidor:', petResponse.status, petData);
-        if (petResponse.ok) {
-          console.log('✅ Pet por defecto asignado correctamente');
+
+      if (accessToken && userIdRaw) {
+        const userId = Number(userIdRaw);
+
+        // Evitar 400 si el backend ya asignó la mascota por defecto.
+        const petsResponse = await PetService.getUserPets(userId);
+        const pets = Array.isArray(petsResponse) ? petsResponse : petsResponse.results;
+        const alreadyHasDefault = pets.some(p => p.pet === 7);
+
+        if (alreadyHasDefault) {
+          console.log('✅ Pet por defecto ya estaba asignado');
         } else {
-          console.error('❌ Error del servidor:', petData);
+          try {
+            await PetService.buyPet(7);
+            console.log('✅ Pet por defecto asignado correctamente');
+          } catch (buyError: any) {
+            const msg = buyError?.error ?? buyError?.message;
+            if (typeof msg === 'string' && msg.includes('Ya tienes esta mascota')) {
+              console.log('✅ Pet por defecto ya estaba asignado');
+            } else {
+              console.error('❌ Error asignando pet por defecto:', buyError);
+            }
+          }
         }
       }
     } catch (petError) {
