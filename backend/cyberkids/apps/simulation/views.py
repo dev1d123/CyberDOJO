@@ -8,174 +8,124 @@ from rest_framework.response import Response
 from django.conf import settings
 from rest_framework import viewsets
 import logging
-import ast
 import re
 import json
-import random
+import requests
 from django.utils import timezone
 import os
 from apps.cyberUser.models import CyberUser
 
 
 def _extract_json_from_text(text):
+    """Extrae JSON de texto simple."""
     if not text or not isinstance(text, str):
         return None
-    # direct json
     try:
         return json.loads(text)
     except Exception:
-        pass
-
-    # try ast literal eval for python-style dicts
-    try:
-        obj = ast.literal_eval(text)
-        if isinstance(obj, dict):
-            return obj
-    except Exception:
-        pass
-
-    # strip triple-backtick fenced blocks
-    stripped = re.sub(r"```[a-zA-Z0-9\-]*\n|```", "", text)
-    # find first '{' and parse a balanced JSON object
-    start = stripped.find('{')
-    if start == -1:
         return None
-    depth = 0
-    for i in range(start, len(stripped)):
-        ch = stripped[i]
-        if ch == '{':
-            depth += 1
-        elif ch == '}':
-            depth -= 1
-            if depth == 0:
-                candidate = stripped[start:i+1]
-                try:
-                    return json.loads(candidate)
-                except Exception:
-                    # try ast literal on candidate
-                    try:
-                        obj = ast.literal_eval(candidate)
-                        if isinstance(obj, dict):
-                            return obj
-                    except Exception:
-                        continue
-    return None
 
 
 def get_display_text(obj):
-    # If it's already a dict, prefer reply/message/text
+    """Extrae texto simple de respuestas del backend."""
     if isinstance(obj, dict):
-        # If Gemini-style response with candidates or output, try to extract text from them first
-        if 'candidates' in obj and isinstance(obj.get('candidates'), (list, tuple)):
-            for cand in obj.get('candidates'):
-                # candidate may be dict with 'content' which can be a string or nested dict
-                if isinstance(cand, dict):
-                    cont = cand.get('content') or cand.get('text') or cand
-                    maybe = get_display_text(cont)
-                    if maybe:
-                        return maybe
-                else:
-                    maybe = get_display_text(cand)
-                    if maybe:
-                        return maybe
-
-        if 'output' in obj and isinstance(obj.get('output'), (list, tuple)):
-            parts = []
-            for p in obj.get('output'):
-                if isinstance(p, dict):
-                    parts.append(p.get('content') or p.get('text') or '')
-                else:
-                    parts.append(str(p))
-            joined = ' '.join([p for p in parts if p])
-            if joined.strip():
-                return joined.strip()
-
-        if 'result' in obj and isinstance(obj.get('result'), (list, tuple)):
-            parts = []
-            for p in obj.get('result'):
-                if isinstance(p, dict):
-                    parts.append(p.get('content') or p.get('text') or '')
-                else:
-                    parts.append(str(p))
-            joined = ' '.join([p for p in parts if p])
-            if joined.strip():
-                return joined.strip()
-
-        for k in ('reply', 'reply_user', 'message', 'text', 'content'):
+        for k in ('reply', 'message', 'text', 'content'):
             v = obj.get(k)
             if isinstance(v, str) and v.strip():
                 return v.strip()
-        # fallback: stringify
-        try:
-            return str(obj)
-        except Exception:
-            return ''
-
-    # If it's bytes, decode
-    if isinstance(obj, bytes):
-        try:
-            obj = obj.decode('utf-8')
-        except Exception:
-            obj = str(obj)
-
-    # If it's a string, try extracting JSON/dict
+        return str(obj)
     if isinstance(obj, str):
-        # quick heuristic: empty
-        s = obj.strip()
-        if not s:
-            return ''
-
-        # If it already looks like plain text (no braces), return it
-        if '{' not in s and '}' not in s:
-            return s
-
-        # Try structured extraction
-        parsed = _extract_json_from_text(s)
-        if isinstance(parsed, dict):
-            for k in ('reply', 'message', 'text', 'content'):
-                v = parsed.get(k)
-                if isinstance(v, str) and v.strip():
-                    return v.strip()
-        # Try simple regex to extract "reply": "..." or 'reply': '...'
-        m = re.search(r'"reply"\s*:\s*"([^"]+)"', s)
-        if m:
-            return m.group(1).strip()
-        m2 = re.search(r"'reply'\s*:\s*'([^']+)'", s)
-        if m2:
-            return m2.group(1).strip()
-
-        # Last resort: remove outer braces and return inner text
-        try:
-            inner = re.sub(r"^[^{]*{\s*|\s*}[^}]*$", '', s)
-            return inner.strip()[:2000]
-        except Exception:
-            return s
-
-    # Fallback
+        return obj.strip()
     return str(obj)
+
+
+# URL del backend LLM externo
+LLM_API_BASE_URL = "https://cyber-dojo-llm-api.vercel.app"
+
+def _call_llm_backend(payload: dict) -> dict:
+    """Llama al backend LLM externo en Vercel.
+    
+    Args:
+        payload: Diccionario con formato:
+            {
+                "session_id": str,
+                "max_attempts": int,
+                "current_attempts_used": int,
+                "user_context": {"username": str, "country": str},
+                "scenario_context": {
+                    "platform": str,
+                    "antagonist_goal": str,
+                    "difficulty": int
+                },
+                "chat_history": [{"role": str, "content": str}, ...]
+            }
+    
+    Returns:
+        dict con formato:
+            {
+                "reply": str,
+                "analysis": {
+                    "has_disclosure": bool,
+                    "disclosure_reason": str,
+                    "is_attack_attempt": bool,
+                    "is_user_evasion": bool,
+                    "force_end_session": bool
+                }
+            }
+    """
+    url = f"{LLM_API_BASE_URL.rstrip('/')}/api/simulation-chat"
+    
+    logger.info(f"🔵 Llamando al backend LLM: {url}")
+    logger.info(f"🔵 Payload: {json.dumps(payload, indent=2, ensure_ascii=False)}")
+    
+    try:
+        response = requests.post(url, json=payload, timeout=30)
+        logger.info(f"🔵 Status code: {response.status_code}")
+        logger.info(f"🔵 Response text: {response.text[:500]}")
+        
+        response.raise_for_status()
+        data = response.json()
+        logger.info(f"✅ Backend LLM respondió exitosamente")
+        return data
+    except requests.exceptions.Timeout as e:
+        logger.error(f"❌ Timeout al llamar al backend LLM: {e}")
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"❌ Error de conexión al backend LLM: {e}")
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"❌ Error HTTP del backend LLM: {e} - Response: {response.text[:500]}")
+    except Exception as e:
+        logger.exception(f"❌ Error inesperado al llamar al backend LLM: {e}")
+    
+    # Fallback response
+    return {
+        "reply": "Lo siento, hay un problema técnico. Intenta de nuevo más tarde.",
+        "analysis": {
+            "has_disclosure": False,
+            "disclosure_reason": "",
+            "is_attack_attempt": False,
+            "is_user_evasion": False,
+            "force_end_session": False
+        }
+    }
 
 
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def start_with_role(request):
-    """Crea una nueva GameSession y devuelve el primer mensaje del antagonista (Gemini). 
+    """Crea una nueva GameSession y devuelve el primer mensaje del antagonista usando el backend LLM externo.
     
     Request body (JSON):
         - scenario_id (int, opcional): ID del escenario específico a usar
     
     Si no se especifica scenario_id, se asigna automáticamente el siguiente no completado.
-    Nunca reanuda sesiones.
     """
     from apps.cyberUser.models import CyberUser
     user = None
-    # request.user es establecido por JWTCustomAuthentication y ya es un CyberUser
     if hasattr(request, 'user') and getattr(request.user, 'is_authenticated', False):
-        # Si viene de JWTCustomAuthentication, request.user ya es CyberUser
         if isinstance(request.user, CyberUser):
             user = request.user
         else:
-            # Fallback: buscar por user_id (clave primaria de CyberUser)
             try:
                 user_pk = getattr(request.user, 'user_id', None) or getattr(request.user, 'pk', None)
                 if user_pk:
@@ -187,13 +137,11 @@ def start_with_role(request):
     
     from apps.simulation.models import Scenario, GameSession, ChatMessage
     
-    # Obtener scenario_id del request body si se proporciona
     data = request.data if isinstance(request.data, dict) else {}
     scenario_id = data.get('scenario_id')
     
     scenario = None
     
-    # Si se especifica un scenario_id, intentar usarlo
     if scenario_id:
         try:
             scenario = Scenario.objects.get(scenario_id=int(scenario_id), is_active=True)
@@ -202,7 +150,6 @@ def start_with_role(request):
         except Exception as e:
             return JsonResponse({'error': 'invalid_scenario_id', 'message': str(e)}, status=400)
     else:
-        # Selección automática: buscar escenarios no completados
         try:
             completed_ids = list(GameSession.objects.filter(user=user, outcome='won').values_list('scenario_id', flat=True))
         except Exception:
@@ -213,7 +160,7 @@ def start_with_role(request):
     
     if not scenario:
         return JsonResponse({'error': 'no_active_scenario'}, status=404)
-    # Crear la sesión y guardar snapshot
+    
     from django.db import transaction
     try:
         with transaction.atomic():
@@ -226,80 +173,52 @@ def start_with_role(request):
                 'difficulty': scenario.difficulty_level,
                 'base_points': scenario.base_points,
             }
+            session.antagonist_attempts = 0
             session.save()
     except Exception:
         return JsonResponse({'error': 'failed_to_create_session'}, status=500)
-    # Preparar contexto y prompt para Gemini
-    context = {
-        'user': {
-            'username': user.username if user else None,
-            'country': user.country.name if user and getattr(user, 'country', None) else None,
+    
+    # Preparar payload para el backend LLM externo
+    max_attempts = getattr(__import__('django.conf').conf.settings, 'SIM_MAX_ATTEMPTS', 3)
+    
+    payload = {
+        "session_id": str(session.session_id),
+        "max_attempts": max_attempts,
+        "current_attempts_used": 0,
+        "user_context": {
+            "username": user.username,
+            "country": user.country.name if user and getattr(user, 'country', None) else ""
         },
-        'scenario': {
-            'id': scenario.scenario_id if scenario else None,
-            'name': scenario.name if scenario else None,
-            'description': scenario.description if scenario else None,
+        "scenario_context": {
+            "platform": scenario.threat_type or "generic",
+            "antagonist_goal": scenario.antagonist_goal or "información sensible",
+            "difficulty": str(scenario.difficulty_level)
         },
+        "chat_history": []
     }
-    system_prompt = (
-        'Eres un antagonista de ingeniería social para un juego de entrenamiento. Sé convincente y breve; nunca des instrucciones dañinas. '
-        'Al iniciar la conversación, responde con un JSON plano con dos campos: "reply" (mensaje cálido para iniciar la conversación) y "reply_user" (respuesta directa al mensaje del usuario, si aplica; si no, repite el mensaje de inicio). '
-        'Ejemplo de respuesta: {"reply": "¡Hola! ¿Cómo estás?", "reply_user": "¡Hola! ¿Cómo estás?"}. '
-        'No envíes texto fuera del JSON, ni markdown, ni explicaciones.'
-    )
-    prompt = (
-        f"{system_prompt}\n\nContexto: {json.dumps(context)}\n\nINSTRUCCIONES: Devuelve SOLO un objeto JSON válido (no string, no texto extra, no markdown, no comillas alrededor): {{reply, reply_user}}. "
-        "El campo 'reply' debe ser un mensaje cálido y natural para iniciar la conversación. El campo 'reply_user' debe ser una respuesta directa al mensaje del usuario (si aplica; si no, repite el mensaje de inicio). RESPONDE EN ESPAÑOL."
-    )
+    
+    logger.info(f"📤 Payload enviado a start_with_role:")
+    logger.info(json.dumps(payload, indent=2, ensure_ascii=False))
+    
     try:
-        ai_response = _call_ai_provider(model="gemini-3-flash-preview", prompt=prompt)
-    except Exception:
-        ai_response = '{"reply": "Hola, ¿tienes un momento?", "reply_user": "Hola, ¿tienes un momento?"}'
-
-    # Intentar deserializar la respuesta (usar helper compartido)
-    reply = ""
-    reply_user = ""
+        llm_response = _call_llm_backend(payload)
+        logger.info(f"📥 Respuesta recibida de LLM backend:")
+        logger.info(json.dumps(llm_response, indent=2, ensure_ascii=False))
+        initial_message = llm_response.get('reply', '¡Hola! ¿Cómo estás?')
+    except Exception as e:
+        logger.exception(f"Error al obtener mensaje inicial del LLM: {e}")
+        initial_message = "¡Hola! ¿Cómo estás?"
+    
     try:
-        if isinstance(ai_response, str):
-            parsed = _extract_json_from_text(ai_response)
-            if isinstance(parsed, dict):
-                reply = parsed.get('reply', '')
-                reply_user = parsed.get('reply_user', '')
-            else:
-                reply = ai_response
-                reply_user = ai_response
-        elif isinstance(ai_response, dict):
-            reply = ai_response.get('reply', '')
-            reply_user = ai_response.get('reply_user', '')
-        else:
-            reply = str(ai_response)
-            reply_user = str(ai_response)
-    except Exception:
-        reply = str(ai_response)
-        reply_user = str(ai_response)
-
-    # Guardar solo el texto plano de la IA: extraer display_text
-    try:
-        parsed = None
-        if isinstance(ai_response, dict):
-            parsed = ai_response
-        else:
-            parsed = _extract_json_from_text(ai_response) if isinstance(ai_response, str) else None
-
-        if isinstance(parsed, dict) and 'reply' in parsed:
-            display_text = parsed.get('reply')
-        else:
-            # fallback: if reply variable is string, use it; otherwise stringify
-            display_text = reply if isinstance(reply, str) else str(reply)
-
-        # normalize to plain text before saving
-        display_text = get_display_text(display_text)
-
-        ChatMessage.objects.create(session=session, role='system', content=system_prompt)
-        ChatMessage.objects.create(session=session, role='antagonist', content=display_text)
+        ChatMessage.objects.create(session=session, role='antagonist', content=initial_message)
     except Exception:
         pass
-    return JsonResponse({'session_id': session.session_id, 'initial_message': display_text, 'resumed': False})
+    
+    return JsonResponse({
+        'session_id': session.session_id,
+        'initial_message': initial_message,
+        'resumed': False
+    })
 
 
 
@@ -329,505 +248,214 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def chat(request):
-    """Chat endpoint that supports two provider modes and optional persistence.
+    """Chat endpoint que usa el backend LLM externo.
 
-    Request JSON options:
-      - `message` (string) or `prompt`: required
-      - `model` (string): optional model name
-      - `session_id` (int): if provided, message+reply are saved to that GameSession
-      - `user_id` (int): if provided and no session_id, a new GameSession is created for that user
-
-    Behavior:
-      - If a GameSession is available (via `session_id` or created from `user_id`), persist both user message and AI reply as `ChatMessage` records.
+        Request JSON options:
+            - `message` (string): requerido
+            - `session_id` (int, opcional): si falta, se intenta reanudar la sesión activa del usuario
     """
     data = request.data if isinstance(request.data, dict) else {}
     user_message = data.get('message') or data.get('prompt') or data.get('text')
-    model = data.get('model') or None
+    session_id = data.get('session_id')
+    
     if not user_message:
         return JsonResponse({'error': 'missing "message" in request body'}, status=400)
-
-    session = None
-    session_id = data.get('session_id')
-    user_id = data.get('user_id')
-
-    # determine user: prefer authenticated user, else use provided user_id, else fallback to user id 1
+    
+    # Si no se proporciona session_id, intentar reanudar la sesión activa del usuario
+    # (is_game_over=None) para el usuario autenticado
+    # Esto evita errores cuando el cliente olvida enviar el session_id
+    # y ya existe una sesión iniciada.
+    # Nota: si no hay sesión activa, devolvemos un error con hint.
+    # Obtener usuario autenticado primero
     user_obj = None
     try:
         if getattr(request, 'user', None) and request.user.is_authenticated:
-            # request.user ya es CyberUser si viene de JWTCustomAuthentication
             if isinstance(request.user, CyberUser):
                 user_obj = request.user
             else:
-                # Fallback: buscar por user_id (clave primaria de CyberUser)
                 try:
                     user_pk = getattr(request.user, 'user_id', None) or getattr(request.user, 'pk', None)
                     if user_pk:
                         user_obj = CyberUser.objects.get(pk=user_pk)
                 except Exception:
                     user_obj = None
-        if not user_obj and user_id:
-            try:
-                user_obj = CyberUser.objects.get(pk=int(user_id))
-            except Exception:
-                user_obj = None
-        if not user_obj:
-            user_obj = CyberUser.objects.get(pk=1)
     except Exception:
         user_obj = None
+    
+    if not user_obj:
+        return JsonResponse({'error': 'authentication_required'}, status=401)
 
-    if session_id:
-        try:
-            session = GameSession.objects.get(session_id=int(session_id))
-        except Exception:
-            session = None
-    else:
-        # if no session_id, create a session tied to resolved user (or anonymous session if None)
-        try:
-            session = GameSession.objects.create(user=user_obj) if user_obj else GameSession.objects.create()
-        except Exception:
-            session = None
+    if not session_id:
+        # Buscar sesión activa del usuario
+        active = GameSession.objects.filter(user=user_obj, is_game_over__isnull=True).order_by('-started_at').first()
+        if not active:
+            return JsonResponse({
+                'error': 'missing "session_id" in request body',
+                'hint': 'Primero inicia una sesión con /api/simulation/session/start-role/'
+            }, status=400)
+        session_id = active.session_id
 
-    # --- Asignar escenario válido si se crea una nueva sesión o si la sesión no tiene escenario ---
-    if session and not session.scenario:
-        from apps.simulation.models import Scenario
-        completed_ids = []
-        if user_obj:
-            try:
-                completed_ids = list(GameSession.objects.filter(user=user_obj, outcome='won').values_list('scenario_id', flat=True))
-            except Exception:
-                completed_ids = []
-        # Buscar escenario activo no superado
-        scenario = Scenario.objects.filter(is_active=True).exclude(scenario_id__in=completed_ids).order_by('difficulty_level', 'scenario_id').first()
-        if not scenario:
-            scenario = Scenario.objects.filter(is_active=True).order_by('scenario_id').first()
-        if scenario:
-            session.scenario = scenario
-            session.scenario_snapshot = {
-                'id': scenario.scenario_id,
-                'name': scenario.name,
-                'description': scenario.description,
-                'antagonist_goal': scenario.antagonist_goal,
-                'difficulty': scenario.difficulty_level,
-                'base_points': scenario.base_points,
-                'threat_type': scenario.threat_type,
-            }
-            session.save()
+    # user_obj ya obtenido arriba
 
-    # Si la sesión ya terminó (is_game_over != None), bloquear mensajes
-    # Semántica: is_game_over is None => en curso; True => perdido; False => ganado
-    if session and session.is_game_over is not None:
+    # Obtener sesión
+    session = None
+    try:
+        session = GameSession.objects.get(session_id=int(session_id))
+    except Exception:
+        return JsonResponse({'error': 'session_not_found'}, status=404)
+
+    # Si la sesión ya terminó, bloquear mensajes
+    if session.is_game_over is not None:
         return JsonResponse({'error': 'session_ended', 'reason': session.game_over_reason}, status=400)
 
-    # persist user message if we have a session (keep reference)
+    # Guardar mensaje del usuario
     user_msg = None
-    if session:
-        try:
-            user_msg = ChatMessage.objects.create(session=session, role='user', content=user_message)
-        except Exception:
-            logger.exception('Failed to persist user message')
-
-    # Build richer context for the model and force Spanish replies
-    context = {}
-    antagonist_goal = None
     try:
-        context = {
-            'user': {
-                'username': getattr(user_obj, 'username', None) if user_obj else None,
-                'email': getattr(user_obj, 'email', None) if user_obj else None,
-                'country': getattr(getattr(user_obj, 'country', None), 'name', None) if user_obj else None,
-            },
-            'session': {
-                'id': session.session_id if session else None,
-                'antagonist_attempts': session.antagonist_attempts if session else 0,
-            },
-            'scenario': session.scenario_snapshot if session and session.scenario_snapshot else (getattr(session, 'scenario', None) and {
-                'id': session.scenario.scenario_id,
-                'name': session.scenario.name,
-                'description': session.scenario.description,
-            }) or None,
-            'role': 'antagonist',
-        }
-        # Extract antagonist goal from scenario for explicit instruction
-        if session and session.scenario:
-            antagonist_goal = getattr(session.scenario, 'antagonist_goal', None)
-        elif session and session.scenario_snapshot:
-            antagonist_goal = session.scenario_snapshot.get('antagonist_goal')
+        user_msg = ChatMessage.objects.create(session=session, role='user', content=user_message)
     except Exception:
-        context = {}
-        antagonist_goal = None
+        logger.exception('Failed to persist user message')
 
-    # Configurable behaviour: mode and aggressiveness
-    # - 'mode' can be 'patient' or 'invasive' (default 'invasive')
-    # - 'aggressiveness' is an integer 0-5 (default 3)
-    mode = None
-    aggressiveness = None
-    if isinstance(data, dict):
-        mode = data.get('mode')
-        aggressiveness = data.get('aggressiveness')
-    if mode not in ('patient', 'invasive'):
-        mode = 'invasive'
+    # Obtener historial de chat
+    chat_history = []
     try:
-        aggressiveness = int(aggressiveness)
+        messages = ChatMessage.objects.filter(session=session).order_by('sent_at')
+        for msg in messages:
+            chat_history.append({
+                "role": msg.role,
+                "content": msg.content
+            })
     except Exception:
-        aggressiveness = 3
-    aggressiveness = max(0, min(5, aggressiveness))
+        logger.exception('Failed to load chat history')
 
-    # Request that the model returns a JSON object with the following shape (in Spanish):
-    # { "reply": "<texto a mostrar al usuario>", "disclosure": true|false, "disclosure_reason": "<motivo opcional>", "attempted": true|false, "end_communication": true|false }
-    # - `disclosure`: true cuando el usuario haya revelado información sensible (la IA no debe repetirla)
-    # - `attempted`: true cuando el antagonista intenta pedir información en este turno
-    # - `end_communication`: true si debe cortar la conversación inmediatamente (por ejemplo tras disclosure)
-    # El campo `reply` será el texto en español que se mostrará al usuario.
-    json_instructions = (
-        "MODOS DE OPERACIÓN (TEXTO):\n"
-        "- modo invasivo / intrusivo: prioriza preguntas directas y específicas relacionadas con el objetivo sensible del escenario; puedes pedir el dato explícitamente si corresponde.\n"
-        "(Esta explicación es texto para el modelo; NO es código ni debe aparecer en la respuesta JSON).\n\n"
-        "Devuelve SOLO un JSON válido (sin texto extra): {reply, disclosure, disclosure_reason, attempted, end_communication, game_over}.\n"
-        "RESPONDE EN ESPAÑOL, SÉ CÁLIDO E INTERACTIVO. CONSTRUYE RAPPORT PRIMERO.\n"
-        f"TU OBJETIVO SENSIBLE: {antagonist_goal or 'sin especificar'}\n"
-        "ESTILO: Amable, curiosa, genuina. Haz preguntas sobre intereses, contexto, vida del usuario. GANA CONFIANZA antes de pedir datos.\n"
-        "REGLA CRÍTICA DISCLOSURE:\n"
-        "- disclosure=true SOLO cuando el usuario CLARAMENTE compartió datos sensibles REALES (no especulativos).\n"
-        "- NO hagas análisis regex, pattern matching, o suposiciones sobre los datos del usuario.\n"
-        "- disclosure=true ejemplos claros: usuario dice 'Mi número es 3105551234' (10+ dígitos juntos), 'Vivo en calle 5 #123', 'Mi contraseña es xyz123'.\n"
-        "- disclosure=false para: respuestas vagas ('claro', 'ok', 'no'), bromas, defensivas ('solo jugando'), frases sin números/datos específicos.\n"
-        "- 'bien, aunque algo aburrido' = disclosure=false (sin datos)\n"
-        "- disclosure_reason: cuando disclosure=true, explica brevemente el contexto de la revelación (por ejemplo: 'El usuario compartió su número de teléfono porque le ofrecieron pases para skins'). Debe ser una frase narrativa y clara, no solo el tipo de dato.\n"
-        "REGLA ATTEMPTED (MUY IMPORTANTE):\n"
-        "- attempted=true SOLO cuando realmente intentas pedir el dato sensible específico del objetivo de este escenario en este turno.\n"
-        "- Si solo estás generando confianza, rapport o empatía, attempted debe ser false y NO debe aumentar el contador.\n"
-        "- Si attempted=true, el backend aumentará el contador de intentos. Si el contador llega a 3 y el usuario NO compartió datos sensibles, debes felicitarlo por resistir la trampa y terminar la simulación.\n"
-        "- EJEMPLOS DE attempted=true: 'Pasame tu número', 'Dame tu dirección', 'Cuál es tu contraseña', 'Tu email?'\n"
-        "- EJEMPLOS DE attempted=false (NO son intentos):\n"
-        "  - 'Cuanto tiempo llevas jugando?' (pregunta personal)\n"
-        "  - 'Qué juegos te encantan?' (rapport)\n"
-        "  - 'Bacano, te caes bien' (empatía)\n"
-        "  - 'Estoy formando un equipo' (contextualización)\n"
-        "- attempted=false en conversación normal, preguntas, rapport, empatía. SIN análisis de textos del usuario.\n"
-        "CAMPOS JSON IMPORTANTES:\n"
-        "- reply: tu respuesta cálida y natural EN ESPAÑOL\n"
-        "- disclosure: boolean simple (true/false), NUNCA objetos complejos\n"
-        "- disclosure_reason: cuando disclosure=true, debe ser una frase narrativa y clara sobre el contexto de la revelación.\n"
-        "- attempted: boolean (true/false)\n"
-        "- game_over: info para el backend (ignora el backend de todos modos)\n"
-        "- NO repitas saludos genéricos al inicio de cada respuesta (ej: 'Hola', 'Hola!'). Si ya saludaste en la conversación, continúa sin saludar.\n"
-        "- end_communication: true si debe cortarse la conversación\n"
-    )
+    # Preparar payload para el backend LLM externo
+    max_attempts = getattr(__import__('django.conf').conf.settings, 'SIM_MAX_ATTEMPTS', 3)
+    
+    payload = {
+        "session_id": str(session.session_id),
+        "max_attempts": max_attempts,
+        "current_attempts_used": session.antagonist_attempts or 0,
+        "user_context": {
+            "username": user_obj.username,
+            "country": getattr(getattr(user_obj, 'country', None), 'name', None) or ""
+        },
+        "scenario_context": {
+            "platform": (session.scenario_snapshot.get('threat_type') if session.scenario_snapshot else None) or "generic",
+            "antagonist_goal": (session.scenario_snapshot.get('antagonist_goal') if session.scenario_snapshot else None) or "información sensible",
+            "difficulty": str(session.scenario_snapshot.get('difficulty', 1) if session.scenario_snapshot else 1)
+        },
+        "chat_history": chat_history
+    }
 
-    extra_directive = ''
-    # enforce that the model focuses only on the scenario's target
-    target = (session.scenario_snapshot.get('antagonist_goal') if session and getattr(session, 'scenario_snapshot', None) else antagonist_goal) or 'el objetivo sensible del escenario'
-
-    if mode == 'invasive' or aggressiveness >= 3:
-        extra_directive = (
-            f"\nDIRECTIVA (modo invasivo/agresividad={aggressiveness}): Prioriza preguntas directas y específicas sobre {target}. "
-            "Si tu objetivo en este turno es pedir el dato sensible, formula UNA pregunta clara y directa que solicite exactamente ese dato (ej: '¿Cuál es tu número de DNI?'). "
-            "Cuando hagas esa pregunta, establece `attempted=true` en el JSON. No hagas varias preguntas seguidas para el mismo dato. "
-            "No pidas información que no esté relacionada con el objetivo del escenario."
-        )
-    else:
-        extra_directive = (
-            f"\nDIRECTIVA (modo paciente/agresividad={aggressiveness}): Construye rapport y haz preguntas abiertas relacionadas con {target} solo si es apropiado. "
-            "No intentes solicitar datos sensibles en este turno a menos que sea claramente necesario. Si no pides el dato, `attempted` debe ser false. Si decides pedirlo, hazlo de forma explícita y establece `attempted=true`."
-        )
-
-    prompt = data.get('prompt') or (
-        f"Eres un antagonista en una simulación de ingeniería social. Contexto: {json.dumps(context)}\nUsuario: {user_message}\n\nINSTRUCCIONES CRÍTICAS: Devuelve SOLO un objeto JSON válido (no string, no texto extra, no markdown, no comillas alrededor): {{reply, disclosure, disclosure_reason, attempted, end_communication, game_over}}. El campo 'reply' debe ser SOLO el texto plano que se mostrará al usuario, sin objetos ni listas, solo texto. RESPONDE EN ESPAÑOL, SÉ CÁLIDO E INTERACTIVO. {json_instructions}{extra_directive}"
-    )
-    if not model:
-        model = 'gemini-3-flash-preview'
-
-    # DEBUG: Mostrar el contexto y el prompt que se envía a la IA
-    print("\n=== CONTEXTO PARA IA ===\n", json.dumps(context, indent=2, ensure_ascii=False))
-    print("\n=== PROMPT PARA IA ===\n", prompt)
-
+    # Llamar al backend LLM externo
     try:
-        reply = _call_ai_provider(model=model, prompt=prompt)
+        llm_response = _call_llm_backend(payload)
+        reply_text = llm_response.get('reply', 'Lo siento, no puedo responder ahora.')
+        analysis = llm_response.get('analysis', {})
     except Exception as e:
-        logger.exception('AI provider failed for prompt: %s', e)
-        reply = 'Lo siento, el servicio de generación no está disponible en este momento. Intenta de nuevo más tarde.'
+        logger.exception(f"Error llamando al backend LLM: {e}")
+        return JsonResponse({'error': 'llm_backend_unavailable'}, status=503)
 
-    # DEBUG: Mostrar la respuesta cruda de la IA
-    print("\n=== RESPUESTA CRUDA IA ===\n", repr(reply))
+    # Extraer flags de análisis
+    has_disclosure = analysis.get('has_disclosure', False)
+    disclosure_reason = analysis.get('disclosure_reason', '')
+    is_attack_attempt = analysis.get('is_attack_attempt', False)
+    force_end_session = analysis.get('force_end_session', False)
 
-    # Normalizar: extraer siempre el texto a mostrar (`reply`) usando helper robusto
-    # Esto evita guardar el JSON crudo cuando la IA devuelve un objeto/string JSON.
+    # Guardar respuesta del antagonista
     try:
-        display_text = get_display_text(reply)
+        ChatMessage.objects.create(session=session, role='antagonist', content=reply_text)
     except Exception:
-        display_text = str(reply)
+        logger.exception('Failed to persist antagonist message')
 
-    # Si la respuesta es un string que contiene JSON, deserializarlo
-    reply_obj = None
-    if isinstance(reply, str):
+    # Procesar lógica de juego
+    disclosure = has_disclosure or force_end_session
+    
+    # Verificar patrones sensibles en el mensaje del usuario (detección local adicional)
+    from apps.simulation.models import SensitivePattern
+    if user_msg and user_msg.content:
+        patterns = SensitivePattern.objects.all()
+        for p in patterns:
+            try:
+                if re.search(p.regex_pattern, user_msg.content):
+                    disclosure = True
+                    disclosure_reason = disclosure_reason or f"Matched sensitive pattern: {p.name}"
+                    user_msg.is_dangerous = True
+                    user_msg.detected_pattern = p
+                    user_msg.save(update_fields=['is_dangerous', 'detected_pattern'])
+                    break
+            except Exception:
+                continue
+
+    # Lógica de cierre de sesión
+    if disclosure:
+        # Usuario reveló información sensible: PERDIÓ
         try:
-            reply_obj = json.loads(reply)
+            with transaction.atomic():
+                s = GameSession.objects.select_for_update().get(pk=session.pk)
+                if user_msg and not user_msg.is_dangerous:
+                    user_msg.is_dangerous = True
+                    user_msg.save(update_fields=['is_dangerous'])
+                if s.is_game_over is None:
+                    s.is_game_over = True
+                    s.outcome = 'failed'
+                    s.game_over_reason = disclosure_reason or 'sensitive_data'
+                    s.ended_at = timezone.now()
+                    s.save(update_fields=['is_game_over', 'outcome', 'game_over_reason', 'ended_at'])
         except Exception:
-            reply_obj = None
-    if isinstance(reply_obj, dict) and 'reply' in reply_obj:
-        # Si el modelo devolvió el JSON como string, usar el objeto
-        reply = reply_obj
-
-    # Defaults for response metadata
-    # display_text será solo el texto plano del campo 'reply', nunca el JSON completo
-    if isinstance(reply, dict) and 'reply' in reply:
-        display_text = reply['reply']
-    elif isinstance(reply, str):
-        # Si es un string que parece un JSON, intenta extraer el campo 'reply' (soporta comillas simples)
-                try:
-                    possible_json = json.loads(reply)
-                    if isinstance(possible_json, dict) and 'reply' in possible_json:
-                        display_text = possible_json['reply']
-                    else:
-                        display_text = reply
-                except Exception:
-                    try:
-                        possible_json = ast.literal_eval(reply)
-                        if isinstance(possible_json, dict) and 'reply' in possible_json:
-                            display_text = possible_json['reply']
-                        else:
-                            display_text = reply
-                    except Exception:
-                        display_text = reply
+            logger.exception(f'Failed to mark session as failed for session {session.session_id}')
     else:
-        display_text = str(reply)
-    disclosure = False
-    disclosure_reason = None
-    attempted_flag = False
+        # No hubo disclosure: verificar si fue un intento de ataque
+        if is_attack_attempt:
+            try:
+                session.antagonist_attempts = (session.antagonist_attempts or 0) + 1
+                session.save(update_fields=['antagonist_attempts'])
+            except Exception:
+                logger.exception(f'Failed to increment antagonist_attempts for session {session.session_id}')
 
-    # persist antagonist reply and keep reference
-    ant_msg = None
-    if session:
-        try:
-            ant_msg = ChatMessage.objects.create(session=session, role='antagonist', content=display_text)
-        except Exception:
-            logger.exception('Failed to persist AI reply')
+        # Verificar si el antagonista agotó los intentos
+        if session.antagonist_attempts >= max_attempts:
+            try:
+                with transaction.atomic():
+                    s = GameSession.objects.select_for_update().get(pk=session.pk)
+                    # Verificar si hay algún mensaje peligroso en toda la conversación
+                    disclosure_exists = ChatMessage.objects.filter(session=s, is_dangerous=True).exists()
+                    if not disclosure_exists and s.is_game_over is None:
+                        # Usuario GANÓ: resistió todos los intentos sin compartir datos
+                        points = 0
+                        if s.scenario:
+                            points = int(getattr(s.scenario, 'base_points', 0) or 0)
+                        else:
+                            points = int((s.scenario_snapshot or {}).get('base_points', 0) or 0)
 
-    # --- Lógica de verificación (sin patrones en servidor) y cierre/awards ---
-    # Sólo procede si tenemos una sesión válida
-    if session:
-        try:
-            # Robustly extract JSON the model may have returned (possibly wrapped in markdown code fences)
-            def _extract_json_from_text(text):
-                if not text or not isinstance(text, str):
-                    return None
-                # remove triple-backtick fenced blocks markers but keep inner content
-                # we'll attempt to find the first balanced JSON object
-                try:
-                    # quick direct attempt
-                    return json.loads(text)
-                except Exception:
-                    pass
-
-                # strip common fencing markers
-                stripped = re.sub(r"```[a-zA-Z0-9\-]*\n|```", "", text)
-
-                # find first '{' and attempt to parse a balanced JSON object
-                start = stripped.find('{')
-                if start == -1:
-                    return None
-                depth = 0
-                for i in range(start, len(stripped)):
-                    ch = stripped[i]
-                    if ch == '{':
-                        depth += 1
-                    elif ch == '}':
-                        depth -= 1
-                        if depth == 0:
-                            candidate = stripped[start:i+1]
+                        if s.user and not s.points_awarded:
                             try:
-                                return json.loads(candidate)
+                                u = s.user
+                                u.cybercreds = (u.cybercreds or 0) + int(points)
+                                u.save(update_fields=['cybercreds'])
                             except Exception:
-                                # continue searching for next possible closing
-                                continue
-                return None
+                                logger.exception(f'Failed to award points to user for session {s.session_id}')
 
-            # If `reply` is already a dict (we parsed it earlier), use it directly.
-            if isinstance(reply, dict):
-                parsed_reply = reply
-            else:
-                parsed_reply = _extract_json_from_text(reply)
+                        s.points_earned = int(points)
+                        s.points_awarded = True
+                        s.is_game_over = False  # Usuario resistió y ganó
+                        s.outcome = 'won'
+                        s.game_over_reason = 'antagonist_exhausted_no_disclosure'
+                        s.ended_at = timezone.now()
+                        s.save(update_fields=['points_earned', 'points_awarded', 'is_game_over', 'outcome', 'game_over_reason', 'ended_at'])
+            except Exception:
+                logger.exception(f'Error closing/awarding points for session {session.session_id}')
 
-            display_text = None
-            disclosure = False
-            disclosure_reason = None
-            attempted_flag = False
-
-            # server-side heuristic to detect if antagonist is attempting to solicit sensitive data
-            def _is_attempt_text(text):
-                """No server-side keyword heuristics: rely solely on the model-provided
-                `attempted` signal. This function intentionally returns False so the
-                backend does not infer attempts from string matching.
-                """
-                return False
-
-            # server-side detection of user disclosure via SensitivePattern regexes
-            from apps.simulation.models import SensitivePattern
-            def _user_disclosed(message_text):
-                if not message_text or not isinstance(message_text, str):
-                    return None
-                patterns = SensitivePattern.objects.all()
-                for p in patterns:
-                    try:
-                        if re.search(p.regex_pattern, message_text):
-                            return p
-                    except Exception:
-                        continue
-                return None
-
-            if isinstance(parsed_reply, dict):
-                # accept multiple possible key names for backward compatibility
-                display_text = (
-                    parsed_reply.get('reply')
-                    or parsed_reply.get('reply_user')
-                    or parsed_reply.get('message')
-                    or parsed_reply.get('text')
-                    or parsed_reply.get('content')
-                    or ''
-                )
-                # normalize textual display
-                display_text = get_display_text(display_text)
-
-                # CRITICAL: prefer the model-provided disclosure flag when present
-                model_disclosure = parsed_reply.get('disclosure') if 'disclosure' in parsed_reply else parsed_reply.get('divulgacion') if 'divulgacion' in parsed_reply else parsed_reply.get('disclosed') if 'disclosed' in parsed_reply else None
-                if model_disclosure is not None:
-                    disclosure = bool(model_disclosure)
-                else:
-                    disclosure = False
-
-                disclosure_reason = parsed_reply.get('disclosure_reason') or parsed_reply.get('reason_for_disclosure') or parsed_reply.get('disclosureReason')
-
-                # ATTEMPTED: if the model explicitly signals attempted, trust it. Otherwise fallback to heuristic.
-                def _to_bool_like(v):
-                    if isinstance(v, bool):
-                        return v
-                    if v is None:
-                        return None
-                    try:
-                        s = str(v).strip().lower()
-                        if s in ('true', '1', 'yes'):
-                            return True
-                        if s in ('false', '0', 'no'):
-                            return False
-                    except Exception:
-                        pass
-                    return None
-
-                model_attempted = None
-                for fld in ('attempted', 'attempt'):
-                    if fld in parsed_reply:
-                        model_attempted = _to_bool_like(parsed_reply.get(fld))
-                        break
-
-                if model_attempted is not None:
-                    attempted_flag = bool(model_attempted)
-                else:
-                    attempted_flag = _is_attempt_text(display_text)
-
-                # game_over / end_communication flag from AI is informational only; if present, set disclosure to True to force closure
-                if parsed_reply.get('end_communication'):
-                    disclosure = True
-            else:
-                # fallback: usa solo el texto plano, pero NO incrementa intentos por heurística
-                display_text = reply
-                attempted_flag = False
-
-            # Additional server-side check: if user message contains sensitive data, mark disclosure
-            if user_msg and user_msg.content:
-                pattern = _user_disclosed(user_msg.content)
-                if pattern:
-                    disclosure = True
-                    disclosure_reason = f"Matched sensitive pattern: {pattern.name}"
-                    try:
-                        user_msg.is_dangerous = True
-                        user_msg.detected_pattern = pattern
-                        user_msg.save(update_fields=['is_dangerous', 'detected_pattern'])
-                    except Exception:
-                        logger.exception('Failed to mark user message as dangerous')
-
-            # replace ant_msg content with the display_text (already saved earlier as raw reply)
-            if ant_msg:
-                try:
-                    display_text = get_display_text(display_text)
-                    ant_msg.content = display_text
-                    ant_msg.save(update_fields=['content'])
-                except Exception:
-                    logger.exception('Failed to update antagonist message content for session %s', getattr(session, 'session_id', None))
-
-            # CLOSURE RULE: Only close if disclosure=true (user lost) OR if antagonist exhausted attempts without disclosure (user won)
-            if disclosure:
-                # Disclosure detected: user FAILED (shared sensitive data)
-                try:
-                    with transaction.atomic():
-                        s = GameSession.objects.select_for_update().get(pk=session.pk)
-                        if user_msg:
-                            user_msg.is_dangerous = True
-                            user_msg.save(update_fields=['is_dangerous'])
-                        if s.is_game_over is None:
-                            s.is_game_over = True
-                            s.outcome = 'failed'
-                            s.game_over_reason = disclosure_reason or 'sensitive_data'
-                            s.ended_at = timezone.now()
-                            s.save(update_fields=['is_game_over', 'outcome', 'game_over_reason', 'ended_at'])
-                except Exception:
-                    logger.exception('Failed to mark session as failed after disclosure for session %s', getattr(session, 'session_id', None))
-            else:
-                # No disclosure this turn: if AI attempted to solicit, increment counter
-                if attempted_flag:
-                    try:
-                        session.antagonist_attempts = (session.antagonist_attempts or 0) + 1
-                        session.save(update_fields=['antagonist_attempts'])
-                    except Exception:
-                        logger.exception('Failed to increment antagonist_attempts for session %s', session.session_id)
-
-                # After incrementing, check if antagonist has exhausted MAX_ATTEMPTS without ANY disclosure in conversation
-                if session.antagonist_attempts >= MAX_ATTEMPTS:
-                    try:
-                        with transaction.atomic():
-                            s = GameSession.objects.select_for_update().get(pk=session.pk)
-                            # Check if there's ANY dangerous message (disclosure) in the entire conversation
-                            disclosure_exists = ChatMessage.objects.filter(session=s, is_dangerous=True).exists()
-                            if not disclosure_exists and s.is_game_over is None:
-                                # User WON: resisted all attempts without sharing sensitive data
-                                points = 0
-                                if s.scenario:
-                                    points = int(getattr(s.scenario, 'base_points', 0) or 0)
-                                else:
-                                    points = int((s.scenario_snapshot or {}).get('base_points', 0) or 0)
-
-                                if s.user and not s.points_awarded:
-                                    try:
-                                        u = s.user
-                                        u.cybercreds = (u.cybercreds or 0) + int(points)
-                                        u.save(update_fields=['cybercreds'])
-                                    except Exception:
-                                        logger.exception('Failed to award points to user for session %s', s.session_id)
-
-                                s.points_earned = int(points)
-                                s.points_awarded = True
-                                s.is_game_over = False  # Usuario resistió y ganó
-                                s.outcome = 'won'
-                                s.game_over_reason = 'antagonist_exhausted_no_disclosure'
-                                s.ended_at = timezone.now()
-                                s.save(update_fields=['points_earned', 'points_awarded', 'is_game_over', 'outcome', 'game_over_reason', 'ended_at'])
-                    except Exception:
-                        logger.exception('Error closing/awarding points for session %s', getattr(session, 'session_id', None))
-        except Exception:
-            logger.exception('Error in post-reply logic for session %s', getattr(session, 'session_id', None))
-
-    # Si por error display_text es un objeto con 'reply', extrae el texto plano
-    if isinstance(display_text, dict) and 'reply' in display_text:
-        display_text = display_text['reply']
-    resp = {'reply': display_text, 'session_id': session.session_id if session else None}
-    if session:
-        resp.update({
-            'disclosure': disclosure,
-            'disclosure_reason': disclosure_reason,
-            'antagonist_attempts': session.antagonist_attempts,
-            'is_game_over': session.is_game_over,
-            'outcome': session.outcome,
-            'game_over_reason': session.game_over_reason,
-        })
+    # Preparar respuesta
+    resp = {
+        'reply': reply_text,
+        'session_id': session.session_id,
+        'disclosure': disclosure,
+        'disclosure_reason': disclosure_reason,
+        'antagonist_attempts': session.antagonist_attempts,
+        'is_game_over': session.is_game_over,
+        'outcome': session.outcome,
+        'game_over_reason': session.game_over_reason,
+    }
 
     return JsonResponse(resp)
 
@@ -913,107 +541,6 @@ def session_messages(request, session_id: int):
     })
 
 
-def _call_ai_provider(model: str, prompt: str, max_tokens: int = 256) -> str:
-    """Llama solo a Gemini usando la API key del entorno/configuración o .env."""
-    api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "GOOGLE_GENAI_API_KEY", None)
-    if not api_key:
-        # Intentar leer manualmente el .env si no está en el entorno
-        env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
-        if os.path.exists(env_path):
-            with open(env_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    if line.strip().startswith("GEMINI_API_KEY="):
-                        api_key = line.strip().split("=", 1)[1]
-                        break
-    if not api_key:
-        raise RuntimeError("No Gemini API key found. Set GEMINI_API_KEY env, GOOGLE_GENAI_API_KEY in settings, or in .env file.")
-    genai.configure(api_key=api_key)
-    try:
-        gemini = genai.GenerativeModel(model)
-        # No limitar max_output_tokens para dejar que Gemini responda lo máximo posible
-        response = gemini.generate_content(prompt)
-        # Primero intento el acceso rápido `.text`, pero puede lanzar ValueError si no hay Part
-        try:
-            if hasattr(response, 'text'):
-                return response.text.strip()
-        except Exception as e_text:
-            logger.warning('response.text accessor failed: %s', e_text)
-
-        # Intentar extraer texto de estructuras alternativas
-        try:
-            # candidatos comunes
-            candidates = getattr(response, 'candidates', None)
-            if candidates:
-                # candidates may be list of objects with .content or dicts
-                first = candidates[0]
-                if isinstance(first, dict):
-                    content = first.get('content') or first.get('text')
-                    if content:
-                        return str(content).strip()
-                else:
-                    content = getattr(first, 'content', None) or getattr(first, 'text', None)
-                    if content:
-                        return str(content).strip()
-        except Exception as e_cand:
-            logger.debug('candidates extraction failed: %s', e_cand)
-
-        try:
-            # some responses provide an 'output' or 'result' attribute
-            out = getattr(response, 'output', None) or getattr(response, 'result', None)
-            if out:
-                # if it's a list of parts, join text parts
-                if isinstance(out, (list, tuple)):
-                    parts = []
-                    for p in out:
-                        if isinstance(p, dict):
-                            parts.append(p.get('content') or p.get('text') or '')
-                        else:
-                            parts.append(getattr(p, 'content', None) or getattr(p, 'text', None) or '')
-                    joined = ' '.join([p for p in parts if p])
-                    if joined.strip():
-                        return joined.strip()
-                elif isinstance(out, dict):
-                    txt = out.get('content') or out.get('text')
-                    if txt:
-                        return str(txt).strip()
-        except Exception as e_out:
-            logger.debug('output/result extraction failed: %s', e_out)
-
-        # Fallback: intentar serializar el objeto de respuesta y extraer el primer string JSON-like
-        try:
-            s = str(response)
-            # intentar localizar un JSON en el string
-            start = s.find('{')
-            if start != -1:
-                # intentar parsear el primer objeto JSON encontrado
-                depth = 0
-                for i in range(start, len(s)):
-                    ch = s[i]
-                    if ch == '{':
-                        depth += 1
-                    elif ch == '}':
-                        depth -= 1
-                        if depth == 0:
-                            candidate = s[start:i+1]
-                            try:
-                                obj = json.loads(candidate)
-                                # si tiene campo 'reply' o 'text'
-                                if isinstance(obj, dict):
-                                    for key in ('reply', 'text', 'content'):
-                                        if key in obj and isinstance(obj[key], str):
-                                            return obj[key].strip()
-                                # si no, devolver el objeto string
-                                return json.dumps(obj)
-                            except Exception:
-                                continue
-            # si no hay JSON parseable, devolver el str completo
-            return s
-        except Exception as e_final:
-            logger.exception('Final fallback failed while parsing response: %s', e_final)
-            return str(response)
-    except Exception as e:
-        logger.exception('Gemini API call failed: %s', e)
-        raise
 
 
 @api_view(['GET'])

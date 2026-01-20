@@ -162,15 +162,17 @@ CLOUDINARY_API_SECRET = '9tbhQfQOxFjU1Xb-yZZiyXvM72I'
 import os
 PYTHONANYWHERE_DOMAIN = os.environ.get('PYTHONANYWHERE_DOMAIN')
 
+cloudinary_config = {
+    'cloud_name': 'dsvynqyq5',
+    'api_key': '537782675375588',
+    'api_secret': '9tbhQfQOxFjU1Xb-yZZiyXvM72I',
+}
+
 if PYTHONANYWHERE_DOMAIN:
     PYTHONANYWHERE_PROXY = 'http://proxy.server:3128'
     os.environ['HTTP_PROXY'] = PYTHONANYWHERE_PROXY
     os.environ['HTTPS_PROXY'] = PYTHONANYWHERE_PROXY
+    cloudinary_config['api_proxy'] = PYTHONANYWHERE_PROXY
 
-cloudinary.config(
-    cloud_name='dsvynqyq5',
-    api_key='537782675375588',
-    api_secret='9tbhQfQOxFjU1Xb-yZZiyXvM72I',
-    api_proxy = "http://proxy.server:3128",
-)
+cloudinary.config(**cloudinary_config)
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
