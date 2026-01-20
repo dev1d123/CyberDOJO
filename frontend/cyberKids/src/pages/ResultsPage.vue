@@ -118,6 +118,8 @@ const getRiskLevelText = (level: string): string => {
 };
 
 const goToDashboard = () => {
+  // Marcar que el usuario acaba de completar el onboarding
+  localStorage.setItem('just_completed_onboarding', 'true');
   router.push('/dashboard');
 };
 

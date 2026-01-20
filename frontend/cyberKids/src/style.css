@@ -81,3 +81,17 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Vue Tour Global Styles */
+.v-tour {
+  z-index: 10000;
+}
+
+.v-step {
+  z-index: 10001 !important;
+  max-width: 400px !important;
+}
+
+.v-tour__target--highlighted {
+  z-index: 10000 !important;
+}
