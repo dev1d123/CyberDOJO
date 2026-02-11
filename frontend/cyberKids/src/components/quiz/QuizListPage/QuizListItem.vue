@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
+
 const emojiMap: Record<string, string> = {
   'phishing': '🎣',
   'password': '🔑',
@@ -7,7 +9,7 @@ const emojiMap: Record<string, string> = {
   'volunteer_activism': '🛡️'
 };
 
-defineProps<{ quiz: {
+const props = defineProps<{ quiz: {
   id: number;
   title: string;
   description: string;
@@ -17,10 +19,28 @@ defineProps<{ quiz: {
   stars: number;
   isNew?: boolean;
 } }>();
+
+const router = useRouter();
+
+function slugify(text: string) {
+  return text
+    .toString()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/\s+/g, '-') // Replace spaces with -
+    .replace(/[^a-z0-9\-]/g, '') // Remove non-alphanumeric
+    .replace(/-+/g, '-') // Collapse dashes
+    .replace(/^-+|-+$/g, ''); // Trim dashes
+}
+
+function goToDetail() {
+  const slug = slugify(props.quiz.title || `quiz-${props.quiz.id}`);
+  router.push(`/challenge/quiz/${slug}`);
+}
 </script>
 
 <template>
-  <article class="quiz-card group">
+  <article class="quiz-card group" @click="goToDetail">
     <div class="card-badge" v-if="quiz.isNew">NUEVO</div>
     
     <div :class="['card-deco', quiz.color]"></div>
@@ -48,8 +68,8 @@ defineProps<{ quiz: {
           <span class="difficulty-label">{{ quiz.difficulty }}</span>
         </div>
 
-        <button :class="['play-btn', quiz.color]">
-          <span class="material-icons-round">play_arrow</span>
+        <button :class="['play-btn', quiz.color]" @click.stop="goToDetail">
+          <span class="play-icon">▶️</span>
           <span class="play-text">Jugar</span>
         </button>
       </div>
