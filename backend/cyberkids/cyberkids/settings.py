@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'apps.minigames',          # Gamified Events
     'apps.progression',        # Progression and Economy
     'apps.onboarding',         # Initial Risk Identification
+    'apps.quiz',                    # Educational Quiz System (RF-03)
 
     'cloudinary',
     'cloudinary_storage',
