@@ -18,9 +18,9 @@
 
     <div class="content-grid">
       <div class="main-col">
-        <QuizQuestionPanel badge="Pregunta" question="¿Qué debes hacer si recibes un correo extraño pidiendo tu contraseña?" hint="Parece urgente y dice que tu cuenta será bloqueada si no respondes ya mismo." />
+        <QuizQuestionPanel badge="Pregunta" :question="questionText" :hint="hintText" />
 
-        <div class="hint-box" v-if="showHint">💡 Pista: Recuerda verificar siempre el remitente del correo.</div>
+        <div class="hint-box" v-if="showHint">💡 Pista: {{ hintText }}</div>
 
         <QuizOptionsGrid :options="options" />
       </div>
@@ -43,26 +43,40 @@ import QuizOptionsGrid from '@/components/quiz/quizPage/QuizOptionsGrid.vue'
 import QuizSidebar from '@/components/quiz/quizPage/QuizSidebar.vue'
 import FeedbackModal from '@/components/quiz/quizPage/FeedbackModal.vue'
 
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { QuizService } from '@/services/quiz.service'
 
 const mascot = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCucjZBT2oZoN5rGKrDGU5Q9yq3f9tkghZGt5pjgZLPnrwZPlzx51O5syvPmrxMw9uR7djGOJodI2-z0YPaCfHQMw8Ptu-RD5shLTsY9mm4lR7j1f0ylbyId7-YVTjGo_C00NHByKcMLcxMhQZqC7cqy3Qlvk6uMEpeyHCm4fD222J3HgreRPI4Eyoy5VCcht_IBGGT3vlzJtXKNwqYmc0LV9CFCGOkMfrKcUg7HYnu6DL_JlavvApLhf_4xDZMGi-E0UmCJOuZ_gZ5'
 const showHint = ref(true)
 const showModal = ref(false)
 
-const options = [
-  { text: 'Responder rápido con mi contraseña' },
-  { text: 'Borrarlo y avisar a un adulto' },
-  { text: 'Reenviarlo a todos mis amigos', disabled: true },
-  { text: 'Hacer clic en el enlace adjunto', disabled: true },
-]
+const questionText = ref('Cargando...')
+const hintText = ref('')
+const options = ref<Array<any>>([])
+const loading = ref(false)
+const route = useRoute()
 
-const showFeedback = () => {
-    showModal.value = true
-}
+onMounted(async ()=>{
+  const param = (route.params.id ?? route.params.slug) as string | number | undefined
+  const id = param ?? 1
+  loading.value = true
+  try{
+    const q = await QuizService.getQuizById(id)
+    questionText.value = q.question || ''
+    hintText.value = q.hint || ''
+    options.value = q.options.map(o=>({ text: o.text, disabled: !!o.disabled, id: o.id, is_correct: o.is_correct, feedback: o.feedback }))
+  }catch(err){
+    console.error('Error cargando quiz', err)
+    questionText.value = 'No se pudo cargar la pregunta.'
+    options.value = []
+  }finally{
+    loading.value = false
+  }
+})
 
-const handleClose = () => {
-  showModal.value = false
-}
+const showFeedback = () => { showModal.value = true }
+const handleClose = () => { showModal.value = false }
 </script>
 
 <style scoped>

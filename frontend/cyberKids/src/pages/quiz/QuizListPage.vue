@@ -40,7 +40,7 @@
       </header>
 
       <div class="list-grid">
-        <QuizListItem v-for="quiz in quizzes" :key="quiz.id" :quiz="quiz" />
+        <QuizListItem v-for="quizItem in quizList" :key="quizItem.id" :quiz="quizItem" />
 
         <article class="coming-soon">
           <div class="coming-icon">
@@ -61,10 +61,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import QuizListItem from '@/components/quiz/QuizListPage/QuizListItem.vue';
 import SearchBar from '@/components/quiz/QuizListPage/SearchBar.vue';
 import MascotWidget from '@/components/quiz/shared/MascotWidget.vue';
+import { QuizService, QuizListItem as QuizListItemType } from '@/services/quiz.service';
 
 const mascotSrc = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCucjZBT2oZoN5rGKrDGU5Q9yq3f9tkghZGt5pjgZLPnrwZPlzx51O5syvPmrxMw9uR7djGOJodI2-z0YPaCfHQMw8Ptu-RD5shLTsY9mm4lR7j1f0ylbyId7-YVTjGo_C00NHByKcMLcxMhQZqC7cqy3Qlvk6uMEpeyHCm4fD222J3HgreRPI4Eyoy5VCcht_IBGGT3vlzJtXKNwqYmc0LV9CFCGOkMfrKcUg7HYnu6DL_JlavvApLhf_4xDZMGi-E0UmCJOuZ_gZ5';
 
@@ -78,53 +79,42 @@ const searchPlaceholder = 'Buscar quiz...';
 
 const filters = ['Todos', 'Phishing', 'Contraseñas', 'Privacidad'];
 
-const quizzes = ref([
-  {
-    id: 1,
-    title: 'Detectives del Phishing',
-    description: 'Aprende a identificar correos falsos y trampas en internet.',
-    difficulty: 'Fácil',
-    icon: 'phishing',
-    color: 'coral',
-    stars: 1,
-  },
-  {
-    id: 2,
-    title: 'Claves Secretas',
-    description: 'Crea contraseñas super seguras que ni los robots puedan adivinar.',
-    difficulty: 'Medio',
-    icon: 'password',
-    color: 'mint',
-    stars: 3,
-  },
-  {
-    id: 3,
-    title: 'Redes Seguras',
-    description: '¿Qué compartir y qué no? Domina tu privacidad en redes.',
-    difficulty: 'Medio',
-    icon: 'share',
-    color: 'purple-accent',
-    stars: 2.5,
-  },
-  {
-    id: 4,
-    title: 'Guardián del Móvil',
-    description: 'Protege tu tablet y celular de virus y apps maliciosas.',
-    difficulty: 'Fácil',
-    icon: 'devices',
-    color: 'primary',
-    stars: 1,
-  },
-  {
-    id: 5,
-    title: 'Héroes Digitales',
-    description: 'Cómo actuar ante el ciberacoso y ayudar a tus amigos.',
-    difficulty: 'Difícil',
-    icon: 'volunteer_activism',
-    color: 'sky-blue',
-    stars: 3,
-  },
-]);
+const quizList = ref<QuizListItemType[]>([])
+const loading = ref(false)
+
+function mapDifficultyLabel(d: any){
+  if (typeof d === 'number'){
+    // map numeric difficulty to labels
+    if (d <= 1) return 'Fácil'
+    if (d === 2) return 'Medio'
+    return 'Difícil'
+  }
+  return d ?? ''
+}
+
+onMounted(async ()=>{
+  loading.value = true
+  try{
+    const raw = await QuizService.getAll()
+    // Normalize items: ensure id and transform numeric difficulty to friendly label
+    quizList.value = raw.map((it, idx) => ({
+      id: it.id ?? idx,
+      title: it.title ?? `Quiz ${idx+1}`,
+      description: it.description ?? '',
+      difficulty: mapDifficultyLabel(it.difficulty),
+      icon: it.icon,
+      color: it.color,
+      stars: it.stars ?? 0,
+      image_url: it.image_url ?? null,
+    }))
+    console.log('Loaded quizzes:', quizList.value)
+  }catch(err){
+    console.error('Error loading quizzes', err)
+    quizList.value = []
+  }finally{
+    loading.value = false
+  }
+})
 </script>
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap');
