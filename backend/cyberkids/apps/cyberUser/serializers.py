@@ -18,7 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CyberUser
         fields = [
-            'user_id', 'username', 'email', 'country',
+            'user_id', 'username', 'email', 'age', 'country',
             'risk_level', 'pet_id', 'cybercreds', 'created_at',
             'last_login', 'is_active', 'avatar', 'preferences'
         ]
@@ -36,7 +36,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CyberUser
-        fields = ['username', 'email', 'password', 'password_confirm', 'country']
+        fields = ['username', 'email', 'password', 'password_confirm', 'age', 'country']
 
     def validate(self, data):
         if data['password'] != data['password_confirm']:
@@ -66,10 +66,11 @@ class UpdateUserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CyberUser
-        fields = ['username', 'email', 'avatar', 'country']
+        fields = ['username', 'email', 'age', 'avatar', 'country']
         extra_kwargs = {
             'username': {'required': False},
             'email': {'required': False},
+            'age': {'required': False},
         }
     
     def validate_email(self, value):

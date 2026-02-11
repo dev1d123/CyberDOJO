@@ -84,6 +84,7 @@ class CyberUser(models.Model):
     username = models.CharField(max_length=50)
     email = models.EmailField(max_length=100, unique=True)
     password = models.CharField(max_length=128)
+    age = models.IntegerField(null=True, blank=True)
     pet_id = models.IntegerField(null=True, blank=True)
     cybercreds = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
