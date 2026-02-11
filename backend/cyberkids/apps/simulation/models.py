@@ -68,7 +68,7 @@ class GameSession(models.Model):
 	#   - False => la sesión terminó y el usuario GANÓ
 	# Esto evita invertir la semántica y hace explícito el estado "en curso".
 	is_game_over = models.BooleanField(null=True, blank=True)
-	game_over_reason = models.CharField(max_length=255, null=True, blank=True)
+	game_over_reason = models.TextField(null=True, blank=True)
 
 	class Meta:
 		db_table = 'game_session'

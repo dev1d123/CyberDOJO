@@ -27,8 +27,10 @@
 
       <div class="side-col">
         <QuizSidebar @toggle-hint="showHint = !showHint" />
+        
+        <FeedbackModal v-if="showModal" :selected-index="1" :mascot="mascot" @onContinue="showModal = false" @onClose="showModal = false" />
 
-        <button class="next-btn">Siguiente ▶️</button>
+        <button @click="showFeedback" class="next-btn">Siguiente ▶️</button>
       </div>
     </div>
   </div>
@@ -39,10 +41,13 @@ import QuizHeader from '@/components/quiz/quizPage/QuizHeader.vue'
 import QuizQuestionPanel from '@/components/quiz/quizPage/QuizQuestionPanel.vue'
 import QuizOptionsGrid from '@/components/quiz/quizPage/QuizOptionsGrid.vue'
 import QuizSidebar from '@/components/quiz/quizPage/QuizSidebar.vue'
+import FeedbackModal from '@/components/quiz/quizPage/FeedbackModal.vue'
+
 import { ref } from 'vue'
 
 const mascot = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCucjZBT2oZoN5rGKrDGU5Q9yq3f9tkghZGt5pjgZLPnrwZPlzx51O5syvPmrxMw9uR7djGOJodI2-z0YPaCfHQMw8Ptu-RD5shLTsY9mm4lR7j1f0ylbyId7-YVTjGo_C00NHByKcMLcxMhQZqC7cqy3Qlvk6uMEpeyHCm4fD222J3HgreRPI4Eyoy5VCcht_IBGGT3vlzJtXKNwqYmc0LV9CFCGOkMfrKcUg7HYnu6DL_JlavvApLhf_4xDZMGi-E0UmCJOuZ_gZ5'
 const showHint = ref(true)
+const showModal = ref(false)
 
 const options = [
   { text: 'Responder rápido con mi contraseña' },
@@ -50,6 +55,14 @@ const options = [
   { text: 'Reenviarlo a todos mis amigos', disabled: true },
   { text: 'Hacer clic en el enlace adjunto', disabled: true },
 ]
+
+const showFeedback = () => {
+    showModal.value = true
+}
+
+const handleClose = () => {
+  showModal.value = false
+}
 </script>
 
 <style scoped>

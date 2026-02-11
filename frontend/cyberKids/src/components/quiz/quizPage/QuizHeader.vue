@@ -20,7 +20,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue'
 const props = defineProps<{ current?: number; total?: number; percent?: number }>()
 </script>
 
