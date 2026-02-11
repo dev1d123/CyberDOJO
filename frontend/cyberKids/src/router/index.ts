@@ -78,6 +78,12 @@ const routes = [
     component: ProfilePage,
     meta: { requiresAuth: true },
   },
+  {
+    path: '/quiz',
+    name: 'Quiz',
+    component: () => import('../pages/quiz/QuizListPage.vue'),
+    meta: { requiresAuth: true },
+  },
 ];
 
 const router = createRouter({

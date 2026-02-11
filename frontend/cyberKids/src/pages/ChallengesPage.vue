@@ -38,6 +38,8 @@
               @click="start('hunt')"
             />
           </div>
+          <h1>HOLAAAAAAAA</h1>
+          <QuizCard />
         </section>
 
         <section class="hint" aria-label="Consejo">
@@ -56,6 +58,7 @@ import { computed } from 'vue';
 import BackToDashboardButton from '../components/BackToDashboardButton.vue';
 import ChallengeGameCard from '../components/challenges/ChallengeGameCard.vue';
 import ChallengesHeader from '../components/challenges/ChallengesHeader.vue';
+import QuizCard from '../components/quizzes/QuizCard.vue';
 
 // Nota: el usuario indicó que el fondo está en /src/assets/images/challengeBackground.png.
 // En este repo aún no existe, así que lo referenciamos como string (no rompe el build).

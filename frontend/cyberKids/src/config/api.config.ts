@@ -5,6 +5,6 @@ export const API_CONFIG = {
     if (fromEnv && fromEnv.trim()) return fromEnv.trim();
 
     // Default: backend deploy (prod). For local backend, set VITE_API_BASE_URL.
-    return 'http:localhost:8000';
+    return 'http://localhost:8000/api';
   })(),
 } as const;
