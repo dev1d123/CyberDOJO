@@ -38,8 +38,19 @@
               @click="start('hunt')"
             />
           </div>
-          <h1>HOLAAAAAAAA</h1>
-          <QuizCard />
+          <!--  Agregado por Julio: tarjeta de Quiz (sintaxis simplificada para evitar errores de parsing) -->
+          <div class="quiz-card-wrap">
+            <ChallengeGameCard
+              title="Quiz de Amenazas"
+              subtitle="Pon a prueba tu ciber-instinto"
+              mechanic="Responde una serie de preguntas interactivas sobre cómo reconocer mensajes falsos y estafas digitales."
+              :gif-src="huntGif"
+              preview-type="quiz"
+              @click="start('quiz')"
+            />
+          </div>
+          <!-- Fin agregado por Julio -->
+          
         </section>
 
         <section class="hint" aria-label="Consejo">
@@ -55,10 +66,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import BackToDashboardButton from '../components/BackToDashboardButton.vue';
 import ChallengeGameCard from '../components/challenges/ChallengeGameCard.vue';
 import ChallengesHeader from '../components/challenges/ChallengesHeader.vue';
-import QuizCard from '../components/quizzes/QuizCard.vue';
+
+const router = useRouter();
 
 // Nota: el usuario indicó que el fondo está en /src/assets/images/challengeBackground.png.
 // En este repo aún no existe, así que lo referenciamos como string (no rompe el build).
@@ -75,18 +88,27 @@ const pageStyle = computed(() => {
   } as const;
 });
 
-type ChallengeId = 'trust' | 'chat' | 'hunt';
+// Actualiza el tipo para incluir 'quiz'
+type ChallengeId = 'trust' | 'chat' | 'hunt' | 'quiz';
 
 const start = (id: ChallengeId) => {
   const map: Record<ChallengeId, string> = {
     trust: '¿Confías o no?',
     chat: 'El chat sospechoso',
     hunt: 'Caza el engaño',
+    quiz: 'Quiz de Amenazas', // Agregado
   };
 
-  alert(`Abrir minijuego: ${map[id]} (pronto)`);
-};
+  console.log(`Iniciando lógica real para: ${map[id]}`);
 
+  // AQUÍ ES DONDE OCURRE LA MAGIA:
+  if (id === 'quiz') {
+    // redirigir a la página de quizzes que creamos
+    router.push('/challenges/quiz');
+  } else {
+    alert(`¡Iniciando el desafío: ${map[id]}! (Aquí va la lógica real)`);
+  }
+}
 </script>
 
 <style scoped>
@@ -132,12 +154,30 @@ const start = (id: ChallengeId) => {
   margin: 0 auto;
 }
 
-.grid {
+  .grid {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: clamp(12px, 2vw, 18px);
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .hint {

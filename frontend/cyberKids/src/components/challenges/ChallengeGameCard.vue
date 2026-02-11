@@ -31,7 +31,7 @@
 import { computed } from 'vue';
 import ChallengePreview from './ChallengePreview.vue';
 
-type PreviewType = 'trust' | 'chat' | 'hunt';
+type PreviewType = 'trust' | 'chat' | 'hunt' | 'quiz';
 
 const emit = defineEmits<{ (event: 'click'): void }>();
 

@@ -79,9 +79,15 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/quiz',
-    name: 'Quiz',
+    path: '/challenges/quiz',
+    name: 'QuizList',
     component: () => import('../pages/quiz/QuizListPage.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/challenge/quiz/:slug',
+    name: 'QuizDetail',
+    component: () => import('../pages/quiz/QuizDetailPage.vue'),
     meta: { requiresAuth: true },
   },
 ];
