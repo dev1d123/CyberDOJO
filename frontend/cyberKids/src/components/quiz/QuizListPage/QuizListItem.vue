@@ -1,26 +1,53 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { computed } from 'vue'
 
 const emojiMap: Record<string, string> = {
   'phishing': '🎣',
   'password': '🔑',
+  'passwords': '🔑',
   'share': '🌐',
   'devices': '📱',
-  'volunteer_activism': '🛡️'
+  'volunteer_activism': '🛡️',
+  'privacy': '🔐',
+  'grooming': '⚠️',
+  'cyberbullying': '😢',
+  'general': '🚀'
 };
 
 const props = defineProps<{ quiz: {
   id: number;
   title: string;
-  description: string;
-  difficulty: string;
-  icon: string;
-  color?: string;
-  stars: number;
-  isNew?: boolean;
+  description?: string;
+  difficulty?: number;
+  base_points?: number;
+  category?: string;
+  segment?: string;
+  image_url?: string | null;
+  progress?: { answered?: number; total?: number; correct?: number; percentage?: number };
+  status?: string;
 } }>();
 
 const router = useRouter();
+
+// Derivar datos para compatibilidad con template
+const icon = computed(() => {
+  const category = (props.quiz.category || 'general').toLowerCase();
+  return emojiMap[category] || '🚀';
+});
+
+const stars = computed(() => {
+  // Derivar estrellas basadas en difficulty (1-5)
+  return (props.quiz.difficulty ?? 3) / 1.5; // Escalar de 1-5 a 1-3.33
+});
+
+const color = computed(() => {
+  const difficulty = props.quiz.difficulty ?? 3;
+  if (difficulty <= 1) return 'easy';
+  if (difficulty <= 2) return 'normal';
+  if (difficulty <= 3) return 'hard';
+  return 'very-hard';
+});
 
 function slugify(text: string) {
   return text
@@ -41,34 +68,62 @@ function goToDetail() {
 
 <template>
   <article class="quiz-card group" @click="goToDetail">
-    <div class="card-badge" v-if="quiz.isNew">NUEVO</div>
+    <!-- Estado del Quiz -->
+    <div v-if="quiz.status === 'completed'" class="card-badge completed">
+      <span class="badge-icon">✓</span> REALIZADO
+    </div>
+    <div v-else-if="quiz.status === 'not_started'" class="card-badge not-started">
+      <span class="badge-icon">○</span> NO INICIADO
+    </div>
     
-    <div :class="['card-deco', quiz.color]"></div>
+    <div :class="['card-deco', color]"></div>
 
     <div class="card-content">
-      <div :class="['icon-box', quiz.color]">
-        <span class="material-icons-round">{{ quiz.icon }}</span>
+      <!-- Imagen -->
+      <div v-if="quiz.image_url" class="image-box">
+        <img :src="quiz.image_url" alt="quiz image" class="quiz-image" />
       </div>
 
+      <div v-else :class="['placeholder-image', color]">
+        <img src="https://static.vecteezy.com/system/resources/previews/006/980/868/non_2x/cartoon-character-of-children-playing-with-their-pets-free-vector.jpg" alt="quiz image" class="quiz-image" />
+      </div>
+    
+      <!-- Título y descripción -->
       <div class="text-content">
         <h3 class="card-title">
           {{ quiz.title }} 
-          <span class="emoji">{{ emojiMap[quiz.icon] || '🚀' }}</span>
+          <span class="emoji">{{ icon }}</span>
         </h3>
-        <p class="card-desc">{{ quiz.description }}</p>
+        <p class="card-desc">{{ quiz.description ?? 'Quiz de ciberseguridad' }}</p>
       </div>
 
+      <!-- Barra de progreso -->
+      <div class="progress-section">
+        <div class="progress-header">
+          <span class="progress-label">Progreso</span>
+          <span class="progress-value">{{ quiz.progress?.percentage ?? 0 }}%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: (quiz.progress?.percentage ?? 0) + '%' }"></div>
+        </div>
+        <div class="progress-stats">
+          <span class="stat">{{ quiz.progress?.answered ?? 0 }}/{{ quiz.progress?.total ?? 0 }}</span>
+          <span class="stat">{{ quiz.progress?.correct ?? 0 }} correctas</span>
+        </div>
+      </div>
+
+      <!-- Footer -->
       <div class="card-footer">
         <div class="meta-info">
           <div class="stars">
-            <span v-for="(_, i) in Math.floor(quiz.stars)" :key="i" class="material-icons-round star-filled">star</span>
-            <span v-if="quiz.stars % 1 !== 0" class="material-icons-round star-filled">star_half</span>
-            <span v-for="(_, i) in (3 - Math.ceil(quiz.stars))" :key="i" class="material-icons-round star-empty">star_border</span>
+            <span v-for="(_, i) in Math.floor(stars)" :key="`filled-${i}`" class="material-icons-round star-filled">star</span>
+            <span v-if="stars % 1 !== 0" class="material-icons-round star-filled">star_half</span>
+            <span v-for="(_, i) in (3 - Math.ceil(stars))" :key="`empty-${i}`" class="material-icons-round star-empty">star_border</span>
           </div>
-          <span class="difficulty-label">{{ quiz.difficulty }}</span>
+          <span class="difficulty-label">Nivel {{ quiz.difficulty ?? 3 }}</span>
         </div>
 
-        <button :class="['play-btn', quiz.color]" @click.stop="goToDetail">
+        <button :class="['play-btn', color]" @click.stop="goToDetail">
           <span class="play-icon">▶️</span>
           <span class="play-text">Jugar</span>
         </button>
@@ -118,13 +173,95 @@ function goToDetail() {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: #FF7A7A;
-  color: white;
   font-size: 0.75rem;
   font-weight: 700;
-  padding: 0.25rem 0.75rem;
+  padding: 0.5rem 1rem;
   border-radius: 9999px;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  backdrop-filter: blur(10px);
+}
+
+.card-badge.completed {
+  background: rgba(76, 175, 80, 0.95);
+  color: white;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.card-badge.in-progress {
+  background: rgba(255, 152, 0, 0.95);
+  color: white;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.card-badge.not-started {
+  background: rgba(160, 174, 192, 0.95);
+  color: white;
+  border: 1px solid rgba(160, 174, 192, 0.3);
+}
+
+.badge-icon {
+  font-size: 1rem;
+}
+
+/* BARRA DE PROGRESO */
+.progress-section {
+  background: rgba(139, 124, 255, 0.05);
+  padding: 0.75rem;
+  border-radius: 1rem;
+  margin: 0.5rem 0;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.progress-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(30, 75, 102, 0.6);
+  text-transform: uppercase;
+}
+
+.progress-value {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #8b7cff;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(30, 75, 102, 0.1);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b7cff 0%, #6ecff5 100%);
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+
+.progress-stats {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(30, 75, 102, 0.7);
+}
+
+.stat {
+  display: flex;
+  align-items: center;
 }
 
 /* CONTENIDO */
@@ -146,6 +283,9 @@ function goToDetail() {
   justify-content: center;
 }
 .icon-box .material-icons-round { font-size: 2.25rem; }
+
+.image-box { width: 4rem; height: 4rem; border-radius: 1rem; overflow: hidden; display:flex; align-items:center; justify-content:center; }
+.quiz-image { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .text-content { flex-grow: 1; }
 

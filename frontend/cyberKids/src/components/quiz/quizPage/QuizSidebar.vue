@@ -2,17 +2,21 @@
   <aside class="quiz-sidebar">
     <div class="panel time">
       <div class="label">Tiempo</div>
-      <div class="value">00:32</div>
+      <div class="value">{{ timeLabel }}</div>
     </div>
     <div class="panel points">
       <div class="label">Puntos</div>
-      <div class="value">350</div>
+      <div class="value">{{ points }}</div>
     </div>
     <button class="hint-btn" @click="$emit('toggle-hint')">💡 Mostrar Pista</button>
   </aside>
 </template>
 
 <script setup lang="ts">
+withDefaults(defineProps<{ timeLabel: string; points: number }>(), {
+  timeLabel: '00:00',
+  points: 0
+})
 </script>
 
 <style scoped>

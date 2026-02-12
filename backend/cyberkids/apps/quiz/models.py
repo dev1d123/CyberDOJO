@@ -63,6 +63,7 @@ class Quiz(models.Model):
     description = models.TextField(null=True, blank=True)
     difficulty_level = models.IntegerField(default=1)  # 1-5
     base_points = models.IntegerField(default=100)
+    image = models.ImageField(upload_to='quizzes/', null=True, blank=True)
     time_limit_seconds = models.IntegerField(null=True, blank=True)
     display_order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
@@ -144,15 +145,23 @@ class QuizHint(models.Model):
 
 class QuizSession(models.Model):
     """Sesiones de juego (intentos)."""
+    STATUS_CHOICES = [
+        ('not_started', 'No iniciado'),
+        ('completed', 'Realizado'),
+    ]
     session_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(CyberUser, on_delete=models.CASCADE, related_name='quiz_sessions')
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='sessions')
     started_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     points_earned = models.IntegerField(default=0)
+    coins_earned = models.IntegerField(default=0)  # Monedas obtenidas al completar
     hints_used = models.IntegerField(default=0)
-    status = models.CharField(max_length=20, default='in_progress')  # in_progress, completed, abandoned
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_started')
     time_spent_seconds = models.IntegerField(null=True, blank=True)
+    attempt_number = models.IntegerField(default=1)  # Número de intento (1, 2, 3...)
+    total_correct = models.IntegerField(default=0)  # Total preguntas correctas
+    total_answered = models.IntegerField(default=0)  # Total preguntas respondidas
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -165,7 +174,7 @@ class QuizSession(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.username} - {self.quiz.title} [{self.status}]"
+        return f"{self.user.username} - {self.quiz.title} [Intento {self.attempt_number}] [{self.status}]"
 
 
 class QuizAnswer(models.Model):

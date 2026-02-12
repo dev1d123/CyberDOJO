@@ -65,7 +65,8 @@ import { ref, onMounted } from 'vue';
 import QuizListItem from '@/components/quiz/QuizListPage/QuizListItem.vue';
 import SearchBar from '@/components/quiz/QuizListPage/SearchBar.vue';
 import MascotWidget from '@/components/quiz/shared/MascotWidget.vue';
-import { QuizService, QuizListItem as QuizListItemType } from '@/services/quiz.service';
+import { QuizService } from '@/services/quiz.service';
+import type { QuizListItem as QuizListItemType } from '@/services/quiz.service';
 
 const mascotSrc = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCucjZBT2oZoN5rGKrDGU5Q9yq3f9tkghZGt5pjgZLPnrwZPlzx51O5syvPmrxMw9uR7djGOJodI2-z0YPaCfHQMw8Ptu-RD5shLTsY9mm4lR7j1f0ylbyId7-YVTjGo_C00NHByKcMLcxMhQZqC7cqy3Qlvk6uMEpeyHCm4fD222J3HgreRPI4Eyoy5VCcht_IBGGT3vlzJtXKNwqYmc0LV9CFCGOkMfrKcUg7HYnu6DL_JlavvApLhf_4xDZMGi-E0UmCJOuZ_gZ5';
 
@@ -82,31 +83,30 @@ const filters = ['Todos', 'Phishing', 'Contraseñas', 'Privacidad'];
 const quizList = ref<QuizListItemType[]>([])
 const loading = ref(false)
 
-function mapDifficultyLabel(d: any){
-  if (typeof d === 'number'){
-    // map numeric difficulty to labels
-    if (d <= 1) return 'Fácil'
-    if (d === 2) return 'Medio'
-    return 'Difícil'
-  }
-  return d ?? ''
-}
-
 onMounted(async ()=>{
   loading.value = true
   try{
     const raw = await QuizService.getAll()
-    // Normalize items: ensure id and transform numeric difficulty to friendly label
-    quizList.value = raw.map((it, idx) => ({
-      id: it.id ?? idx,
-      title: it.title ?? `Quiz ${idx+1}`,
-      description: it.description ?? '',
-      difficulty: mapDifficultyLabel(it.difficulty),
-      icon: it.icon,
-      color: it.color,
-      stars: it.stars ?? 0,
-      image_url: it.image_url ?? null,
-    }))
+    // Renderizar exactamente lo que viene del backend
+    quizList.value = (raw as any[]).map((item: any) => {
+      const normalizedStatus = item.status === 'completed' ? 'completed' : 'not_started'
+      const fallbackTotal = item.progress?.total ?? item.total_questions ?? 0
+      const normalizedProgress = item.progress ?? { answered: 0, total: fallbackTotal, correct: 0, percentage: 0 }
+
+      return {
+      id: item.id ?? 0,
+      title: item.title ?? 'Sin título',
+      description: item.description ?? '',
+      difficulty: item.difficulty ?? 1,
+      base_points: item.base_points ?? 100,
+      time_limit_seconds: item.time_limit_seconds ?? null,
+      category: item.category ?? 'General',
+      segment: item.segment ?? 'Todos',
+      image_url: item.image_url ?? null,
+      progress: normalizedProgress,
+      status: normalizedStatus
+    }
+    })
     console.log('Loaded quizzes:', quizList.value)
   }catch(err){
     console.error('Error loading quizzes', err)
