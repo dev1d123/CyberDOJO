@@ -21,9 +21,10 @@
           
           <div class="filters">
             <button 
-              v-for="(f, index) in filters" 
+              v-for="f in filters" 
               :key="f" 
-              :class="['filter-btn', { 'active': index === 0 }]"
+              :class="['filter-btn', { 'active': f === activeFilter }]"
+              @click="activeFilter = f"
             >
               {{ f }}
             </button>
@@ -40,7 +41,7 @@
       </header>
 
       <div class="list-grid">
-        <QuizListItem v-for="quizItem in quizList" :key="quizItem.id" :quiz="quizItem" />
+        <QuizListItem v-for="quizItem in filteredQuizzes" :key="quizItem.id" :quiz="quizItem" />
 
         <article class="coming-soon">
           <div class="coming-icon">
@@ -61,7 +62,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import QuizListItem from '@/components/quiz/QuizListPage/QuizListItem.vue';
 import SearchBar from '@/components/quiz/QuizListPage/SearchBar.vue';
 import MascotWidget from '@/components/quiz/shared/MascotWidget.vue';
@@ -78,10 +79,36 @@ const header = {
 const search = ref('');
 const searchPlaceholder = 'Buscar quiz...';
 
-const filters = ['Todos', 'Phishing', 'Contraseñas', 'Privacidad'];
+const activeFilter = ref('Todos')
 
 const quizList = ref<QuizListItemType[]>([])
 const loading = ref(false)
+
+const filters = computed(() => {
+  const categories = new Set<string>()
+  quizList.value.forEach((quiz) => {
+    if (quiz.category) {
+      categories.add(String(quiz.category))
+    }
+  })
+  return ['Todos', ...Array.from(categories).sort()]
+})
+
+const filteredQuizzes = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  return quizList.value.filter((quiz) => {
+    const categoryMatch = activeFilter.value === 'Todos'
+      || (quiz.category ?? '').toLowerCase() === activeFilter.value.toLowerCase()
+
+    if (!categoryMatch) return false
+
+    if (!term) return true
+
+    const title = (quiz.title ?? '').toLowerCase()
+    const description = (quiz.description ?? '').toLowerCase()
+    return title.includes(term) || description.includes(term)
+  })
+})
 
 onMounted(async ()=>{
   loading.value = true
