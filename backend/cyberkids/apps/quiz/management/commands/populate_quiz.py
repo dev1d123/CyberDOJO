@@ -35,10 +35,9 @@ class Command(BaseCommand):
         self.stdout.write("Creando Audience Segments...")
         
         segments = [
-            {"name": "Niños 6-8 años", "description": "Contenido básico para niños pequeños", "min_age": 6, "max_age": 8, "display_order": 1},
-            {"name": "Niños 9-11 años", "description": "Contenido intermedio para niños", "min_age": 9, "max_age": 11, "display_order": 2},
-            {"name": "Adolescentes 12-14 años", "description": "Contenido avanzado para adolescentes", "min_age": 12, "max_age": 14, "display_order": 3},
-            {"name": "Adolescentes 15-17 años", "description": "Contenido experto para adolescentes mayores", "min_age": 15, "max_age": 17, "display_order": 4},
+            {"name": "Niños 7-10", "description": "Contenido básico para niños (junior)", "min_age": 7, "max_age": 10, "display_order": 1},
+            {"name": "Niños 11-14", "description": "Contenido intermedio para niños (middle)", "min_age": 11, "max_age": 14, "display_order": 2},
+            {"name": "Adolescentes 15+", "description": "Contenido avanzado para adolescentes (senior)", "min_age": 15, "max_age": 150, "display_order": 3},
         ]
         
         for seg in segments:
@@ -121,9 +120,9 @@ class Command(BaseCommand):
         categories = RiskCategory.objects.all()
         
         quiz_data = [
-            # Niños 6-8
+            # Niños 7-10
             {
-                "segment_name": "Niños 6-8 años",
+                "segment_name": "Niños 7-10",
                 "category_name": "Phishing",
                 "title": "¿Es este email de verdad?",
                 "description": "Aprende a identificar emails falsos",
@@ -132,7 +131,7 @@ class Command(BaseCommand):
                 "time_limit_seconds": 300
             },
             {
-                "segment_name": "Niños 6-8 años",
+                "segment_name": "Niños 7-10",
                 "category_name": "Privacidad",
                 "title": "Mi información es privada",
                 "description": "Qué información no debes compartir en internet",
@@ -141,7 +140,7 @@ class Command(BaseCommand):
                 "time_limit_seconds": 300
             },
             {
-                "segment_name": "Niños 6-8 años",
+                "segment_name": "Niños 7-10",
                 "category_name": "Contraseñas",
                 "title": "Contraseñas fuertes",
                 "description": "Cómo crear contraseñas seguras",
@@ -149,87 +148,59 @@ class Command(BaseCommand):
                 "base_points": 50,
                 "time_limit_seconds": 300
             },
-            # Niños 9-11
+            # Niños 11-14
             {
-                "segment_name": "Niños 9-11 años",
+                "segment_name": "Niños 11-14",
                 "category_name": "Phishing",
                 "title": "Detecta el Phishing",
                 "description": "Técnicas avanzadas de phishing",
-                "difficulty_level": 2,
+                "difficulty_level": 3,
                 "base_points": 100,
                 "time_limit_seconds": 600
             },
             {
-                "segment_name": "Niños 9-11 años",
+                "segment_name": "Niños 11-14",
                 "category_name": "Grooming",
                 "title": "Extraños en línea",
                 "description": "Cómo reconocer a depredadores online",
-                "difficulty_level": 2,
+                "difficulty_level": 3,
                 "base_points": 100,
                 "time_limit_seconds": 600
             },
             {
-                "segment_name": "Niños 9-11 años",
+                "segment_name": "Niños 11-14",
                 "category_name": "Ciberacoso",
                 "title": "No al Ciberacoso",
                 "description": "Cómo enfrentar el bullying digital",
-                "difficulty_level": 2,
+                "difficulty_level": 3,
                 "base_points": 100,
                 "time_limit_seconds": 600
             },
-            # Adolescentes 12-14
+            # Adolescentes 15+
             {
-                "segment_name": "Adolescentes 12-14 años",
+                "segment_name": "Adolescentes 15+",
                 "category_name": "Phishing",
                 "title": "Ingeniería Social",
                 "description": "Técnicas sofisticadas de phishing",
-                "difficulty_level": 3,
+                "difficulty_level": 5,
                 "base_points": 150,
                 "time_limit_seconds": 900
             },
             {
-                "segment_name": "Adolescentes 12-14 años",
+                "segment_name": "Adolescentes 15+",
                 "category_name": "Privacidad",
                 "title": "Privacidad en Redes Sociales",
                 "description": "Configuración de privacidad en redes",
-                "difficulty_level": 3,
+                "difficulty_level": 5,
                 "base_points": 150,
                 "time_limit_seconds": 900
             },
             {
-                "segment_name": "Adolescentes 12-14 años",
-                "category_name": "Descargas Seguras",
-                "title": "Descargas Maliciosas",
-                "description": "Identificar software malicioso",
-                "difficulty_level": 3,
-                "base_points": 150,
-                "time_limit_seconds": 900
-            },
-            # Adolescentes 15-17
-            {
-                "segment_name": "Adolescentes 15-17 años",
-                "category_name": "Phishing",
-                "title": "Advanced Phishing Tactics",
-                "description": "Ataques de phishing avanzados",
-                "difficulty_level": 4,
-                "base_points": 200,
-                "time_limit_seconds": 1200
-            },
-            {
-                "segment_name": "Adolescentes 15-17 años",
+                "segment_name": "Adolescentes 15+",
                 "category_name": "Contraseñas",
                 "title": "Gestión de Contraseñas",
                 "description": "Mejores prácticas en seguridad de contraseñas",
-                "difficulty_level": 4,
-                "base_points": 200,
-                "time_limit_seconds": 1200
-            },
-            {
-                "segment_name": "Adolescentes 15-17 años",
-                "category_name": "Ciberacoso",
-                "title": "Ciberacoso Avanzado",
-                "description": "Estrategias legales y de apoyo",
-                "difficulty_level": 4,
+                "difficulty_level": 5,
                 "base_points": 200,
                 "time_limit_seconds": 1200
             },

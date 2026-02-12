@@ -33,10 +33,7 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = super().get_queryset()
 
         # Obtener edad del usuario desde preferences
-        try:
-            age = user.preferences.get('age') if hasattr(user, 'preferences') else None
-        except:
-            age = None
+        age = user.preferences.age if hasattr(user, 'preferences') and user.preferences else None
 
         # Si no hay edad, mostrar quizzes de nivel medio (defecto)
         if not age:
