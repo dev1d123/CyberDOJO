@@ -110,6 +110,7 @@ import { ref, onMounted, computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { QuizService } from '@/services/quiz.service'
 import { useQuizProgress, type QuizProgressData } from '@/composables/useQuizProgress'
+import { AudioService } from '@/services/audio.service'
 
 const { saveProgress, loadProgress, clearProgress, hasProgress, updateAnswer } = useQuizProgress()
 
@@ -325,6 +326,14 @@ const submitAnswer = async () => {
     lastAnswerCorrect.value = response.is_correct
     lastFeedback.value = response.feedback ?? ''
     mascotMessage.value = response.feedback ?? (response.is_correct ? '¡Correcto!' : 'Incorrecto')
+    
+    // Reproducir sonido correspondiente
+    if (response.is_correct) {
+      AudioService.playQuizCorrect()
+    } else {
+      AudioService.playQuizWrong()
+    }
+    
     showMascotReaction.value = true
     questionAnswered.value = true
     showModal.value = true
@@ -361,6 +370,9 @@ const submitAnswer = async () => {
         coins_earned: response.coins_earned ?? 0,
         points_earned: response.points_earned ?? 0
       }
+      
+      // Sonido de victoria
+      AudioService.playQuizWin()
       
       // Limpiar progreso guardado
       clearProgress(quizId.value!)
@@ -599,6 +611,9 @@ const handleTimeUp = () => {
   if (quizId.value) {
     clearProgress(quizId.value)
   }
+
+  // Sonido de fin por tiempo
+  AudioService.playQuizWin()
 
   quizCompleted.value = true
 }

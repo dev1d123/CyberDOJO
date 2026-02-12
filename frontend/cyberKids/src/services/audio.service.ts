@@ -19,10 +19,12 @@ class AudioServiceClass {
   private currentTheme: SoundTheme | null = null;
   private audioCache: Map<string, HTMLAudioElement> = new Map();
   private backgroundMusic: HTMLAudioElement | null = null;
+  private quizSfxCache: Map<string, HTMLAudioElement> = new Map();
   private isMuted: boolean = false;
   private backgroundMusicVolume: number = 0.3;
   private sfxVolume: number = 0.5;
-  private shouldPlayBackground: boolean = true; // Por defecto activado
+  private shouldPlayBackground: boolean = true;
+  private readonly quizSfxBoost: number = 2.0;
 
   private themeLoaded: Promise<void>;
 
@@ -181,6 +183,8 @@ class AudioServiceClass {
     this.isMuted = muted;
     if (muted) {
       this.pauseBackgroundMusic();
+    } else if (this.shouldPlayBackground) {
+      this.startBackgroundMusic();
     }
   }
 
@@ -200,6 +204,21 @@ class AudioServiceClass {
     this.audioCache.forEach(audio => {
       audio.volume = this.sfxVolume;
     });
+    this.quizSfxCache.forEach(audio => {
+      audio.volume = Math.min(1, this.sfxVolume * this.quizSfxBoost);
+    });
+  }
+
+  getMuted(): boolean {
+    return this.isMuted;
+  }
+
+  getBackgroundVolume(): number {
+    return this.backgroundMusicVolume;
+  }
+
+  getSFXVolume(): number {
+    return this.sfxVolume;
   }
 
   private async fadeOut(audio: HTMLAudioElement, duration: number = 1000): Promise<void> {
@@ -268,11 +287,51 @@ class AudioServiceClass {
     }
   }
 
+  // ===== QUIZ SFX METHODS ====
+  private getQuizSfx(path: string): HTMLAudioElement {
+    let audio = this.quizSfxCache.get(path);
+    if (!audio) {
+      audio = new Audio(path);
+      audio.preload = 'auto';
+      this.quizSfxCache.set(path, audio);
+    }
+    audio.volume = Math.min(1, this.sfxVolume * this.quizSfxBoost);
+    return audio;
+  }
+
+  playQuizCorrect(): void {
+    if (this.isMuted) return;
+    const audio = this.getQuizSfx('/sounds/quiz/correct_answer.mp3');
+    audio.currentTime = 0;
+    audio.play().catch(() => {
+      console.warn('Error playing correct sound');
+    });
+  }
+
+  playQuizWrong(): void {
+    if (this.isMuted) return;
+    const audio = this.getQuizSfx('/sounds/quiz/Voicy_Quiz%20Player%20Loser.mp3');
+    audio.currentTime = 0;
+    audio.play().catch(() => {
+      console.warn('Error playing wrong sound');
+    });
+  }
+
+  playQuizWin(): void {
+    if (this.isMuted) return;
+    const audio = this.getQuizSfx('/sounds/quiz/Voicy_win.mp3');
+    audio.currentTime = 0;
+    audio.play().catch(() => {
+      console.warn('Error playing win sound');
+    });
+  }
+
   cleanup(): void {
     console.log('🎵 [AudioService] Limpiando audio por cierre de sesión');
     this.shouldPlayBackground = false;
     this.stopBackgroundMusic();
     this.audioCache.clear();
+    this.quizSfxCache.clear();
     this.currentTheme = null;
     this.backgroundMusic = null;
   }

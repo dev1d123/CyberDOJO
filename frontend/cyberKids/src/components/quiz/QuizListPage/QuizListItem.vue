@@ -91,7 +91,7 @@ function goToDetail() {
       </div>
 
       <div v-else :class="['placeholder-image', color]">
-        <img src="https://static.vecteezy.com/system/resources/previews/006/980/868/non_2x/cartoon-character-of-children-playing-with-their-pets-free-vector.jpg" alt="quiz image" class="quiz-image" />
+        <img src="https://images.ctfassets.net/rvt0uslu5yqp/4zVG1eCQtjAIsLCl2mNa2e/e58a8586b81347a387db31417bc86020/Blog_Quiz_Cover-01.png" alt="quiz image" class="quiz-image" />
       </div>
     
       <!-- Título y descripción -->
