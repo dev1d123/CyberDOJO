@@ -208,6 +208,18 @@ onMounted(async ()=>{
 /* Header y Controles */
 .page-header { display: flex; flex-direction: column; gap: 24px; }
 
+/* Animación de entrada para controles */
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .controls-card {
   backdrop-filter: blur(8px);
   padding: 12px;
@@ -217,6 +229,11 @@ onMounted(async ()=>{
   display: flex;
   flex-direction: column;
   gap: 16px;
+  animation: slideInDown 0.8s ease-out 0.2s both;
+}
+
+.search-wrapper {
+  animation: slideInDown 0.8s ease-out 0.3s both;
 }
 
 /* Filtros Estilo Pill */
@@ -225,6 +242,7 @@ onMounted(async ()=>{
   gap: 8px;
   justify-content: center;
   padding-bottom: 4px;
+  animation: slideInDown 0.8s ease-out 0.4s both;
 }
 .filters::-webkit-scrollbar { display: none; }
 
@@ -239,7 +257,15 @@ onMounted(async ()=>{
   transition: all 0.2s;
   white-space: nowrap;
   cursor: pointer;
+  animation: slideInDown 0.8s ease-out 0.4s both;
 }
+
+.filter-btn:nth-child(1) { animation-delay: 0.45s; }
+.filter-btn:nth-child(2) { animation-delay: 0.5s; }
+.filter-btn:nth-child(3) { animation-delay: 0.55s; }
+.filter-btn:nth-child(4) { animation-delay: 0.6s; }
+.filter-btn:nth-child(5) { animation-delay: 0.65s; }
+.filter-btn:nth-child(n+6) { animation-delay: 0.7s; }
 
 .filter-btn.active {
   background: #ffd166;
@@ -253,6 +279,7 @@ onMounted(async ()=>{
   display: flex;
   justify-content: center;
   width: 100%;
+  animation: slideInDown 0.8s ease-out 0.8s both;
 }
 
 /* Grid */
@@ -261,6 +288,41 @@ onMounted(async ()=>{
   grid-template-columns: repeat(1, 1fr);
   gap: 24px;
 }
+
+/* Animación de rebote */
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(30px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05) translateY(-10px);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.list-grid > * {
+  animation: bounceIn 1s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.list-grid > :nth-child(1) { animation-delay: 0.1s; }
+.list-grid > :nth-child(2) { animation-delay: 0.15s; }
+.list-grid > :nth-child(3) { animation-delay: 0.2s; }
+.list-grid > :nth-child(4) { animation-delay: 0.25s; }
+.list-grid > :nth-child(5) { animation-delay: 0.3s; }
+.list-grid > :nth-child(6) { animation-delay: 0.35s; }
+.list-grid > :nth-child(7) { animation-delay: 0.4s; }
+.list-grid > :nth-child(8) { animation-delay: 0.45s; }
+.list-grid > :nth-child(9) { animation-delay: 0.5s; }
+.list-grid > :nth-child(n+10) { animation-delay: 0.55s; }
+
 @media (min-width: 768px) { .list-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1024px) { .list-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1280px) { .list-grid { grid-template-columns: repeat(4, 1fr); } }
