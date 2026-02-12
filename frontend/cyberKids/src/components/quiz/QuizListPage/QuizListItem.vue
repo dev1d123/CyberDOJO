@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useQuizProgress } from '@/composables/useQuizProgress'
+
+const { hasProgress } = useQuizProgress()
 
 const emojiMap: Record<string, string> = {
   'phishing': '🎣',
@@ -24,11 +27,17 @@ const props = defineProps<{ quiz: {
   category?: string;
   segment?: string;
   image_url?: string | null;
-  progress?: { answered?: number; total?: number; correct?: number; percentage?: number };
+  progress?: { answered?: number; total?: number; percentage?: number };
   status?: string;
 } }>();
 
 const router = useRouter();
+const isInProgress = ref(false)
+
+onMounted(() => {
+  // Verificar si hay progreso guardado localmente
+  isInProgress.value = hasProgress(props.quiz.id)
+})
 
 // Derivar datos para compatibilidad con template
 const icon = computed(() => {
@@ -49,30 +58,27 @@ const color = computed(() => {
   return 'very-hard';
 });
 
-function slugify(text: string) {
-  return text
-    .toString()
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^a-z0-9\-]/g, '') // Remove non-alphanumeric
-    .replace(/-+/g, '-') // Collapse dashes
-    .replace(/^-+|-+$/g, ''); // Trim dashes
-}
+const displayStatus = computed(() => {
+  // Priorizar el estado local de progreso
+  if (isInProgress.value) return 'in_progress'
+  return props.quiz.status
+})
 
 function goToDetail() {
-  const slug = slugify(props.quiz.title || `quiz-${props.quiz.id}`);
-  router.push(`/challenge/quiz/${slug}`);
+  router.push(`/challenge/quiz/${props.quiz.id}`);
 }
 </script>
 
 <template>
   <article class="quiz-card group" @click="goToDetail">
     <!-- Estado del Quiz -->
-    <div v-if="quiz.status === 'completed'" class="card-badge completed">
+    <div v-if="displayStatus === 'completed'" class="card-badge completed">
       <span class="badge-icon">✓</span> REALIZADO
     </div>
-    <div v-else-if="quiz.status === 'not_started'" class="card-badge not-started">
+    <div v-else-if="displayStatus === 'in_progress'" class="card-badge in-progress">
+      <span class="badge-icon">⏸</span> EN PROGRESO
+    </div>
+    <div v-else-if="displayStatus === 'not_started'" class="card-badge not-started">
       <span class="badge-icon">○</span> NO INICIADO
     </div>
     
@@ -97,7 +103,7 @@ function goToDetail() {
         <p class="card-desc">{{ quiz.description ?? 'Quiz de ciberseguridad' }}</p>
       </div>
 
-      <!-- Barra de progreso -->
+      <!-- Barra de progreso (respondidas / total) -->
       <div class="progress-section">
         <div class="progress-header">
           <span class="progress-label">Progreso</span>
@@ -107,8 +113,7 @@ function goToDetail() {
           <div class="progress-fill" :style="{ width: (quiz.progress?.percentage ?? 0) + '%' }"></div>
         </div>
         <div class="progress-stats">
-          <span class="stat">{{ quiz.progress?.answered ?? 0 }}/{{ quiz.progress?.total ?? 0 }}</span>
-          <span class="stat">{{ quiz.progress?.correct ?? 0 }} correctas</span>
+          <span class="stat">{{ quiz.progress?.answered ?? 0 }}/{{ quiz.progress?.total ?? 0 }} respondidas</span>
         </div>
       </div>
 
@@ -202,6 +207,22 @@ function goToDetail() {
   border: 1px solid rgba(160, 174, 192, 0.3);
 }
 
+.card-badge.in-progress {
+  background: rgba(139, 124, 255, 0.95);
+  color: white;
+  border: 1px solid rgba(139, 124, 255, 0.3);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
 .badge-icon {
   font-size: 1rem;
 }
@@ -252,7 +273,6 @@ function goToDetail() {
 
 .progress-stats {
   display: flex;
-  gap: 0.75rem;
   justify-content: space-between;
   font-size: 0.75rem;
   font-weight: 600;
@@ -263,6 +283,7 @@ function goToDetail() {
   display: flex;
   align-items: center;
 }
+
 
 /* CONTENIDO */
 .card-content {

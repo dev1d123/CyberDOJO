@@ -63,47 +63,58 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'])
     def start(self, request, pk=None):
-        """Inicia una nueva sesión de quiz."""
+        """Inicia o crea nueva sesión de quiz para reintento."""
         quiz = self.get_object()
 
-        # Buscar sesión activa
-        existing_session = QuizSession.objects.filter(
+        # Buscar la última sesión del usuario para este quiz
+        last_session = QuizSession.objects.filter(
             user=request.user,
-            quiz=quiz,
-            status='in_progress'
-        ).first()
+            quiz=quiz
+        ).order_by('-started_at').first()
 
-        if existing_session:
-            return Response({
-                "session_id": existing_session.session_id,
-                "status": "already_started",
-                "message": "Ya hay una sesión en progreso"
-            }, status=status.HTTP_200_OK)
+        # Determinar si es un reintento o si la sesión está "sucia" (tiene respuestas)
+        is_retry = last_session and last_session.status == 'completed'
+        is_dirty_session = last_session and last_session.status == 'not_started' and last_session.answers.exists()
+        show_warning = is_retry
 
-        # Verificar si hay intentos previos completados
-        previous_sessions = QuizSession.objects.filter(
-            user=request.user,
-            quiz=quiz,
-            status='completed'
-        ).count()
+        # Si es un reintento O la sesión tiene respuestas, CREAR una nueva sesión
+        if is_retry or is_dirty_session:
+            session = QuizSession.objects.create(
+                user=request.user,
+                quiz=quiz,
+                status='not_started',
+                attempt_number=last_session.attempt_number + 1 if last_session else 1
+            )
+            if is_retry:
+                print(f"🔄 Reintento - Nueva sesión creada: {session.session_id}, Intento #{session.attempt_number}")
+            else:
+                print(f"🧹 Sesión sucia detectada - Nueva sesión creada: {session.session_id}, Intento #{session.attempt_number}")
+        elif not last_session:
+            # Primera vez - crear sesión inicial
+            session = QuizSession.objects.create(
+                user=request.user,
+                quiz=quiz,
+                status='not_started',
+                attempt_number=1
+            )
+            print(f"🆕 Primera vez - Sesión creada: {session.session_id}")
+        else:
+            # Sesión existente limpia (sin respuestas) - reutilizar
+            session = last_session
+            print(f"♻️ Reutilizando sesión limpia: {session.session_id}")
 
-        # Crear nueva sesión
-        session = QuizSession.objects.create(
-            user=request.user,
-            quiz=quiz,
-            status='in_progress',
-            attempt_number=previous_sessions + 1
-        )
-
-        serializer = QuizSessionSerializer(session)
+        # Serializar el quiz completo con todas las preguntas
+        quiz_serializer = QuizDetailSerializer(quiz)
+        session_serializer = QuizSessionSerializer(session)
 
         return Response({
-            **serializer.data,
-            "status": "started",
-            "previous_attempts": previous_sessions,
-            "show_warning": previous_sessions > 0,  # Mostrar modal si hay intentos previos
-            "message": "Sesión iniciada" if previous_sessions == 0 else "Sesión reiniciada"
-        }, status=status.HTTP_201_CREATED)
+            "session": session_serializer.data,
+            "quiz": quiz_serializer.data,
+            "show_warning": show_warning,
+            "is_retry": is_retry,
+            "previous_attempts": last_session.attempt_number if last_session else 0,
+            "message": "Sesión iniciada" if not show_warning else "Reintento - sin recompensas"
+        }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
@@ -130,17 +141,14 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
             )
         }
 
-        # Si es la última respuesta, incluir datos de finalización e información de rewards
+        # Si es la última respuesta, incluir datos de finalización
         session = answer.session
         if session.status == 'completed':
-            difficulty = question.quiz.difficulty_level
-            coins_reward = get_coins_reward(difficulty)
-            
             response_data.update({
                 "quiz_completed": True,
                 "total_correct": session.total_correct,
                 "total_answered": session.total_answered,
-                "coins_earned": session.coins_earned,
+                "coins_earned": session.coins_earned,  # Mantendrá 0 en reintentos
                 "points_earned": session.points_earned,
                 "percentage": int((session.total_correct / session.total_answered) * 100) if session.total_answered > 0 else 0
             })

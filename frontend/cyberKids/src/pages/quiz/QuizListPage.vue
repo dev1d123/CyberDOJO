@@ -90,8 +90,9 @@ onMounted(async ()=>{
     // Renderizar exactamente lo que viene del backend
     quizList.value = (raw as any[]).map((item: any) => {
       const normalizedStatus = item.status === 'completed' ? 'completed' : 'not_started'
-      const fallbackTotal = item.progress?.total ?? item.total_questions ?? 0
-      const normalizedProgress = item.progress ?? { answered: 0, total: fallbackTotal, correct: 0, percentage: 0 }
+      const answered = item.progress?.answered ?? item.total_answered ?? 0
+      const total = item.progress?.total ?? item.total_questions ?? 0
+      const percentage = total > 0 ? Math.round((answered / total) * 100) : 0
 
       return {
       id: item.id ?? 0,
@@ -103,7 +104,7 @@ onMounted(async ()=>{
       category: item.category ?? 'General',
       segment: item.segment ?? 'Todos',
       image_url: item.image_url ?? null,
-      progress: normalizedProgress,
+      progress: { answered, total, percentage },
       status: normalizedStatus
     }
     })

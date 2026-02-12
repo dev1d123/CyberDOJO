@@ -1,24 +1,28 @@
 <template>
   <section :class="['question-panel', { 'spin-in': animate }]">
-    <div class="badge">{{ badge }}</div>
+    <div class="badge">{{ props.badge }}</div>
     <div class="question-content">
       <div class="question-icon">🎯</div>
-      <h2 class="question-title">{{ question }}</h2>
-      <p class="question-sub">{{ hint }}</p>
+      <h2 class="question-title">{{ props.question }}</h2>
+      <p class="question-sub">{{ props.hint }}</p>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { defineProps, ref, onMounted } from 'vue'
-const props = defineProps<{ badge?: string; question: string; hint?: string }>()
-const badge = props.badge ?? ''
-const question = props.question
-const hint = props.hint ?? ''
+import { ref, onMounted } from 'vue'
+
+const props = defineProps<{ 
+  badge?: string
+  question: string
+  hint?: string 
+}>()
+
 const animate = ref(false)
-onMounted(()=>{
+
+onMounted(() => {
   // small delay so the animation is visible after page load
-  setTimeout(()=> animate.value = true, 60)
+  setTimeout(() => animate.value = true, 60)
 })
 </script>
 

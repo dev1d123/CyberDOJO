@@ -117,7 +117,7 @@ export class QuizService {
     return data ?? {};
   }
 
-  static async startQuizSession(quizId: number): Promise<QuizSession & { show_warning?: boolean; previous_attempts?: number }> {
+  static async startQuizSession(quizId: number): Promise<any> {
     const res = await fetch(`${this.QUIZ_BASE}/${quizId}/start/`, {
       method: "POST",
       headers: getAuthHeaders(),
@@ -140,7 +140,13 @@ export class QuizService {
 
     if (!res.ok) {
       const error = await tryJson(res);
-      throw new Error(error?.detail ?? `Could not submit answer: ${res.status}`);    }
+      console.error('❌ Error del backend:', error);
+      const errorMessage = error?.detail 
+        || error?.message 
+        || JSON.stringify(error) 
+        || `Could not submit answer: ${res.status}`;
+      throw new Error(errorMessage);
+    }
 
     const data = await tryJson(res);
     return data ?? {};

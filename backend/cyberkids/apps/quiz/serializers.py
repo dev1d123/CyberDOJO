@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 from .models import (
     Quiz,
     QuizQuestion,
@@ -15,7 +16,7 @@ class QuizAlternativeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = QuizAlternative
-        fields = ['id', 'content', 'display_order']
+        fields = ['id', 'content', 'is_correct', 'feedback', 'display_order']
 
 
 class QuizHintSerializer(serializers.ModelSerializer):
@@ -93,8 +94,12 @@ class QuizListSerializer(serializers.ModelSerializer):
                 "percentage": 0
             }
 
-        answered = session.answers.count()
-        correct = session.answers.filter(is_correct=True).count()
+        answered = session.total_answered or session.answers.count()
+        correct = session.total_correct or session.answers.filter(is_correct=True).count()
+
+        # Ensure answered doesn't exceed total (in case of manual data entry)
+        answered = min(answered, total)
+        correct = min(correct, total)
 
         percentage = int((answered / total) * 100) if total > 0 else 0
         return {
@@ -159,17 +164,31 @@ class QuizAnswerCreateSerializer(serializers.Serializer):
             question=question
         )
 
+        # Usar el session_id específico enviado por el frontend
+        session_id = self.initial_data.get('session_id')
+        print(f"🔍 DEBUG - session_id recibido: {session_id}")
+        if not session_id:
+            raise serializers.ValidationError("session_id is required.")
+        
         session = QuizSession.objects.filter(
-            user=request.user,
-            quiz=question.quiz,
-            status='in_progress'
-        ).order_by('-started_at').first()
+            session_id=session_id,
+            user=request.user
+        ).first()
 
         if not session:
-            raise serializers.ValidationError("No active session found.")
-
-        if session.answers.filter(question=question).exists():
+            print(f"❌ DEBUG - Sesión no encontrada con session_id={session_id} para user={request.user.username}")
+            raise serializers.ValidationError("Session not found or does not belong to this user.")
+        
+        print(f"✅ DEBUG - Sesión encontrada: {session.session_id}, status={session.status}, attempt={session.attempt_number}")
+        
+        # Verificar si la pregunta ya fue respondida en ESTA sesión
+        existing_answer = session.answers.filter(question=question).first()
+        if existing_answer:
+            print(f"⚠️ DEBUG - Pregunta {question.question_id} YA respondida en sesión {session.session_id}")
+            print(f"📊 DEBUG - Total respuestas en sesión: {session.answers.count()}")
             raise serializers.ValidationError("Question already answered.")
+        
+        print(f"✅ DEBUG - Pregunta {question.question_id} NO respondida aún en sesión {session.session_id}")
 
         attrs['question'] = question
         attrs['alternative'] = alternative
@@ -199,15 +218,22 @@ class QuizAnswerCreateSerializer(serializers.Serializer):
         session.total_answered += 1
         total = question.quiz.questions.count()
 
-        # Si es la última respuesta, marcar como completado y dar recompensas
+        # Si es la última respuesta, marcar como completado y calcular recompensas
         if session.total_answered >= total:
             session.status = 'completed'
-            session.ended_at = serializers.Serializer().to_representation(None)  # Usar timezone
+            session.ended_at = timezone.now()
             
-            # Calcular rewards basado en dificultad
-            difficulty = question.quiz.difficulty_level
-            session.coins_earned = get_coins_reward(difficulty)
-            session.points_earned = get_points_reward(difficulty) * session.total_correct
+            # Solo dar recompensas en el primer intento
+            if session.attempt_number == 1:
+                difficulty = question.quiz.difficulty_level
+                session.coins_earned = get_coins_reward(difficulty)
+                session.points_earned = get_points_reward(difficulty) * session.total_correct
+                print(f"💰 Primer intento - Recompensas: {session.coins_earned} monedas, {session.points_earned} puntos")
+            else:
+                # Reintentos: sin recompensas
+                session.coins_earned = 0
+                session.points_earned = 0
+                print(f"🔄 Reintento #{session.attempt_number} - Sin recompensas")
 
         session.save()
 

@@ -1,5 +1,17 @@
 <template>
   <div class="quiz-detail-page" v-if="!quizCompleted">
+    <!-- Modal de progreso guardado -->
+    <ResumeQuizModal 
+      v-if="showResumeModal"
+      :answered-questions="savedProgress?.answers.length ?? 0"
+      :total-questions="savedProgress?.answers.length ?? 0"
+      :total-points="savedProgress?.totalPoints ?? 0"
+      :last-updated-at="savedProgress?.lastUpdatedAt ?? ''"
+      @resume="handleResume"
+      @restart="handleRestartFromModal"
+      @cancel="goBack"
+    />
+
     <!-- Modal de advertencia para reintentos -->
     <div v-if="showRestartWarning" class="modal-overlay" @click="showRestartWarning = false">
       <div class="modal-content" @click.stop>
@@ -35,7 +47,12 @@
       <div class="main-col">
         <QuizQuestionPanel badge="Pregunta" :question="questionText" :hint="hintText" />
 
-        <div class="hint-box" v-if="showHint && hintText">💡 Pista: {{ hintText }}</div>
+        <!-- Hint con transición suave -->
+        <div :class="['hint-wrapper', { 'hint-open': showHint && hintText }]">
+          <div class="hint-box">
+            💡 Pista: {{ hintText }}
+          </div>
+        </div>
 
         <!-- Opciones -->
         <div class="options-container">
@@ -90,10 +107,14 @@ import QuizQuestionPanel from '@/components/quiz/quizPage/QuizQuestionPanel.vue'
 import QuizSidebar from '@/components/quiz/quizPage/QuizSidebar.vue'
 import FeedbackModal from '@/components/quiz/quizPage/FeedbackModal.vue'
 import ModalVictory from '@/components/quiz/quizPage/ModalVictory.vue'
+import ResumeQuizModal from '@/components/quiz/quizPage/ResumeQuizModal.vue'
 
 import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { QuizService } from '@/services/quiz.service'
+import { useQuizProgress, type QuizProgressData } from '@/composables/useQuizProgress'
+
+const { saveProgress, loadProgress, clearProgress, hasProgress, updateAnswer } = useQuizProgress()
 
 const mascot = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCucjZBT2oZoN5rGKrDGU5Q9yq3f9tkghZGt5pjgZLPnrwZPlzx51O5syvPmrxMw9uR7djGOJodI2-z0YPaCfHQMw8Ptu-RD5shLTsY9mm4lR7j1f0ylbyId7-YVTjGo_C00NHByKcMLcxMhQZqC7cqy3Qlvk6uMEpeyHCm4fD222J3HgreRPI4Eyoy5VCcht_IBGGT3vlzJtXKNwqYmc0LV9CFCGOkMfrKcUg7HYnu6DL_JlavvApLhf_4xDZMGi-E0UmCJOuZ_gZ5'
 
@@ -104,9 +125,14 @@ const router = useRouter()
 const showHint = ref(false)
 const showModal = ref(false)
 const showRestartWarning = ref(false)
+const showResumeModal = ref(false)
 const showMascotReaction = ref(false)
 const submitting = ref(false)
 const canPlay = ref(false)
+
+// Progreso guardado
+const savedProgress = ref<QuizProgressData | null>(null)
+const currentProgress = ref<QuizProgressData | null>(null)
 
 // Datos del quiz
 const quizId = ref<number | null>(null)
@@ -142,15 +168,38 @@ const sessionStats = ref({
 })
 
 // Computados
-const currentQuestion = computed(() => questions.value[currentQuestionIndex.value] ?? null)
-const currentAnswer = computed(() => currentQuestion.value?.alternatives ?? [])
+const currentQuestion = computed(() => {
+  const q = questions.value[currentQuestionIndex.value] ?? null
+  if (q) {
+    console.log('📖 Current question:', {
+      id: q.id,
+      content: q.content,
+      alternatives_count: q.alternatives?.length,
+      alternatives: q.alternatives
+    })
+  }
+  return q
+})
+const currentAnswer = computed(() => {
+  const alternatives = currentQuestion.value?.alternatives ?? []
+  console.log('🔢 Alternativas disponibles:', alternatives)
+  return alternatives
+})
 const totalQuestions = computed(() => questions.value.length)
 const answeredQuestions = computed(() => currentQuestionIndex.value + 1)
 const progressPercent = computed(() => {
   return totalQuestions.value > 0 ? Math.round((answeredQuestions.value / totalQuestions.value) * 100) : 0
 })
-const questionText = computed(() => currentQuestion.value?.content ?? 'Cargando...')
-const hintText = computed(() => currentQuestion.value?.hints?.[0]?.content ?? '')
+const questionText = computed(() => {
+  const text = currentQuestion.value?.content ?? 'Cargando...'
+  console.log('📝 questionText computed:', text)
+  return text
+})
+const hintText = computed(() => {
+  const text = currentQuestion.value?.hints?.[0]?.content ?? ''
+  console.log('💡 hintText computed:', text)
+  return text
+})
 const isTimeUp = computed(() => timeLimitSeconds.value > 0 && timeRemaining.value === 0)
 const timeLabel = computed(() => {
   const totalSeconds = Math.max(timeRemaining.value, 0)
@@ -185,37 +234,18 @@ onMounted(async () => {
   loading.value = true
   
   try {
-    const quiz = await QuizService.getQuizById(quizId.value)
+    // Verificar si hay progreso guardado
+    if (hasProgress(quizId.value)) {
+      savedProgress.value = loadProgress(quizId.value)
+      if (savedProgress.value) {
+        console.log('📖 Hay progreso guardado, mostrando modal de reanudación')
+        showResumeModal.value = true
+        loading.value = false
+        return
+      }
+    }
     
-    quizTitle.value = quiz.title ?? 'Quiz'
-    quizDescription.value = quiz.description ?? ''
-    quizBasePoints.value = quiz.base_points ?? 0
-    quizDifficulty.value = quiz.difficulty_level ?? 1
-    
-    questions.value = (quiz.questions ?? []).map((q: any) => ({
-      id: q.id ?? 0,
-      content: q.content ?? '',
-      explanation: q.explanation ?? '',
-      points: q.points ?? 10,
-      display_order: q.display_order ?? 1,
-      image_url: q.image_url ?? null,
-      alternatives: (q.alternatives ?? []).map((alt: any) => ({
-        id: alt.id ?? 0,
-        content: alt.content ?? '',
-        display_order: alt.display_order ?? 1,
-        is_correct: alt.is_correct ?? false,
-        feedback: alt.feedback ?? ''
-      })),
-      hints: (q.hints ?? []).map((hint: any) => ({
-        id: hint.id ?? 0,
-        content: hint.content ?? '',
-        cost_points: hint.cost_points ?? 5,
-        display_order: hint.display_order ?? 1
-      }))
-    }))
-    timeLimitSeconds.value = quiz.time_limit_seconds ?? 0
-    timeRemaining.value = timeLimitSeconds.value
-    totalPoints.value = 0
+    // Si no hay progreso guardado, iniciar normalmente
     await startSession()
   } catch (err) {
     console.error('Error cargando quiz:', err)
@@ -226,6 +256,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   stopTimer()
+  // Si hay sesión activa y preguntas sin terminar, el progreso ya está guardado
+  if (sessionId.value && !quizCompleted.value && currentProgress.value) {
+    console.log('⚠️ Sesión guardada automáticamente al salir')
+  }
 })
 
 const selectAnswer = (altId: number) => {
@@ -250,12 +284,23 @@ const submitAnswer = async () => {
       ? Math.max(1, Math.round((now - questionStartedAt.value) / 1000))
       : 0
 
-    // Enviar respuesta
-    const response = await QuizService.submitAnswer(quizId.value!, {
+    console.log('📤 Enviando respuesta:', {
+      quiz_id: quizId.value,
+      session_id: sessionId.value,
       question_id: currentQuestion.value!.id,
       selected_alternative_id: selectedAnswer.value,
       time_spent_seconds: elapsedSeconds
     })
+
+    // Enviar respuesta
+    const response = await QuizService.submitAnswer(quizId.value!, {
+      session_id: sessionId.value!,
+      question_id: currentQuestion.value!.id,
+      selected_alternative_id: selectedAnswer.value,
+      time_spent_seconds: elapsedSeconds
+    })
+
+    console.log('📥 Respuesta recibida:', response)
 
     // Mostrar reacción de mascota
     lastAnswerCorrect.value = response.is_correct
@@ -268,8 +313,29 @@ const submitAnswer = async () => {
       totalPoints.value += currentQuestion.value?.points ?? 0
     }
 
+    // Guardar progreso automáticamente
+    if (currentProgress.value) {
+      currentProgress.value = updateAnswer(
+        currentProgress.value,
+        currentQuestion.value!.id,
+        selectedAnswer.value,
+        response.is_correct,
+        elapsedSeconds
+      )
+      currentProgress.value.totalPoints = totalPoints.value
+      saveProgress(currentProgress.value)
+      console.log('💾 Progreso guardado automáticamente')
+    }
+
     // Si el quiz se completó
     if (response.quiz_completed) {
+      console.log('🎊 Backend confirmó quiz completado:', {
+        total_correct: response.total_correct,
+        total_answered: response.total_answered,
+        coins_earned: response.coins_earned,
+        points_earned: response.points_earned
+      })
+      
       sessionStats.value = {
         total_correct: response.total_correct ?? 0,
         total_answered: response.total_answered ?? 0,
@@ -277,13 +343,22 @@ const submitAnswer = async () => {
         points_earned: response.points_earned ?? 0
       }
       
+      // Limpiar progreso guardado
+      clearProgress(quizId.value!)
+      console.log('🎉 Quiz completado, progreso limpiado')
+      
       // Guardar monedas en localStorage (luego se sincronizará con servidor)
       const currentCoins = parseInt(localStorage.getItem('coins') ?? '0')
       localStorage.setItem('coins', String(currentCoins + sessionStats.value.coins_earned))
+      console.log('💰 Monedas actualizadas:', currentCoins, '+', sessionStats.value.coins_earned, '=', currentCoins + sessionStats.value.coins_earned)
+    } else {
+      console.log('📝 Quiz NO completado aún, continúa...')
     }
   } catch (err) {
-    console.error('Error enviando respuesta:', err)
-    alert('Error al enviar respuesta: ' + (err as any)?.message)
+    console.error('❌ Error completo:', err)
+    console.error('❌ Error stack:', (err as any)?.stack)
+    console.error('❌ Error message:', (err as any)?.message)
+    alert('Error al enviar respuesta:\n' + (err as any)?.message)
   } finally {
     submitting.value = false
   }
@@ -293,13 +368,30 @@ const goNextQuestion = () => {
   showMascotReaction.value = false
   showModal.value = false
 
+  console.log('➡️ Navegando a siguiente pregunta...', {
+    currentIndex: currentQuestionIndex.value,
+    totalQuestions: questions.value.length,
+    isLastQuestion: currentQuestionIndex.value >= questions.value.length - 1
+  })
+
   if (currentQuestionIndex.value < questions.value.length - 1) {
     currentQuestionIndex.value++
     selectedAnswer.value = null
     questionAnswered.value = false
     showHint.value = false
     questionStartedAt.value = Date.now()
+    
+    console.log('📍 Avanzando a pregunta', currentQuestionIndex.value + 1)
+    
+    // Actualizar índice en el progreso
+    if (currentProgress.value) {
+      currentProgress.value.currentQuestionIndex = currentQuestionIndex.value
+      currentProgress.value.lastUpdatedAt = new Date().toISOString()
+      saveProgress(currentProgress.value)
+      console.log('💾 Índice de pregunta actualizado en progreso')
+    }
   } else {
+    console.log('🎉 Era la última pregunta, mostrando victory modal')
     // Mostrar victory modal
     quizCompleted.value = true
     stopTimer()
@@ -312,7 +404,37 @@ const confirmStart = () => {
   resetAttemptState()
 }
 
-const handleRetry = () => {
+const handleResume = async () => {
+  console.log('🔄 Limpiando progreso LOCAL y reiniciando quiz')
+  showResumeModal.value = false
+  
+  // Limpiar progreso local
+  if (quizId.value) {
+    clearProgress(quizId.value)
+  }
+  savedProgress.value = null
+  currentProgress.value = null
+  
+  // Iniciar nueva sesión desde cero
+  await startSession()
+}
+
+const handleRestartFromModal = async () => {
+  console.log('🔄 Limpiando progreso LOCAL y reiniciando quiz')
+  showResumeModal.value = false
+  
+  // Limpiar progreso guardado LOCAL
+  if (quizId.value) {
+    clearProgress(quizId.value)
+  }
+  savedProgress.value = null
+  currentProgress.value = null
+  
+  // Iniciar sesión normalmente
+  await startSession()
+}
+
+const handleRetry = async () => {
   quizCompleted.value = false
   currentQuestionIndex.value = 0
   selectedAnswer.value = null
@@ -320,8 +442,9 @@ const handleRetry = () => {
   lastAnswerCorrect.value = null
   sessionId.value = null
   canPlay.value = false
+  totalPoints.value = 0
   stopTimer()
-  startSession()
+  await startSession()
 }
 
 const goBack = () => {
@@ -331,29 +454,120 @@ const goBack = () => {
 const startSession = async () => {
   if (!quizId.value) return
   try {
+    console.log('🎯 Iniciando sesión para quiz ID:', quizId.value)
     const startRes = await QuizService.startQuizSession(quizId.value)
-    sessionId.value = startRes.id
+    console.log('📦 Respuesta completa de /start/:', JSON.stringify(startRes, null, 2))
+    
+    // Extraer datos de la sesión
+    sessionId.value = startRes.session?.id ?? startRes.id
+    console.log('🔑 Session ID:', sessionId.value)
+    
+    // Extraer datos del quiz completo
+    const quiz = startRes.quiz
+    console.log('📚 Quiz data:', JSON.stringify(quiz, null, 2))
+    
+    if (quiz) {
+      quizTitle.value = quiz.title ?? 'Quiz'
+      quizDescription.value = quiz.description ?? ''
+      quizBasePoints.value = quiz.base_points ?? 0
+      quizDifficulty.value = quiz.difficulty_level ?? 1
+      timeLimitSeconds.value = quiz.time_limit_seconds ?? 0
+      timeRemaining.value = timeLimitSeconds.value
+      
+      console.log('📝 Procesando preguntas. Total:', quiz.questions?.length ?? 0)
+      console.log('📝 Preguntas raw:', JSON.stringify(quiz.questions, null, 2))
+      
+      questions.value = (quiz.questions ?? []).map((q: any, qIndex: number) => {
+        console.log(`\n📋 Procesando pregunta ${qIndex + 1}:`, {
+          id: q.id,
+          content: q.content,
+          alternatives_count: q.alternatives?.length,
+          alternatives_raw: q.alternatives
+        })
+        
+        const mappedAlternatives = (q.alternatives ?? []).map((alt: any, altIndex: number) => {
+          console.log(`  ✏️ Alternativa ${altIndex + 1}:`, {
+            id: alt.id,
+            content: alt.content,
+            is_correct: alt.is_correct,
+            feedback: alt.feedback
+          })
+          
+          return {
+            id: alt.id ?? 0,
+            content: alt.content ?? `Alternativa sin contenido ${altIndex + 1}`,
+            display_order: alt.display_order ?? altIndex + 1,
+            is_correct: alt.is_correct ?? false,
+            feedback: alt.feedback ?? ''
+          }
+        })
+        
+        return {
+          id: q.id ?? 0,
+          content: q.content ?? 'Sin contenido',
+          explanation: q.explanation ?? '',
+          points: q.points ?? 10,
+          display_order: q.display_order ?? 1,
+          image_url: q.image_url ?? null,
+          alternatives: mappedAlternatives,
+          hints: (q.hints ?? []).map((hint: any) => ({
+            id: hint.id ?? 0,
+            content: hint.content ?? '',
+            cost_points: hint.cost_points ?? 5,
+            display_order: hint.display_order ?? 1
+          }))
+        }
+      })
+      
+      console.log('✅ Preguntas procesadas:', questions.value.length)
+      console.log('🔍 Primera pregunta completa:', JSON.stringify(questions.value[0], null, 2))
+      console.log('🔍 Alternativas de primera pregunta:', questions.value[0]?.alternatives)
+    } else {
+      console.error('❌ No se recibió data del quiz')
+    }
 
+    // Verificar si mostrar modal de advertencia
     if (startRes.show_warning && (startRes.previous_attempts ?? 0) > 0) {
+      console.log('⚠️ Mostrando modal de advertencia')
       previousAttempts.value = startRes.previous_attempts ?? 0
       showRestartWarning.value = true
       canPlay.value = false
       return
     }
 
+    console.log('✨ Sesión lista. Can play:', true)
     canPlay.value = true
+    
+    // Inicializar progreso
+    if (!currentProgress.value) {
+      currentProgress.value = {
+        quizId: quizId.value!,
+        sessionId: sessionId.value,
+        currentQuestionIndex: 0,
+        answers: [],
+        totalPoints: 0,
+        startedAt: new Date().toISOString(),
+        lastUpdatedAt: new Date().toISOString()
+      }
+      saveProgress(currentProgress.value)
+      console.log('💾 Progreso inicializado')
+    }
+    
     resetAttemptState()
   } catch (err) {
-    console.error('Error iniciando sesión del quiz:', err)
+    console.error('💥 Error iniciando sesión del quiz:', err)
     canPlay.value = false
   }
 }
 
 const resetAttemptState = () => {
+  console.log('🔄 Reseteando intentos. Questions:', questions.value.length, 'Índice:', currentQuestionIndex.value)
   totalPoints.value = 0
   timeRemaining.value = timeLimitSeconds.value
   questionStartedAt.value = Date.now()
+  console.log('⏱️ Timer set to:', timeLimitSeconds.value, 'seconds')
   if (timeRemaining.value > 0) {
+    console.log('▶️ Iniciando timer')
     startTimer()
   }
 }
@@ -542,12 +756,25 @@ const stopTimer = () => {
   gap: 12px;
 }
 
+.hint-wrapper {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease, margin 0.4s ease;
+  margin-bottom: 0;
+}
+
+.hint-wrapper.hint-open {
+  max-height: 150px;
+  margin-bottom: 12px;
+}
+
 .hint-box {
   background: rgba(139, 124, 255, 0.12);
   padding: 12px;
   border-radius: 10px;
   text-align: center;
   font-weight: 800;
+  color: #1e4b66;
 }
 
 /* Opciones/Alternativas */

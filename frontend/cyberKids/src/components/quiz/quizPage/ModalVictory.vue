@@ -78,7 +78,7 @@ interface Props {
   pointsEarned: number;
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 defineEmits<{
   onRetry: [];
@@ -86,8 +86,8 @@ defineEmits<{
 }>()
 
 const percentage = computed(() => {
-  return totalQuestions > 0 
-    ? Math.round((totalCorrect / totalQuestions) * 100)
+  return props.totalQuestions > 0 
+    ? Math.round((props.totalCorrect / props.totalQuestions) * 100)
     : 0
 })
 </script>
