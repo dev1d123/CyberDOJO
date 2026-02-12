@@ -96,18 +96,27 @@ const filters = computed(() => {
 
 const filteredQuizzes = computed(() => {
   const term = search.value.trim().toLowerCase()
-  return quizList.value.filter((quiz) => {
+  
+  const result = quizList.value.filter((quiz) => {
+    // Filtro por categoría
     const categoryMatch = activeFilter.value === 'Todos'
       || (quiz.category ?? '').toLowerCase() === activeFilter.value.toLowerCase()
 
     if (!categoryMatch) return false
 
+    // Si no hay búsqueda, mostrar todo
     if (!term) return true
 
+    // Buscar en título y descripción
     const title = (quiz.title ?? '').toLowerCase()
     const description = (quiz.description ?? '').toLowerCase()
+    
     return title.includes(term) || description.includes(term)
   })
+  
+  console.log(`🔍 Búsqueda: "${search.value}" | Categoría: "${activeFilter.value}" | Resultados: ${result.length}/${quizList.value.length}`)
+  
+  return result
 })
 
 onMounted(async ()=>{
