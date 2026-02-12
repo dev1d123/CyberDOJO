@@ -109,7 +109,7 @@ import FeedbackModal from '@/components/quiz/quizPage/FeedbackModal.vue'
 import ModalVictory from '@/components/quiz/quizPage/ModalVictory.vue'
 import ResumeQuizModal from '@/components/quiz/quizPage/ResumeQuizModal.vue'
 
-import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { QuizService } from '@/services/quiz.service'
 import { useQuizProgress, type QuizProgressData } from '@/composables/useQuizProgress'
@@ -347,10 +347,9 @@ const submitAnswer = async () => {
       clearProgress(quizId.value!)
       console.log('🎉 Quiz completado, progreso limpiado')
       
-      // Guardar monedas en localStorage (luego se sincronizará con servidor)
-      const currentCoins = parseInt(localStorage.getItem('coins') ?? '0')
-      localStorage.setItem('coins', String(currentCoins + sessionStats.value.coins_earned))
-      console.log('💰 Monedas actualizadas:', currentCoins, '+', sessionStats.value.coins_earned, '=', currentCoins + sessionStats.value.coins_earned)
+      if (typeof response.cybercreds_balance === 'number') {
+        console.log('💰 CyberCredits actualizados:', response.cybercreds_balance)
+      }
     } else {
       console.log('📝 Quiz NO completado aún, continúa...')
     }
@@ -398,10 +397,9 @@ const goNextQuestion = () => {
   }
 }
 
-const confirmStart = () => {
+const confirmStart = async () => {
   showRestartWarning.value = false
-  canPlay.value = true
-  resetAttemptState()
+  await startSession(true)
 }
 
 const handleResume = async () => {
@@ -416,7 +414,7 @@ const handleResume = async () => {
   currentProgress.value = null
   
   // Iniciar nueva sesión desde cero
-  await startSession()
+  await startSession(true)
 }
 
 const handleRestartFromModal = async () => {
@@ -431,7 +429,7 @@ const handleRestartFromModal = async () => {
   currentProgress.value = null
   
   // Iniciar sesión normalmente
-  await startSession()
+  await startSession(true)
 }
 
 const handleRetry = async () => {
@@ -451,12 +449,21 @@ const goBack = () => {
   router.push('/challenges/quiz')
 }
 
-const startSession = async () => {
+const startSession = async (confirmRetry = false) => {
   if (!quizId.value) return
   try {
     console.log('🎯 Iniciando sesión para quiz ID:', quizId.value)
-    const startRes = await QuizService.startQuizSession(quizId.value)
+    const startRes = await QuizService.startQuizSession(quizId.value, { confirmRetry })
     console.log('📦 Respuesta completa de /start/:', JSON.stringify(startRes, null, 2))
+
+    // Verificar si mostrar modal de advertencia antes de tocar el estado
+    if (startRes.show_warning) {
+      console.log('⚠️ Mostrando modal de advertencia')
+      previousAttempts.value = startRes.previous_attempts ?? 0
+      showRestartWarning.value = true
+      canPlay.value = false
+      return
+    }
     
     // Extraer datos de la sesión
     sessionId.value = startRes.session?.id ?? startRes.id
@@ -526,15 +533,6 @@ const startSession = async () => {
       console.error('❌ No se recibió data del quiz')
     }
 
-    // Verificar si mostrar modal de advertencia
-    if (startRes.show_warning && (startRes.previous_attempts ?? 0) > 0) {
-      console.log('⚠️ Mostrando modal de advertencia')
-      previousAttempts.value = startRes.previous_attempts ?? 0
-      showRestartWarning.value = true
-      canPlay.value = false
-      return
-    }
-
     console.log('✨ Sesión lista. Can play:', true)
     canPlay.value = true
     
@@ -558,6 +556,31 @@ const startSession = async () => {
     console.error('💥 Error iniciando sesión del quiz:', err)
     canPlay.value = false
   }
+}
+
+const handleTimeUp = () => {
+  if (quizCompleted.value || !isTimeUp.value) return
+
+  console.log('⏰ Tiempo agotado - finalizando quiz')
+  stopTimer()
+  canPlay.value = false
+  showModal.value = false
+
+  const answers = currentProgress.value?.answers ?? []
+  const totalCorrect = answers.filter((a) => a.isCorrect).length
+
+  sessionStats.value = {
+    total_correct: totalCorrect,
+    total_answered: answers.length,
+    coins_earned: 0,
+    points_earned: 0
+  }
+
+  if (quizId.value) {
+    clearProgress(quizId.value)
+  }
+
+  quizCompleted.value = true
 }
 
 const resetAttemptState = () => {
@@ -590,6 +613,12 @@ const stopTimer = () => {
     timerHandle = null
   }
 }
+
+watch(isTimeUp, (value) => {
+  if (value) {
+    handleTimeUp()
+  }
+})
 </script>
 
 <style scoped>

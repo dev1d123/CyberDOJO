@@ -92,7 +92,8 @@ onMounted(async ()=>{
       const normalizedStatus = item.status === 'completed' ? 'completed' : 'not_started'
       const answered = item.progress?.answered ?? item.total_answered ?? 0
       const total = item.progress?.total ?? item.total_questions ?? 0
-      const percentage = total > 0 ? Math.round((answered / total) * 100) : 0
+      const correct = item.progress?.correct ?? item.total_correct ?? 0
+      const percentage = total > 0 ? Math.round((correct / total) * 100) : 0
 
       return {
       id: item.id ?? 0,
@@ -104,7 +105,7 @@ onMounted(async ()=>{
       category: item.category ?? 'General',
       segment: item.segment ?? 'Todos',
       image_url: item.image_url ?? null,
-      progress: { answered, total, percentage },
+      progress: { answered, total, correct, percentage },
       status: normalizedStatus
     }
     })

@@ -27,7 +27,7 @@ const props = defineProps<{ quiz: {
   category?: string;
   segment?: string;
   image_url?: string | null;
-  progress?: { answered?: number; total?: number; percentage?: number };
+  progress?: { answered?: number; total?: number; correct?: number; percentage?: number };
   status?: string;
 } }>();
 
@@ -106,14 +106,14 @@ function goToDetail() {
       <!-- Barra de progreso (respondidas / total) -->
       <div class="progress-section">
         <div class="progress-header">
-          <span class="progress-label">Progreso</span>
+          <span class="progress-label">Precisión</span>
           <span class="progress-value">{{ quiz.progress?.percentage ?? 0 }}%</span>
         </div>
         <div class="progress-bar">
           <div class="progress-fill" :style="{ width: (quiz.progress?.percentage ?? 0) + '%' }"></div>
         </div>
         <div class="progress-stats">
-          <span class="stat">{{ quiz.progress?.answered ?? 0 }}/{{ quiz.progress?.total ?? 0 }} respondidas</span>
+          <span class="stat">{{ quiz.progress?.correct ?? 0 }}/{{ quiz.progress?.total ?? 0 }} aciertos</span>
         </div>
       </div>
 

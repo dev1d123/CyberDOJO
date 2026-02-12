@@ -63,6 +63,7 @@ export type QuizSession = {
 };
 
 export type SubmitAnswerRequest = {
+  session_id: number;
   question_id: number;
   selected_alternative_id: number;
   time_spent_seconds?: number;
@@ -79,6 +80,7 @@ export type SubmitAnswerResponse = {
   coins_earned?: number;
   points_earned?: number;
   percentage?: number;
+  cybercreds_balance?: number;
 };
 
 /* =========================
@@ -117,10 +119,15 @@ export class QuizService {
     return data ?? {};
   }
 
-  static async startQuizSession(quizId: number): Promise<any> {
+  static async startQuizSession(
+    quizId: number,
+    options?: { confirmRetry?: boolean }
+  ): Promise<any> {
+    const body = options?.confirmRetry ? JSON.stringify({ confirm_retry: true }) : undefined;
     const res = await fetch(`${this.QUIZ_BASE}/${quizId}/start/`, {
       method: "POST",
       headers: getAuthHeaders(),
+      body,
     });
 
     if (!res.ok) {

@@ -65,6 +65,7 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
     def start(self, request, pk=None):
         """Inicia o crea nueva sesión de quiz para reintento."""
         quiz = self.get_object()
+        confirm_retry = bool(request.data.get('confirm_retry'))
 
         # Buscar la última sesión del usuario para este quiz
         last_session = QuizSession.objects.filter(
@@ -75,7 +76,16 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
         # Determinar si es un reintento o si la sesión está "sucia" (tiene respuestas)
         is_retry = last_session and last_session.status == 'completed'
         is_dirty_session = last_session and last_session.status == 'not_started' and last_session.answers.exists()
-        show_warning = is_retry
+        needs_confirm = is_retry or is_dirty_session
+
+        if needs_confirm and not confirm_retry:
+            return Response({
+                "show_warning": True,
+                "is_retry": bool(is_retry),
+                "is_dirty": bool(is_dirty_session),
+                "previous_attempts": last_session.attempt_number if last_session else 0,
+                "message": "Confirmar reintento"
+            }, status=status.HTTP_200_OK)
 
         # Si es un reintento O la sesión tiene respuestas, CREAR una nueva sesión
         if is_retry or is_dirty_session:
@@ -110,10 +120,10 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({
             "session": session_serializer.data,
             "quiz": quiz_serializer.data,
-            "show_warning": show_warning,
-            "is_retry": is_retry,
+            "show_warning": False,
+            "is_retry": bool(is_retry),
             "previous_attempts": last_session.attempt_number if last_session else 0,
-            "message": "Sesión iniciada" if not show_warning else "Reintento - sin recompensas"
+            "message": "Sesión iniciada"
         }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
@@ -150,7 +160,8 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
                 "total_answered": session.total_answered,
                 "coins_earned": session.coins_earned,  # Mantendrá 0 en reintentos
                 "points_earned": session.points_earned,
-                "percentage": int((session.total_correct / session.total_answered) * 100) if session.total_answered > 0 else 0
+                "percentage": int((session.total_correct / session.total_answered) * 100) if session.total_answered > 0 else 0,
+                "cybercreds_balance": session.user.cybercreds
             })
 
         return Response(response_data, status=status.HTTP_201_CREATED)

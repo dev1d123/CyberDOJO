@@ -101,7 +101,8 @@ class QuizListSerializer(serializers.ModelSerializer):
         answered = min(answered, total)
         correct = min(correct, total)
 
-        percentage = int((answered / total) * 100) if total > 0 else 0
+        # Percentage represents accuracy (correct / total)
+        percentage = int((correct / total) * 100) if total > 0 else 0
         return {
             "answered": answered,
             "total": total,
@@ -228,6 +229,12 @@ class QuizAnswerCreateSerializer(serializers.Serializer):
                 difficulty = question.quiz.difficulty_level
                 session.coins_earned = get_coins_reward(difficulty)
                 session.points_earned = get_points_reward(difficulty) * session.total_correct
+
+                # Sumar coins a los cybercreds del usuario
+                user = session.user
+                user.cybercreds = (user.cybercreds or 0) + session.coins_earned
+                user.save(update_fields=['cybercreds'])
+
                 print(f"💰 Primer intento - Recompensas: {session.coins_earned} monedas, {session.points_earned} puntos")
             else:
                 # Reintentos: sin recompensas
