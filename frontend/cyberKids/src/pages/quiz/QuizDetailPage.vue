@@ -25,7 +25,12 @@
       </div>
     </div>
 
-    <QuizHeader :current="answeredQuestions" :total="totalQuestions" :percent="progressPercent">
+    <QuizHeader 
+      :quiz-title="quizTitle"
+      :current-question="answeredQuestions" 
+      :total-questions="totalQuestions" 
+      :progress-percentage="progressPercent"
+    >
       <template #actions>
         <router-link to="/challenges/quiz" class="back-link">⬅️ Volver</router-link>
       </template>
@@ -282,6 +287,13 @@ onBeforeUnmount(() => {
   }
 })
 
+// Reproducir sonido de victoria cuando aparezca el modal
+watch(quizCompleted, (isCompleted) => {
+  if (isCompleted) {
+    AudioService.playQuizWin()
+  }
+})
+
 const selectAnswer = (altId: number) => {
   if (!questionAnswered.value) {
     selectedAnswer.value = altId
@@ -370,9 +382,6 @@ const submitAnswer = async () => {
         coins_earned: response.coins_earned ?? 0,
         points_earned: response.points_earned ?? 0
       }
-      
-      // Sonido de victoria
-      AudioService.playQuizWin()
       
       // Limpiar progreso guardado
       clearProgress(quizId.value!)
@@ -611,9 +620,6 @@ const handleTimeUp = () => {
   if (quizId.value) {
     clearProgress(quizId.value)
   }
-
-  // Sonido de fin por tiempo
-  AudioService.playQuizWin()
 
   quizCompleted.value = true
 }
