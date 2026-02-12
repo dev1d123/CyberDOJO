@@ -36,8 +36,12 @@
         <img class="mascot" :src="mascot" alt="mascot" :class="{ 'mascot-reaction': showMascotReaction }" />
       </div>
       <div class="message-area">
-        <div :class="['alert', { 'alert-correct': lastAnswerCorrect === true, 'alert-wrong': lastAnswerCorrect === false }]">
-          {{ mascotMessage }}
+        <div :class="['alert', 
+          { 'alert-correct': lastAnswerCorrect === true, 
+            'alert-wrong': lastAnswerCorrect === false,
+            'alert-hint': showHint && hintText
+          }]">
+          {{ showHint && hintText ? hintText : mascotMessage }}
         </div>
         <p class="advice">{{ quizDescription }}</p>
       </div>
@@ -46,13 +50,6 @@
     <div class="content-grid">
       <div class="main-col">
         <QuizQuestionPanel badge="Pregunta" :question="questionText" :hint="hintText" />
-
-        <!-- Hint con transición suave -->
-        <div :class="['hint-wrapper', { 'hint-open': showHint && hintText }]">
-          <div class="hint-box">
-            💡 Pista: {{ hintText }}
-          </div>
-        </div>
 
         <!-- Opciones -->
         <div class="options-container">
@@ -118,6 +115,23 @@ const { saveProgress, loadProgress, clearProgress, hasProgress, updateAnswer } =
 
 const mascot = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCucjZBT2oZoN5rGKrDGU5Q9yq3f9tkghZGt5pjgZLPnrwZPlzx51O5syvPmrxMw9uR7djGOJodI2-z0YPaCfHQMw8Ptu-RD5shLTsY9mm4lR7j1f0ylbyId7-YVTjGo_C00NHByKcMLcxMhQZqC7cqy3Qlvk6uMEpeyHCm4fD222J3HgreRPI4Eyoy5VCcht_IBGGT3vlzJtXKNwqYmc0LV9CFCGOkMfrKcUg7HYnu6DL_JlavvApLhf_4xDZMGi-E0UmCJOuZ_gZ5'
 
+// Diálogos genéricos del robot
+const genericDialogs = [
+  '🤖 Recuerda los consejos de tus padres sobre seguridad en internet',
+  '🤖 Piensa bien antes de responder',
+  '🤖 Si necesitas ayuda, haz click en "Mostrar Pista"',
+  '🤖 ¡Tú puedes! Lee cuidadosamente la pregunta',
+  '🤖 La seguridad cibernética es importante, ¡concentrémonos!',
+  '🤖 Observa bien todos los detalles de la pregunta',
+  '🤖 Si algo no está claro, usa la pista disponible',
+  '🤖 ¡No te apures! Tienes tiempo para pensar',
+  '🤖 Responde con cuidado, esto es importante',
+  '🤖 Recuerda lo que aprendiste sobre ciberseguridad',
+  '🤖 ¿Necesitas una pista? Puedo ayudarte',
+  '🤖 Debes estar atento a los detalles',
+  '🤖 Confía en tu instinto, pero piensa bien'
+]
+
 const route = useRoute()
 const router = useRouter()
 
@@ -129,6 +143,11 @@ const showResumeModal = ref(false)
 const showMascotReaction = ref(false)
 const submitting = ref(false)
 const canPlay = ref(false)
+
+// Función para obtener un diálogo genérico aleatorio
+const getRandomDialog = () => {
+  return genericDialogs[Math.floor(Math.random() * genericDialogs.length)]
+}
 
 // Progreso guardado
 const savedProgress = ref<QuizProgressData | null>(null)
@@ -156,7 +175,7 @@ const selectedAnswer = ref<number | null>(null)
 const questionAnswered = ref(false)
 const lastAnswerCorrect = ref<boolean | null>(null)
 const lastFeedback = ref('')
-const mascotMessage = ref('¡Responde correctamente!')
+const mascotMessage = ref('')
 const previousAttempts = ref(0)
 
 // Session stats para victory modal
@@ -378,6 +397,7 @@ const goNextQuestion = () => {
     selectedAnswer.value = null
     questionAnswered.value = false
     showHint.value = false
+    mascotMessage.value = getRandomDialog()
     questionStartedAt.value = Date.now()
     
     console.log('📍 Avanzando a pregunta', currentQuestionIndex.value + 1)
@@ -588,6 +608,7 @@ const resetAttemptState = () => {
   totalPoints.value = 0
   timeRemaining.value = timeLimitSeconds.value
   questionStartedAt.value = Date.now()
+  mascotMessage.value = getRandomDialog()
   console.log('⏱️ Timer set to:', timeLimitSeconds.value, 'seconds')
   if (timeRemaining.value > 0) {
     console.log('▶️ Iniciando timer')
@@ -761,6 +782,11 @@ watch(isTimeUp, (value) => {
   background: #ff6b6b !important;
 }
 
+.alert-hint {
+  background: #ffc107 !important;
+  color: #000 !important;
+}
+
 .message-area .advice {
   margin-top: 8px;
   color: rgba(30, 75, 102, 0.85);
@@ -784,26 +810,22 @@ watch(isTimeUp, (value) => {
   flex-direction: column;
   gap: 12px;
 }
-
 .hint-wrapper {
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.4s ease, margin 0.4s ease;
   margin-bottom: 0;
+  display: none;
 }
 
 .hint-wrapper.hint-open {
   max-height: 150px;
   margin-bottom: 12px;
+  display: none;
 }
 
 .hint-box {
-  background: rgba(139, 124, 255, 0.12);
-  padding: 12px;
-  border-radius: 10px;
-  text-align: center;
-  font-weight: 800;
-  color: #1e4b66;
+  display: none;
 }
 
 /* Opciones/Alternativas */
