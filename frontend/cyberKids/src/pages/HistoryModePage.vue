@@ -74,22 +74,31 @@ const historyBackgroundUrl = new URL('../assets/images/historyBackground.png', i
 const islandUrl = new URL('../assets/images/island.png', import.meta.url).href;
 
 const fallbackLevels: HistoryLevelDto[] = [
-  { id: 1, name: 'Ingeniería Social', details: 'Detecta y resiste técnicas de manipulación en conversaciones.', currentScore: 60, totalScore: 180, x: '26%', y: '72%' },
-  { id: 2, name: 'Suplantación Digital', details: 'Identifica ataques de phishing y enlaces maliciosos.', currentScore: 0, totalScore: 220, x: '12%', y: '52%' },
-  { id: 3, name: 'Fuga de Datos', details: 'Protege información sensible en tus comunicaciones.', currentScore: 0, totalScore: 240, x: '34%', y: '34%' },
-  { id: 4, name: 'Pretextos Falsos', details: 'Reconoce cuando alguien crea escenarios falsos para engañarte.', currentScore: 0, totalScore: 260, x: '56%', y: '50%' },
-  { id: 5, name: 'Trampas Digitales', details: 'Evita caer en señuelos y ofertas demasiado buenas.', currentScore: 0, totalScore: 280, x: '76%', y: '30%' },
-  { id: 6, name: 'Suplantación de Identidad', details: 'Verifica identidades y detecta impostores en línea.', currentScore: 0, totalScore: 300, x: '92%', y: '58%' },
+  { id: 6, name: 'Ingeniería Social', details: 'Detecta y resiste técnicas de manipulación en conversaciones.', currentScore: 60, totalScore: 180, x: '26%', y: '72%' },
+  { id: 7, name: 'Suplantación Digital', details: 'Identifica ataques de phishing y enlaces maliciosos.', currentScore: 0, totalScore: 220, x: '12%', y: '52%' },
+  { id: 8, name: 'Fuga de Datos', details: 'Protege información sensible en tus comunicaciones.', currentScore: 0, totalScore: 240, x: '34%', y: '34%' },
+  { id: 9, name: 'Pretextos Falsos', details: 'Reconoce cuando alguien crea escenarios falsos para engañarte.', currentScore: 0, totalScore: 260, x: '56%', y: '50%' },
+  { id: 10, name: 'Trampas Digitales', details: 'Evita caer en señuelos y ofertas demasiado buenas.', currentScore: 0, totalScore: 280, x: '76%', y: '30%' },
+  { id: 11, name: 'Suplantación de Identidad', details: 'Verifica identidades y detecta impostores en línea.', currentScore: 0, totalScore: 300, x: '92%', y: '58%' },
 ];
 
 const positionByScenarioId: Record<number, { x: string; y: string }> = {
-  1: { x: '26%', y: '72%' },
-  2: { x: '12%', y: '52%' },
-  3: { x: '34%', y: '34%' },
-  4: { x: '56%', y: '50%' },
-  5: { x: '76%', y: '30%' },
-  6: { x: '92%', y: '58%' },
+  6: { x: '26%', y: '72%' },
+  7: { x: '12%', y: '52%' },
+  8: { x: '34%', y: '34%' },
+  9: { x: '56%', y: '50%' },
+  10: { x: '76%', y: '30%' },
+  11: { x: '92%', y: '58%' },
 };
+
+const fallbackPositions = [
+  { x: '20%', y: '70%' },
+  { x: '32%', y: '52%' },
+  { x: '46%', y: '36%' },
+  { x: '60%', y: '52%' },
+  { x: '74%', y: '34%' },
+  { x: '88%', y: '58%' },
+];
 
 const levels = ref<HistoryLevelDto[]>(fallbackLevels);
 
@@ -100,8 +109,8 @@ onMounted(async () => {
     const scenarios = await SimulationService.getScenarios();
     if (scenarios.length === 0) return;
 
-    levels.value = scenarios.map((s) => {
-      const pos = positionByScenarioId[s.scenario_id] || { x: '50%', y: '50%' };
+    levels.value = scenarios.map((s, index) => {
+      const pos = positionByScenarioId[s.scenario_id] || fallbackPositions[index % fallbackPositions.length];
       return {
         id: s.scenario_id,
         name: s.name,

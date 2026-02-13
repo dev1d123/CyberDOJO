@@ -73,14 +73,11 @@ import ChallengesHeader from '../components/challenges/ChallengesHeader.vue';
 
 const router = useRouter();
 
-// Nota: el usuario indicó que el fondo está en /src/assets/images/challengeBackground.png.
-// En este repo aún no existe, así que lo referenciamos como string (no rompe el build).
-// Cuando el archivo esté presente, se mostrará automáticamente.
-const backgroundUrl = '/src/assets/images/challengeBackground.png';
+const backgroundUrl = new URL('../assets/images/challengeBackground.png', import.meta.url).href;
 
-const trustGif = '/assets/gif/welcome.gif';
-const chatGif = '/assets/gif/settingGif.gif';
-const huntGif = '/assets/gif/logo.gif';
+const trustGif = new URL('../assets/gif/welcome.gif', import.meta.url).href;
+const chatGif = new URL('../assets/gif/settingGif.gif', import.meta.url).href;
+const huntGif = new URL('../assets/gif/logo.gif', import.meta.url).href;
 
 const pageStyle = computed(() => {
   return {
