@@ -174,10 +174,6 @@ const subtitleText = computed(() => {
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.victory-title.defeat {
-  color: #b45309;
-}
-
 .victory-subtitle {
   font-size: 1.1em;
   color: #8b7cff;
