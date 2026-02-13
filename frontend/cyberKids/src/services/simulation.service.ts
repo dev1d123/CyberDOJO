@@ -77,8 +77,9 @@ export class SimulationService {
       throw new Error(text || `Error al obtener escenarios: ${response.status}`);
     }
 
-    const data = (await response.json()) as ScenarioDto[];
-    return [...data].sort((a, b) => (a.difficulty_level - b.difficulty_level) || (a.scenario_id - b.scenario_id));
+    const raw = await response.json();
+    const scenarios = Array.isArray(raw) ? raw : (raw?.results ?? []);
+    return [...scenarios].sort((a, b) => (a.difficulty_level - b.difficulty_level) || (a.scenario_id - b.scenario_id));
   }
 
   static async startSession(scenarioId: number): Promise<StartSessionResponse> {

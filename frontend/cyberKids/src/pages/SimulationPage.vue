@@ -150,12 +150,12 @@ const showInitScreen = ref(true);
 const hasActiveSession = ref(false);
 
 const scenarioNamesFallback: Record<number, string> = {
-  1: 'Ingeniería Social',
-  2: 'Suplantación Digital',
-  3: 'Fuga de Datos',
-  4: 'Pretextos Falsos',
-  5: 'Trampas Digitales',
-  6: 'Suplantación de Identidad',
+  6: 'Ingeniería Social',
+  7: 'Suplantación Digital',
+  8: 'Fuga de Datos',
+  9: 'Pretextos Falsos',
+  10: 'Trampas Digitales',
+  11: 'Suplantación de Identidad',
 };
 
 // Initialize on mount
