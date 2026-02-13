@@ -4,8 +4,8 @@
       <!-- Cabecera con animación confeti -->
       <div class="victory-header">
         <div class="confetti"></div>
-        <h1 class="victory-title">🎉 ¡Felicidades! 🎉</h1>
-        <p class="victory-subtitle">{{ quizTitle }}</p>
+        <h1 class="victory-title" :class="{ defeat: isDefeat }">{{ titleText }}</h1>
+        <p class="victory-subtitle">{{ subtitleText }}</p>
       </div>
 
       <!-- Estadísticas -->
@@ -76,6 +76,7 @@ interface Props {
   totalQuestions: number;
   coinsEarned: number;
   pointsEarned: number;
+  isDefeat?: boolean;
 }
 
 const props = defineProps<Props>()
@@ -89,6 +90,16 @@ const percentage = computed(() => {
   return props.totalQuestions > 0 
     ? Math.round((props.totalCorrect / props.totalQuestions) * 100)
     : 0
+})
+
+const titleText = computed(() => {
+  return props.isDefeat ? '💪 Buen intento' : '🎉 ¡Felicidades! 🎉'
+})
+
+const subtitleText = computed(() => {
+  return props.isDefeat
+    ? 'No te rindas, puedes mejorar en el siguiente intento'
+    : props.quizTitle
 })
 </script>
 
@@ -161,6 +172,10 @@ const percentage = computed(() => {
   margin: 0;
   font-weight: 900;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.victory-title.defeat {
+  color: #b45309;
 }
 
 .victory-subtitle {

@@ -326,6 +326,15 @@ class AudioServiceClass {
     });
   }
 
+  playQuizDefeat(): void {
+    if (this.isMuted) return;
+    const audio = this.getQuizSfx('/sounds/quiz/sfx-defeat6.mp3');
+    audio.currentTime = 0;
+    audio.play().catch(() => {
+      console.warn('Error playing defeat sound');
+    });
+  }
+
   cleanup(): void {
     console.log('🎵 [AudioService] Limpiando audio por cierre de sesión');
     this.shouldPlayBackground = false;

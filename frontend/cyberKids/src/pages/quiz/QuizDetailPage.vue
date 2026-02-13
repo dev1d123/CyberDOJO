@@ -105,6 +105,7 @@
     :total-questions="sessionStats.total_answered"
     :coins-earned="sessionStats.coins_earned"
     :points-earned="sessionStats.points_earned"
+    :is-defeat="isDefeat"
     @onRetry="handleRetry"
     @onBack="goBack"
   />
@@ -198,6 +199,12 @@ const sessionStats = ref({
   total_answered: 0,
   coins_earned: 0,
   points_earned: 0
+})
+
+const isDefeat = computed(() => {
+  const totalAnswered = sessionStats.value.total_answered || totalQuestions.value
+  const totalCorrect = sessionStats.value.total_correct
+  return totalAnswered > 0 && totalCorrect <= totalAnswered / 2
 })
 
 // Computados
@@ -304,7 +311,11 @@ onBeforeUnmount(() => {
 // Reproducir sonido de victoria cuando aparezca el modal
 watch(quizCompleted, (isCompleted) => {
   if (isCompleted) {
-    AudioService.playQuizWin()
+    if (isDefeat.value) {
+      AudioService.playQuizDefeat()
+    } else {
+      AudioService.playQuizWin()
+    }
   }
 })
 
