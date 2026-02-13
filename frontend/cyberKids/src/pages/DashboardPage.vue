@@ -73,7 +73,7 @@
           @click="goToStoryMode"
         >
           <div class="card-gif-container">
-            <img src="/src/assets/gif/historyGif.gif" alt="Modo Historia" class="card-gif" />
+            <img :src="historyGif" alt="Modo Historia" class="card-gif" />
           </div>
           <h2 class="card-title">Modo Historia</h2>
           <p class="card-description">Vive aventuras y aprende</p>
@@ -87,7 +87,7 @@
           @click="goToChallenges"
         >
           <div class="card-gif-container">
-            <img src="/src/assets/gif/challengeGif.gif" alt="Desafíos" class="card-gif" />
+            <img :src="challengeGif" alt="Desafíos" class="card-gif" />
           </div>
           <h2 class="card-title">Desafíos</h2>
           <p class="card-description">Pon a prueba tus habilidades</p>
@@ -101,7 +101,7 @@
           @click="goToShop"
         >
           <div class="card-gif-container">
-            <img src="/src/assets/gif/shopGif.gif" alt="Tienda" class="card-gif" />
+            <img :src="shopGif" alt="Tienda" class="card-gif" />
           </div>
           <h2 class="card-title">Tienda</h2>
           <p class="card-description">Compra accesorios geniales</p>
@@ -115,7 +115,7 @@
           @click="goToProfile"
         >
           <div class="card-gif-container">
-            <img src="/src/assets/gif/settingGif.gif" alt="Perfil" class="card-gif" />
+            <img :src="settingGif" alt="Perfil" class="card-gif" />
           </div>
           <h2 class="card-title">Perfil</h2>
           <p class="card-description">Personaliza tu cuenta</p>
@@ -158,6 +158,11 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 
 const placeholderAvatar = 'https://api.dicebear.com/7.x/adventurer/png?seed=Default';
+
+const historyGif = new URL('../assets/gif/historyGif.gif', import.meta.url).href;
+const challengeGif = new URL('../assets/gif/challengeGif.gif', import.meta.url).href;
+const shopGif = new URL('../assets/gif/shopGif.gif', import.meta.url).href;
+const settingGif = new URL('../assets/gif/settingGif.gif', import.meta.url).href;
 
 // Tour configuration
 const tourSteps = ref([
