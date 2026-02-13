@@ -110,7 +110,11 @@ onMounted(async () => {
     if (scenarios.length === 0) return;
 
     levels.value = scenarios.map((s, index) => {
-      const pos = positionByScenarioId[s.scenario_id] || fallbackPositions[index % fallbackPositions.length];
+      const pos: { x: string; y: string } =
+        positionByScenarioId[s.scenario_id] ??
+        fallbackPositions[index % fallbackPositions.length] ??
+        { x: '50%', y: '50%' };
+
       return {
         id: s.scenario_id,
         name: s.name,

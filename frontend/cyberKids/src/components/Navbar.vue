@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 
 const showTooltip = ref<string | null>(null);
+const logoGif = new URL('../assets/gif/logo.gif', import.meta.url).href;
 
 const showTooltipHandler = (tooltip: string) => {
   showTooltip.value = tooltip;
@@ -18,7 +19,7 @@ const hideTooltipHandler = () => {
       <div class="logo-container">
         <img
           v-pet-hint="{ behavior: 'hover', vars: { target: 'el logo de CyberDojo' } }"
-          src="/src/assets/gif/logo.gif"
+          :src="logoGif"
           alt="CyberDojo Logo"
           class="logo-img"
         />

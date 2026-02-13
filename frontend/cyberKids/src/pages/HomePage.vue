@@ -7,6 +7,8 @@ import AccountOpenAlert from '../components/AccountOpenAlert.vue';
 const router = useRouter();
 const route = useRoute();
 
+const welcomeGif = new URL('../assets/gif/welcome.gif', import.meta.url).href;
+
 const isAuthenticated = computed(() => Boolean(localStorage.getItem('access_token')));
 
 const sessionAlertOpen = ref(false);
@@ -116,7 +118,7 @@ const goToLogin = () => {
       <div class="hero-container">
         <h1 class="hero-title">¡Bienvenido a CyberDojo!</h1>
         <div class="welcome-gif-container">
-          <img src="/src/assets/gif/welcome.gif" alt="Welcome" class="welcome-gif" />
+          <img :src="welcomeGif" alt="Welcome" class="welcome-gif" />
         </div>
       </div>
 
