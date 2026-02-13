@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-type PreviewType = 'trust' | 'chat' | 'hunt';
+type PreviewType = 'trust' | 'chat' | 'hunt' | 'quiz';
 
 defineProps<{ type: PreviewType }>();
 </script>

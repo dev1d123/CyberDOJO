@@ -5,6 +5,7 @@ import router from './router'
 import { petHintDirective } from './directives/petHint.directive'
 import VueTour from 'vue3-tour'
 import 'vue3-tour/dist/vue3-tour.css'
+import 'material-design-icons-iconfont/dist/material-design-icons.css';
 
 const app = createApp(App)
 app.use(router)

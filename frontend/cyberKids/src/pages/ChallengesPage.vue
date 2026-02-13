@@ -38,6 +38,19 @@
               @click="start('hunt')"
             />
           </div>
+          <!--  Agregado por Julio: tarjeta de Quiz (sintaxis simplificada para evitar errores de parsing) -->
+          <div class="quiz-card-wrap">
+            <ChallengeGameCard
+              title="Quiz de Amenazas"
+              subtitle="Pon a prueba tu ciber-instinto"
+              mechanic="Responde una serie de preguntas interactivas sobre cómo reconocer mensajes falsos y estafas digitales."
+              :gif-src="huntGif"
+              preview-type="quiz"
+              @click="start('quiz')"
+            />
+          </div>
+          <!-- Fin agregado por Julio -->
+          
         </section>
 
         <section class="hint" aria-label="Consejo">
@@ -53,18 +66,21 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import BackToDashboardButton from '../components/BackToDashboardButton.vue';
 import ChallengeGameCard from '../components/challenges/ChallengeGameCard.vue';
 import ChallengesHeader from '../components/challenges/ChallengesHeader.vue';
+
+const router = useRouter();
 
 // Nota: el usuario indicó que el fondo está en /src/assets/images/challengeBackground.png.
 // En este repo aún no existe, así que lo referenciamos como string (no rompe el build).
 // Cuando el archivo esté presente, se mostrará automáticamente.
 const backgroundUrl = '/src/assets/images/challengeBackground.png';
 
-const trustGif = new URL('../assets/gif/welcome.gif', import.meta.url).href;
-const chatGif = new URL('../assets/gif/settingGif.gif', import.meta.url).href;
-const huntGif = new URL('../assets/gif/logo.gif', import.meta.url).href;
+const trustGif = '/assets/gif/welcome.gif';
+const chatGif = '/assets/gif/settingGif.gif';
+const huntGif = '/assets/gif/logo.gif';
 
 const pageStyle = computed(() => {
   return {
@@ -72,34 +88,44 @@ const pageStyle = computed(() => {
   } as const;
 });
 
-type ChallengeId = 'trust' | 'chat' | 'hunt';
+// Actualiza el tipo para incluir 'quiz'
+type ChallengeId = 'trust' | 'chat' | 'hunt' | 'quiz';
 
 const start = (id: ChallengeId) => {
   const map: Record<ChallengeId, string> = {
     trust: '¿Confías o no?',
     chat: 'El chat sospechoso',
     hunt: 'Caza el engaño',
+    quiz: 'Quiz de Amenazas', // Agregado
   };
 
-  alert(`Abrir minijuego: ${map[id]} (pronto)`);
-};
+  console.log(`Iniciando lógica real para: ${map[id]}`);
 
+  // AQUÍ ES DONDE OCURRE LA MAGIA:
+  if (id === 'quiz') {
+    // redirigir a la página de quizzes que creamos
+    router.push('/challenges/quiz');
+  } else {
+    alert(`¡Iniciando el desafío: ${map[id]}! (Aquí va la lógica real)`);
+  }
+}
 </script>
 
 <style scoped>
 .challenges-page {
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-color: #1f1b3a;
+  display: flex;
+  flex-direction: column;
 }
 
 .overlay {
-  height: 100%;
-  width: 100%;
+  flex: 1;
   display: flex;
   flex-direction: column;
   background: radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.12), transparent 55%),
@@ -118,23 +144,46 @@ const start = (id: ChallengeId) => {
 }
 
 .content {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: clamp(10px, 2vh, 16px);
-  padding: 0 clamp(14px, 2.5vw, 24px) clamp(14px, 2.4vh, 20px);
+  padding: clamp(12px, 3vh, 20px) clamp(12px, 4vw, 24px);
   max-width: 1300px;
   width: 100%;
   margin: 0 auto;
 }
 
 .grid {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(12px, 2vw, 18px);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(10px, 2vw, 18px);
+}
+
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(8px, 2vw, 16px);
+  }
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: clamp(10px, 3vw, 14px);
+  }
+
+  .content {
+    padding: clamp(10px, 3vh, 16px) clamp(10px, 3.5vw, 16px);
+    gap: clamp(8px, 2vh, 14px);
+  }
 }
 
 .hint {
@@ -146,7 +195,7 @@ const start = (id: ChallengeId) => {
   background: rgba(255, 255, 255, 0.9);
   border: 2px solid rgba(255, 255, 255, 0.65);
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
-  padding: clamp(10px, 2vh, 16px) clamp(12px, 2.2vw, 18px);
+  padding: clamp(10px, 2.5vh, 16px) clamp(12px, 3vw, 20px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -161,27 +210,31 @@ const start = (id: ChallengeId) => {
   padding: 6px 12px;
   border-radius: 999px;
   white-space: nowrap;
+  font-size: clamp(0.7rem, 2vw, 0.85rem);
 }
 
 .hint-text {
   margin: 0;
   font-weight: 850;
   color: #334155;
-  font-size: clamp(0.95rem, 1.2vw, 1.05rem);
-  line-height: 1.2;
+  font-size: clamp(0.85rem, 2.5vw, 1.05rem);
+  line-height: 1.3;
 }
 
-@media (max-width: 980px) {
-  .grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .hint-card {
     flex-direction: column;
     align-items: flex-start;
+    gap: 10px;
+    padding: clamp(10px, 3vh, 14px) clamp(10px, 3vw, 14px);
+  }
+
+  .hint-title {
+    font-size: clamp(0.65rem, 2.5vw, 0.75rem);
+  }
+
+  .hint-text {
+    font-size: clamp(0.8rem, 2vw, 0.95rem);
   }
 }
 </style>

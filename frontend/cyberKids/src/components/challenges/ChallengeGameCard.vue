@@ -31,7 +31,7 @@
 import { computed } from 'vue';
 import ChallengePreview from './ChallengePreview.vue';
 
-type PreviewType = 'trust' | 'chat' | 'hunt';
+type PreviewType = 'trust' | 'chat' | 'hunt' | 'quiz';
 
 const emit = defineEmits<{ (event: 'click'): void }>();
 
@@ -91,35 +91,38 @@ const gifUrl = computed(() => props.gifSrc);
 .card-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 14px;
-  padding: clamp(14px, 2.2vh, 20px) clamp(14px, 2vw, 20px);
+  align-items: flex-start;
+  gap: clamp(10px, 2vw, 14px);
+  padding: clamp(12px, 3vh, 20px) clamp(12px, 3vw, 20px);
 }
 
 .title-wrap {
   min-width: 0;
+  flex: 1;
 }
 
 .title {
   margin: 0;
-  font-size: clamp(1.15rem, 1.65vw, 1.6rem);
+  font-size: clamp(1rem, 3.5vw, 1.6rem);
   font-weight: 1000;
   color: white;
   text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.25);
+  line-height: 1.2;
 }
 
 .subtitle {
-  margin: 6px 0 0 0;
+  margin: 4px 0 0 0;
   color: rgba(255, 255, 255, 0.92);
   font-weight: 800;
-  font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+  font-size: clamp(0.8rem, 2.5vw, 1.05rem);
   text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.18);
+  line-height: 1.1;
 }
 
 .gif-wrap {
   flex: 0 0 auto;
-  width: clamp(62px, 9vh, 90px);
-  height: clamp(62px, 9vh, 90px);
+  width: clamp(50px, 12vw, 90px);
+  height: clamp(50px, 12vw, 90px);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.65);
   border: 2px solid rgba(255, 255, 255, 0.75);
@@ -146,10 +149,10 @@ const gifUrl = computed(() => props.gifSrc);
 }
 
 .card-body {
-  padding: 0 clamp(14px, 2vw, 20px) clamp(14px, 2.2vh, 20px);
+  padding: clamp(10px, 2.5vh, 16px) clamp(12px, 3vw, 20px);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-height: 0;
 }
 
@@ -157,25 +160,25 @@ const gifUrl = computed(() => props.gifSrc);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.92);
   border: 2px solid rgba(255, 255, 255, 0.65);
-  padding: 10px 12px;
+  padding: clamp(8px, 2vh, 12px) clamp(10px, 2.5vw, 14px);
 }
 
 .badge {
   display: inline-block;
   font-weight: 1000;
-  font-size: 0.78rem;
+  font-size: clamp(0.65rem, 2vw, 0.78rem);
   color: #4c1d95;
   background: rgba(124, 58, 237, 0.12);
   border: 2px solid rgba(124, 58, 237, 0.18);
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
 }
 
 .mechanic-text {
-  margin: 8px 0 0 0;
+  margin: 6px 0 0 0;
   font-weight: 800;
   color: #334155;
-  font-size: clamp(0.9rem, 1.05vw, 1rem);
+  font-size: clamp(0.8rem, 2.2vw, 1rem);
   line-height: 1.15;
 }
 
@@ -183,7 +186,7 @@ const gifUrl = computed(() => props.gifSrc);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   margin-top: auto;
 }
 
@@ -191,30 +194,63 @@ const gifUrl = computed(() => props.gifSrc);
   background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
   color: white;
   font-weight: 1000;
-  padding: 10px 14px;
+  padding: clamp(8px, 2vh, 12px) clamp(10px, 2.5vw, 14px);
   border-radius: 999px;
   box-shadow: 0 14px 30px rgba(255, 107, 107, 0.35);
   transform: rotate(-1deg);
+  font-size: clamp(0.75rem, 2vw, 0.9rem);
 }
 
 .cta-note {
   font-weight: 900;
   color: rgba(255, 255, 255, 0.92);
   text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.18);
-  font-size: 0.9rem;
+  font-size: clamp(0.7rem, 1.8vw, 0.9rem);
 }
 
-@media (max-width: 820px) {
+@media (max-width: 900px) {
   .card-top {
-    padding: 14px;
+    padding: clamp(10px, 3vh, 16px);
+    gap: 10px;
   }
 
   .card-body {
-    padding: 0 14px 14px;
+    padding: clamp(10px, 2.5vh, 14px) clamp(10px, 3vw, 16px);
   }
 
   .cta-note {
     display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .card-top {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .card-body {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .mechanic {
+    padding: clamp(8px, 2.5vh, 10px) clamp(8px, 2.5vw, 10px);
+  }
+
+  .badge {
+    font-size: 0.65rem;
+    padding: 3px 6px;
+  }
+
+  .mechanic-text {
+    margin: 4px 0 0 0;
+    font-size: 0.8rem;
+  }
+
+  .cta-pill {
+    padding: clamp(6px, 2vh, 8px) clamp(8px, 2vw, 10px);
+    font-size: 0.7rem;
   }
 }
 </style>

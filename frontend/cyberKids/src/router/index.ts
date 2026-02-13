@@ -78,6 +78,18 @@ const routes = [
     component: ProfilePage,
     meta: { requiresAuth: true },
   },
+  {
+    path: '/challenges/quiz',
+    name: 'QuizList',
+    component: () => import('../pages/quiz/QuizListPage.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/challenge/quiz/:id',
+    name: 'QuizDetail',
+    component: () => import('../pages/quiz/QuizDetailPage.vue'),
+    meta: { requiresAuth: true },
+  },
 ];
 
 const router = createRouter({

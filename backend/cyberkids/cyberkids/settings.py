@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'apps.minigames',          # Gamified Events
     'apps.progression',        # Progression and Economy
     'apps.onboarding',         # Initial Risk Identification
+    'apps.quiz',                    # Educational Quiz System (RF-03)
 
     'cloudinary',
     'cloudinary_storage',
@@ -220,4 +221,5 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 CSRF_TRUSTED_ORIGINS = [
     "https://cyberdojo-production.up.railway.app",
+    "http://localhost:5173",
 ]
