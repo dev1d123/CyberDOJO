@@ -41,13 +41,20 @@
         <img class="mascot" :src="mascot" alt="mascot" :class="{ 'mascot-reaction': showMascotReaction }" />
       </div>
       <div class="message-area">
+        <!-- Alerta con feedback o diálogo -->
         <div :class="['alert', 
           { 'alert-correct': lastAnswerCorrect === true, 
-            'alert-wrong': lastAnswerCorrect === false,
-            'alert-hint': showHint && hintText
+            'alert-wrong': lastAnswerCorrect === false
           }]">
-          {{ showHint && hintText ? hintText : mascotMessage }}
+          {{ displayedMessage }}
         </div>
+        
+        <!-- Sugerencia: solo muestra el hint cuando se activa -->
+        <div v-if="showHint && hintText" :class="['hint-box', { 'pulse-active': showHint }]">
+          <span class="hint-icon">💡</span>
+          <p class="hint-text">{{ hintText }}</p>
+        </div>
+        
         <p class="advice">{{ quizDescription }}</p>
       </div>
     </div>
@@ -182,6 +189,7 @@ const questionAnswered = ref(false)
 const lastAnswerCorrect = ref<boolean | null>(null)
 const lastFeedback = ref('')
 const mascotMessage = ref('')
+const displayedMessageChars = ref(0)
 const previousAttempts = ref(0)
 
 // Session stats para victory modal
@@ -231,6 +239,12 @@ const timeLabel = computed(() => {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+})
+
+// Efecto typing para el mensaje del mascota
+const displayedMessage = computed(() => {
+  const message = mascotMessage.value
+  return message.substring(0, displayedMessageChars.value)
 })
 
 // Opciones de feedback para el modal
@@ -292,6 +306,22 @@ watch(quizCompleted, (isCompleted) => {
   if (isCompleted) {
     AudioService.playQuizWin()
   }
+})
+
+// Efecto typing para el mensaje del mascota
+watch(mascotMessage, (newMessage) => {
+  displayedMessageChars.value = 0
+  let currentChar = 0
+  const typingSpeed = 30 // milisegundos por carácter
+  
+  const typingInterval = setInterval(() => {
+    if (currentChar <= newMessage.length) {
+      displayedMessageChars.value = currentChar
+      currentChar++
+    } else {
+      clearInterval(typingInterval)
+    }
+  }, typingSpeed)
 })
 
 const selectAnswer = (altId: number) => {
@@ -783,8 +813,13 @@ watch(isTimeUp, (value) => {
   50% { transform: translateY(-10px); }
 }
 
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
 .message-area .alert {
-  background: #ff7a7a;
+  background: #8b7cff;
   color: white;
   padding: 14px;
   border-radius: 12px;
@@ -793,19 +828,35 @@ watch(isTimeUp, (value) => {
   display: flex;
   align-items: center;
   transition: all 0.3s ease;
+  font-size: 1rem;
+  line-height: 1.4;
+  word-wrap: break-word;
+  white-space: normal;
+  position: relative;
+}
+
+.message-area .alert::after {
+  content: '|';
+  animation: blink 0.8s infinite;
+  margin-left: 2px;
 }
 
 .alert-correct {
   background: #4caf50 !important;
 }
 
+.alert-correct::after {
+  animation: none;
+  content: '';
+}
+
 .alert-wrong {
   background: #ff6b6b !important;
 }
 
-.alert-hint {
-  background: #ffc107 !important;
-  color: #000 !important;
+.alert-wrong::after {
+  animation: none;
+  content: '';
 }
 
 .message-area .advice {
@@ -831,6 +882,62 @@ watch(isTimeUp, (value) => {
   flex-direction: column;
   gap: 12px;
 }
+
+/* Estilos para el hint */
+.hint-box {
+  background: rgba(255, 193, 7, 0.15);
+  border: 2px solid #ffc107;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0;
+  animation: hintPulse 2s ease-in-out;
+  box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+}
+
+.hint-box.pulse-active {
+  animation: hintPulse 2s ease-in-out, hintGlow 0.2s ease-in;
+}
+
+.hint-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.hint-text {
+  margin: 0;
+  color: #f57f17;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* Keyframes para pulso */
+@keyframes hintPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+  }
+}
+
+/* Keyframes para iluminación */
+@keyframes hintGlow {
+  0% {
+    background: rgba(255, 193, 7, 0.35);
+    border-color: #ffeb3b;
+  }
+  100% {
+    background: rgba(255, 193, 7, 0.15);
+    border-color: #ffc107;
+  }
+}
+
 .hint-wrapper {
   max-height: 0;
   overflow: hidden;
@@ -842,10 +949,6 @@ watch(isTimeUp, (value) => {
 .hint-wrapper.hint-open {
   max-height: 150px;
   margin-bottom: 12px;
-  display: none;
-}
-
-.hint-box {
   display: none;
 }
 

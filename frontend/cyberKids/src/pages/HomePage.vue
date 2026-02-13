@@ -135,19 +135,21 @@ const goToLogin = () => {
 
       <!-- Actions Row -->
       <div class="actions-row">
-        <div class="buttons-container">
-          <button class="cta-button primary" @click="goToRegister">
+        <div class="action-card">
+          <button class="cta-button primary action-button" @click="goToRegister">
             <span class="button-icon">👤</span>
             ¡Crea una cuenta!
           </button>
-          
-          <button class="cta-button secondary" @click="goToLogin">
+        </div>
+
+        <div class="action-card">
+          <button class="cta-button secondary action-button" @click="goToLogin">
             <span class="button-icon">🔐</span>
             Inicia Sesión
           </button>
         </div>
-        
-        <div class="help-box">
+
+        <div class="help-box action-card">
           <span class="lightbulb-icon">💡</span>
           <p class="help-text">
             Pide ayuda a tus padres si tienes complicaciones
@@ -164,8 +166,11 @@ const goToLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
-  overflow: hidden;
+  padding: clamp(1rem, 2.5vw, 2rem);
+  padding-top: clamp(5.5rem, 12vh, 8rem);
+  padding-bottom: clamp(1rem, 3vh, 3rem);
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .floating-dashboard-btn {
@@ -201,11 +206,13 @@ const goToLogin = () => {
 .content-container {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: clamp(1.25rem, 2.5vw, 2rem);
   max-width: 1400px;
   width: 100%;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  text-align: center;
 }
 
 /* Hero Container with GIF */
@@ -213,13 +220,14 @@ const goToLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
+  gap: clamp(1rem, 3vw, 2rem);
   flex-wrap: wrap;
+  width: 100%;
 }
 
 /* Hero Title */
 .hero-title {
-  font-size: 5rem;
+  font-size: clamp(2rem, 5vw, 5rem);
   color: #fff;
   text-shadow: 
     4px 4px 0px #ff6b6b,
@@ -227,13 +235,14 @@ const goToLogin = () => {
   margin: 0;
   animation: heroFloat 3s ease-in-out infinite;
   line-height: 1.2;
+  text-align: center;
 }
 
 /* Mission Box */
 .mission-box {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 30px;
-  padding: 2.5rem;
+  padding: clamp(1.2rem, 3vw, 2.5rem);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   border: 5px solid #ff6b6b;
   backdrop-filter: blur(10px);
@@ -241,10 +250,11 @@ const goToLogin = () => {
   transition: all 0.4s ease;
   width: 100%;
   max-width: 1100px;
+  box-sizing: border-box;
 }
 
 .mission-text {
-  font-size: 1.8rem;
+  font-size: clamp(1.05rem, 2.2vw, 1.8rem);
   line-height: 1.6;
   color: #2c3e50;
   margin: 0 0 1rem 0;
@@ -259,7 +269,7 @@ const goToLogin = () => {
 }
 
 .action-text {
-  font-size: 1.6rem;
+  font-size: clamp(1rem, 2vw, 1.6rem);
   margin-top: 1.5rem;
   font-weight: 600;
 }
@@ -273,39 +283,29 @@ const goToLogin = () => {
 
 /* Actions Row */
 .actions-row {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  align-items: stretch;
   justify-content: center;
-  gap: 3rem;
-  flex-wrap: nowrap;
+  gap: clamp(1.2rem, 3vw, 3rem);
   width: 100%;
   max-width: 1100px;
 }
 
-/* Action Container */
-.action-container {
-  text-align: center;
-  flex: 1;
-  min-width: 300px;
-}
-
-/* Buttons Container */
-.buttons-container {
+.action-card {
+  width: 100%;
+  min-height: clamp(140px, 18vh, 190px);
   display: flex;
-  gap: 2rem;
-  flex-wrap: nowrap;
-  justify-content: center;
   align-items: center;
-  flex: 1;
-  min-width: 300px;
+  justify-content: center;
 }
 
 .cta-button {
   color: white;
   border: none;
-  padding: 1.5rem 3rem;
+  padding: clamp(0.9rem, 2.4vw, 1.5rem) clamp(1.6rem, 4vw, 3rem);
   border-radius: 50px;
-  font-size: 1.6rem;
+  font-size: clamp(1.05rem, 2.2vw, 1.6rem);
   font-weight: bold;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -313,6 +313,15 @@ const goToLogin = () => {
   align-items: center;
   gap: 1rem;
   border: 4px solid rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+.action-button {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  justify-content: center;
+  border-radius: 24px;
 }
 
 .cta-button.primary {
@@ -338,7 +347,7 @@ const goToLogin = () => {
 }
 
 .button-icon {
-  font-size: 2rem;
+  font-size: clamp(1.4rem, 3vw, 2rem);
   animation: iconSpin 2s infinite;
 }
 
@@ -348,27 +357,33 @@ const goToLogin = () => {
   justify-content: center;
   align-items: center;
   gap: 1rem;
-  padding: 2rem;
+  padding: clamp(1rem, 2.5vw, 2rem);
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
   border: 5px solid #fdcb6e;
   transition: all 0.3s ease;
   flex: 1;
-  min-width: 300px;
+  min-width: 260px;
+  box-sizing: border-box;
+}
+
+.welcome-gif {
+  width: min(420px, 100%);
+  height: auto;
+  display: block;
 }
 
 .help-box {
   background: rgba(254, 202, 87, 0.95);
   border-radius: 25px;
-  padding: 0rem;
+  padding: 1rem 1.4rem;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
   border: 5px solid #fdcb6e;
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
-  flex: 1;
-  min-width: 300px;
   display: flex;
   align-items: center;
   gap: 1rem;
+  box-sizing: border-box;
 }
 
 .help-box:hover {
@@ -383,7 +398,7 @@ const goToLogin = () => {
 }
 
 .help-text {
-  font-size: 1.5rem;
+  font-size: clamp(1rem, 2.2vw, 1.5rem);
   color: #2c3e50;
   font-weight: bold;
   margin: 0;
@@ -490,7 +505,18 @@ const goToLogin = () => {
   }
 }
 
+@media (max-width: 900px) {
+  .actions-row {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
 @media (max-width: 768px) {
+  .home-page {
+    padding-top: clamp(7.5rem, 18vh, 10rem);
+  }
+
   .hero-container {
     flex-direction: column;
     gap: 1rem;
@@ -517,17 +543,24 @@ const goToLogin = () => {
   }
   
   .actions-row {
-    flex-direction: column;
-    gap: 1.5rem;
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
   
   .cta-button {
     font-size: 1.2rem;
     padding: 1rem 2rem;
+    width: 100%;
+    justify-content: center;
   }
   
   .help-text {
     font-size: 1.2rem;
+  }
+
+  .help-box {
+    width: 100%;
+    justify-content: center;
   }
 
   .floating-dashboard-btn {
@@ -535,6 +568,33 @@ const goToLogin = () => {
     bottom: 1rem;
     font-size: 1.1rem;
     padding: 0.9rem 1.2rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-title {
+    text-shadow:
+      2px 2px 0px #ff6b6b,
+      4px 4px 0px rgba(0, 0, 0, 0.25);
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-dashboard-btn {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    font-size: 1rem;
+    padding: 0.8rem 1rem;
+  }
+
+  .help-box {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.6rem;
+  }
+
+  .lightbulb-icon {
+    font-size: 2.6rem;
   }
 }
 </style>

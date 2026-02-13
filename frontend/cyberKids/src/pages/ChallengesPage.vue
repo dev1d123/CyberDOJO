@@ -113,18 +113,19 @@ const start = (id: ChallengeId) => {
 
 <style scoped>
 .challenges-page {
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-color: #1f1b3a;
+  display: flex;
+  flex-direction: column;
 }
 
 .overlay {
-  height: 100%;
-  width: 100%;
+  flex: 1;
   display: flex;
   flex-direction: column;
   background: radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.12), transparent 55%),
@@ -143,40 +144,45 @@ const start = (id: ChallengeId) => {
 }
 
 .content {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: clamp(10px, 2vh, 16px);
-  padding: 0 clamp(14px, 2.5vw, 24px) clamp(14px, 2.4vh, 20px);
+  padding: clamp(12px, 3vh, 20px) clamp(12px, 4vw, 24px);
   max-width: 1300px;
   width: 100%;
   margin: 0 auto;
 }
 
-  .grid {
-  flex: 1 1 auto;
-  min-height: 0;
+.grid {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(12px, 2vw, 18px);
+  gap: clamp(10px, 2vw, 18px);
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 900px) {
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(8px, 2vw, 16px);
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .grid {
     grid-template-columns: 1fr;
+    gap: clamp(10px, 3vw, 14px);
+  }
+
+  .content {
+    padding: clamp(10px, 3vh, 16px) clamp(10px, 3.5vw, 16px);
+    gap: clamp(8px, 2vh, 14px);
   }
 }
 
@@ -189,7 +195,7 @@ const start = (id: ChallengeId) => {
   background: rgba(255, 255, 255, 0.9);
   border: 2px solid rgba(255, 255, 255, 0.65);
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
-  padding: clamp(10px, 2vh, 16px) clamp(12px, 2.2vw, 18px);
+  padding: clamp(10px, 2.5vh, 16px) clamp(12px, 3vw, 20px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -204,27 +210,31 @@ const start = (id: ChallengeId) => {
   padding: 6px 12px;
   border-radius: 999px;
   white-space: nowrap;
+  font-size: clamp(0.7rem, 2vw, 0.85rem);
 }
 
 .hint-text {
   margin: 0;
   font-weight: 850;
   color: #334155;
-  font-size: clamp(0.95rem, 1.2vw, 1.05rem);
-  line-height: 1.2;
+  font-size: clamp(0.85rem, 2.5vw, 1.05rem);
+  line-height: 1.3;
 }
 
-@media (max-width: 980px) {
-  .grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .hint-card {
     flex-direction: column;
     align-items: flex-start;
+    gap: 10px;
+    padding: clamp(10px, 3vh, 14px) clamp(10px, 3vw, 14px);
+  }
+
+  .hint-title {
+    font-size: clamp(0.65rem, 2.5vw, 0.75rem);
+  }
+
+  .hint-text {
+    font-size: clamp(0.8rem, 2vw, 0.95rem);
   }
 }
 </style>
