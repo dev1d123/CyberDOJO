@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-const mascotGif = new URL('../../assets/gif/challengeGif.gif', import.meta.url).href;
+const mascotGif = '/assets/gif/challengeGif.gif';
 </script>
 
 <style scoped>

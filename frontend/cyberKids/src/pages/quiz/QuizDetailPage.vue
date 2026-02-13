@@ -159,8 +159,9 @@ const submitting = ref(false)
 const canPlay = ref(false)
 
 // Función para obtener un diálogo genérico aleatorio
-const getRandomDialog = () => {
-  return genericDialogs[Math.floor(Math.random() * genericDialogs.length)]
+const getRandomDialog = (): string => {
+  const dialog = genericDialogs[Math.floor(Math.random() * genericDialogs.length)]
+  return dialog || '🤖 ¡Adelante!'
 }
 
 // Progreso guardado

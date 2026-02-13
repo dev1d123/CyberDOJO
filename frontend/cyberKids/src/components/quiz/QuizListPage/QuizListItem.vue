@@ -21,13 +21,13 @@ const emojiMap: Record<string, string> = {
 const props = defineProps<{ quiz: {
   id: number;
   title: string;
-  description?: string;
-  difficulty?: number;
+  description?: string | null;
+  difficulty?: number | null;
   base_points?: number;
   category?: string;
   segment?: string;
   image_url?: string | null;
-  progress?: { answered?: number; total?: number; correct?: number; percentage?: number };
+  progress?: { answered?: number; total?: number; correct?: number; percentage?: number } | null;
   status?: string;
 } }>();
 

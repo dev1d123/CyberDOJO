@@ -19,12 +19,15 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, ref } from 'vue'
+import { ref } from 'vue'
 const props = defineProps<{ options: Array<{ text: string; disabled?: boolean }>; labels?: string[] }>()
 const options = props.options || []
 const labels = props.labels || []
 const selectedIndex = ref(-1)
-const emit = defineEmits(['select', 'selectIndex'] as const)
+const emit = defineEmits<{
+  select: [index: number]
+  selectIndex: [index: number]
+}>()
 function onClick(i: number, disabled?: boolean){
   if(disabled) return
   selectedIndex.value = i

@@ -78,9 +78,9 @@ const router = useRouter();
 // Cuando el archivo esté presente, se mostrará automáticamente.
 const backgroundUrl = '/src/assets/images/challengeBackground.png';
 
-const trustGif = new URL('../assets/gif/welcome.gif', import.meta.url).href;
-const chatGif = new URL('../assets/gif/settingGif.gif', import.meta.url).href;
-const huntGif = new URL('../assets/gif/logo.gif', import.meta.url).href;
+const trustGif = '/assets/gif/welcome.gif';
+const chatGif = '/assets/gif/settingGif.gif';
+const huntGif = '/assets/gif/logo.gif';
 
 const pageStyle = computed(() => {
   return {

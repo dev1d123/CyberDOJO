@@ -73,7 +73,11 @@ export const AGE_SEGMENTS: Record<string, AgeSegment> = {
  * Obtiene configuración de rewards para un nivel de dificultad
  */
 export function getRewardConfig(difficultyLevel: number): DifficultyConfig {
-  return DIFFICULTY_LEVELS[difficultyLevel] || DIFFICULTY_LEVELS[3];
+  const config = DIFFICULTY_LEVELS[difficultyLevel] ?? DIFFICULTY_LEVELS[3]
+  if (!config) {
+    throw new Error(`Unable to find difficulty level config for level ${difficultyLevel}`)
+  }
+  return config
 }
 
 /**
