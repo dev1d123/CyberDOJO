@@ -46,6 +46,12 @@
             :question="currentQuestion"
             v-model="currentAnswer"
           />
+
+          <QuestionAge
+            v-else-if="currentQuestion.response_type === 'age'"
+            :question="currentQuestion"
+            v-model="currentOpenAnswer"
+          />
         </div>
       </transition>
 
@@ -63,7 +69,9 @@
           v-if="currentQuestionIndex < questions.length - 1"
           @click="nextQuestion"
           class="nav-button next-button"
-          :disabled="answers[currentQuestion.question_id] == null"
+          :disabled="currentQuestion.response_type === 'age'
+            ? openAnswers[currentQuestion.question_id] == null
+            : answers[currentQuestion.question_id] == null"
         >
           Siguiente →
         </button>
@@ -72,7 +80,9 @@
           v-else
           @click="submitAnswers"
           class="nav-button submit-button"
-          :disabled="answers[currentQuestion.question_id] == null || submitting"
+          :disabled="(currentQuestion.response_type === 'age'
+            ? openAnswers[currentQuestion.question_id] == null
+            : answers[currentQuestion.question_id] == null) || submitting"
         >
           {{ submitting ? 'Enviando...' : '✓ Terminar' }}
         </button>
@@ -95,6 +105,7 @@ import { useRouter } from 'vue-router';
 import QuestionMultipleChoice from '@/components/QuestionMultipleChoice.vue';
 import QuestionYesNo from '@/components/QuestionYesNo.vue';
 import QuestionScale from '@/components/QuestionScale.vue';
+import QuestionAge from '@/components/QuestionAge.vue';
 import { OnboardingService } from '@/services/onboarding.service';
 import type { OnboardingQuestion, UserAnswer } from '@/dto/onboarding.dto';
 
@@ -103,6 +114,7 @@ const router = useRouter();
 const questions = ref<OnboardingQuestion[]>([]);
 const currentQuestionIndex = ref(0);
 const answers = ref<Record<number, number | null>>({});
+const openAnswers = ref<Record<number, number | null>>({});
 const loading = ref(true);
 const error = ref<string | null>(null);
 const submitting = ref(false);
@@ -121,6 +133,19 @@ const currentAnswer = computed<number | null>({
     const q = currentQuestion.value;
     if (!q) return;
     answers.value[q.question_id] = value;
+  },
+});
+
+const currentOpenAnswer = computed<number | null>({
+  get() {
+    const q = currentQuestion.value;
+    if (!q) return null;
+    return openAnswers.value[q.question_id] ?? null;
+  },
+  set(value) {
+    const q = currentQuestion.value;
+    if (!q) return;
+    openAnswers.value[q.question_id] = value;
   },
 });
 
@@ -164,6 +189,18 @@ const submitAnswers = async () => {
 
     // Enviar en lote usando el endpoint upsert del backend (evita unique_together user+question)
     const batchPayload = questions.value.map((question) => {
+      if (question.response_type === 'age') {
+        const age = openAnswers.value[question.question_id];
+        if (age == null) {
+          throw new Error('Falta tu edad. Por favor completa todas las preguntas.');
+        }
+        return {
+          question_id: question.question_id,
+          option_id: null,
+          open_answer: String(age),
+        };
+      }
+
       const selectedOptionId = answers.value[question.question_id];
       if (selectedOptionId == null) {
         throw new Error('Faltan respuestas. Por favor completa todas las preguntas.');
@@ -179,7 +216,9 @@ const submitAnswers = async () => {
     console.log('✅ Onboarding batch submit result:', submitResult);
 
     // Preparar datos para el dashboard
-    const userAnswers: UserAnswer[] = questions.value.map((question) => {
+    const userAnswers: UserAnswer[] = questions.value
+      .filter((question) => question.response_type !== 'age')
+      .map((question) => {
       const selectedOptionId = answers.value[question.question_id];
       if (selectedOptionId == null) {
         throw new Error('Faltan respuestas. Por favor completa todas las preguntas.');
