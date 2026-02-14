@@ -67,7 +67,8 @@
       <div class="menu-grid">
         <!-- Modo Historia -->
         <div
-          class="menu-card"
+          class="menu-card fx-history"
+          data-fx="history"
           data-tour-step="history"
           v-pet-hint="{ behavior: 'hover_module', vars: { target: 'Modo Historia' }, click: { behavior: 'open_page', vars: { target: 'Modo Historia' }, ttlMs: 1600, priority: 1 } }"
           @click="goToStoryMode"
@@ -81,7 +82,8 @@
 
         <!-- Desafíos -->
         <div
-          class="menu-card"
+          class="menu-card fx-challenges"
+          data-fx="challenges"
           data-tour-step="challenges"
           v-pet-hint="{ behavior: 'hover_module', vars: { target: 'Desafíos' }, click: { behavior: 'open_page', vars: { target: 'Desafíos' }, ttlMs: 1600, priority: 1 } }"
           @click="goToChallenges"
@@ -95,7 +97,8 @@
 
         <!-- Tienda -->
         <div
-          class="menu-card"
+          class="menu-card fx-shop"
+          data-fx="shop"
           data-tour-step="shop"
           v-pet-hint="{ behavior: 'hover_module', vars: { target: 'Tienda' }, click: { behavior: 'open_page', vars: { target: 'Tienda' }, ttlMs: 1600, priority: 1 } }"
           @click="goToShop"
@@ -109,7 +112,8 @@
 
         <!-- Perfil -->
         <div
-          class="menu-card"
+          class="menu-card fx-profile"
+          data-fx="profile"
           data-tour-step="profile"
           v-pet-hint="{ behavior: 'hover_module', vars: { target: 'Perfil' }, click: { behavior: 'open_page', vars: { target: 'Perfil' }, ttlMs: 1600, priority: 1 } }"
           @click="goToProfile"
@@ -136,12 +140,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, getCurrentInstance } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch, getCurrentInstance } from 'vue';
 import { useRouter } from 'vue-router';
 import type { UserDto } from '../dto/user.dto';
 import { UserService } from '../services/user.service';
 import { AudioService } from '../services/audio.service';
 import DebugMenu from '../components/DebugMenu.vue';
+import VanillaTilt from 'vanilla-tilt';
 
 const router = useRouter();
 const instance = getCurrentInstance();
@@ -319,6 +324,61 @@ const handleLogout = () => {
   localStorage.removeItem('user_id');
   router.push('/');
 };
+
+let tiltEls: HTMLElement[] = [];
+
+function destroyTilt() {
+  tiltEls.forEach((el) => {
+    (el as any)?.vanillaTilt?.destroy?.();
+  });
+  tiltEls = [];
+}
+
+async function initTilt() {
+  destroyTilt();
+  await nextTick();
+
+  const els = Array.from(document.querySelectorAll<HTMLElement>('.dashboard-page .menu-card'));
+  tiltEls = els;
+
+  els.forEach((el) => {
+    const fx = el.dataset.fx ?? 'default';
+
+    const base: any = {
+      speed: 700,
+      glare: true,
+      'max-glare': 0.28,
+      gyroscope: true,
+      perspective: 900,
+      scale: 1.02,
+    };
+
+    const perFx: Record<string, any> = {
+      history: { max: 10, easing: 'cubic-bezier(.2,.9,.2,1)' },
+      challenges: { max: 14, glare: true, 'max-glare': 0.34 },
+      shop: { max: 9, glare: true, 'max-glare': 0.26, perspective: 1100 },
+      profile: { max: 12, glare: true, 'max-glare': 0.3, perspective: 1000 },
+      default: { max: 10 },
+    };
+
+    (VanillaTilt as any).init(el, { ...base, ...(perFx[fx] ?? perFx.default) });
+  });
+}
+
+watch(
+  () => ({ loading: loading.value, error: error.value }),
+  async ({ loading: isLoading, error: err }) => {
+    if (!isLoading && !err) {
+      await initTilt();
+    } else {
+      destroyTilt();
+    }
+  }
+);
+
+onUnmounted(() => {
+  destroyTilt();
+});
 </script>
 
 <style scoped>
@@ -326,9 +386,13 @@ const handleLogout = () => {
   height: 100vh;
   width: 100vw;
   box-sizing: border-box;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-  background-size: 200% 200%;
-  animation: gradientMove 12s ease-in-out infinite;
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(60vw 55vh at 15% 10%, rgba(0, 245, 255, 0.18) 0%, transparent 60%),
+    radial-gradient(55vw 50vh at 85% 15%, rgba(255, 215, 0, 0.16) 0%, transparent 62%),
+    radial-gradient(60vw 55vh at 45% 95%, rgba(255, 107, 107, 0.15) 0%, transparent 65%),
+    linear-gradient(135deg, #060b18 0%, #101a3a 45%, #240b3a 100%);
   padding: clamp(12px, 2.5vh, 24px);
   overflow-y: auto;
   overflow-x: hidden;
@@ -336,10 +400,65 @@ const handleLogout = () => {
   justify-content: center;
 }
 
-@keyframes gradientMove {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+.dashboard-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.45;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.06) 0px,
+      rgba(255, 255, 255, 0.06) 1px,
+      transparent 1px,
+      transparent 72px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.045) 0px,
+      rgba(255, 255, 255, 0.045) 1px,
+      transparent 1px,
+      transparent 72px
+    );
+  transform: translate3d(0, 0, 0);
+  animation: gridDrift 18s linear infinite;
+  mask-image: radial-gradient(circle at 50% 18%, black 0%, black 55%, transparent 75%);
+}
+
+.dashboard-page::after {
+  content: '';
+  position: fixed;
+  inset: -20vh -10vw;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(closest-side at 30% 35%, rgba(0, 245, 255, 0.22), transparent 60%),
+    radial-gradient(closest-side at 70% 30%, rgba(255, 215, 0, 0.18), transparent 62%),
+    radial-gradient(closest-side at 55% 70%, rgba(155, 89, 255, 0.18), transparent 65%);
+  filter: blur(18px) saturate(1.25);
+  opacity: 0.85;
+  animation: auroraFloat 14s ease-in-out infinite;
+}
+
+@keyframes gridDrift {
+  0% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-36px, 24px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes auroraFloat {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(2vw, -2vh, 0) rotate(6deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-page::before,
+  .dashboard-page::after {
+    animation: none;
+  }
 }
 
 .loading-container,
@@ -384,6 +503,8 @@ const handleLogout = () => {
   flex-direction: column;
   gap: clamp(8px, 1.4vh, 14px);
   min-height: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .header-section {
@@ -425,10 +546,12 @@ const handleLogout = () => {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: white;
+  background: rgba(255, 255, 255, 0.92);
   padding: clamp(8px, 1.4vh, 12px) clamp(12px, 2.2vh, 18px);
   border-radius: 50px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(10px);
 }
 
 .coin-icon {
@@ -452,25 +575,85 @@ const handleLogout = () => {
 }
 
 .menu-card {
-  background: white;
+  --accent: #ffd700;
+  --accent2: #00f5ff;
+  --accent-rgb: 255, 215, 0;
+  --accent2-rgb: 0, 245, 255;
+
+  background: rgba(255, 255, 255, 0.88);
   border-radius: 22px;
   padding: clamp(12px, 2vh, 18px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
-  border: 4px solid transparent;
+  border: 4px solid rgba(255, 255, 255, 0.18);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   gap: clamp(8px, 1.3vh, 12px);
   min-height: 0;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(14px);
+  transform-style: preserve-3d;
+}
+
+.menu-card::before {
+  content: '';
+  position: absolute;
+  inset: -40% -60%;
+  background:
+    linear-gradient(
+      115deg,
+      transparent 0%,
+      rgba(var(--accent2-rgb), 0.0) 28%,
+      rgba(var(--accent2-rgb), 0.18) 45%,
+      rgba(255, 255, 255, 0.2) 52%,
+      rgba(var(--accent-rgb), 0.18) 60%,
+      transparent 75%
+    );
+  transform: translate3d(-20%, 0, 0) rotate(18deg);
+  opacity: 0;
+  transition: opacity 250ms ease, transform 520ms cubic-bezier(0.2, 0.9, 0.2, 1.1);
+  pointer-events: none;
+}
+
+.menu-card::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 24px;
+  border: 2px solid rgba(var(--accent-rgb), 0.0);
+  box-shadow:
+    0 0 0 0 rgba(var(--accent-rgb), 0.0),
+    0 0 0 0 rgba(var(--accent2-rgb), 0.0),
+    0 20px 60px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  transform: scale(0.985);
+  transition: opacity 220ms ease, transform 240ms ease, border-color 220ms ease, box-shadow 260ms ease;
+  pointer-events: none;
 }
 
 .menu-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
-  border-color: #ffd700;
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.35);
+  border-color: rgba(var(--accent-rgb), 0.95);
+}
+
+.menu-card:hover::before {
+  opacity: 1;
+  transform: translate3d(14%, 0, 0) rotate(18deg);
+}
+
+.menu-card:hover::after {
+  opacity: 1;
+  transform: scale(1.02);
+  border-color: rgba(var(--accent-rgb), 0.75);
+  box-shadow:
+    0 0 0 8px rgba(var(--accent-rgb), 0.12),
+    0 0 38px rgba(var(--accent2-rgb), 0.22),
+    0 18px 52px rgba(0, 0, 0, 0.22);
 }
 
 .card-gif-container {
@@ -480,7 +663,36 @@ const handleLogout = () => {
   margin-bottom: 0;
   border-radius: 15px;
   overflow: hidden;
-  background: #f5f5f5;
+  background: rgba(0, 0, 0, 0.04);
+  position: relative;
+}
+
+.fx-history .card-gif-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 245, 255, 0.0) 0px,
+      rgba(0, 245, 255, 0.0) 10px,
+      rgba(0, 245, 255, 0.09) 11px,
+      rgba(0, 245, 255, 0.0) 18px
+    );
+  opacity: 0;
+  transform: translateY(-40%);
+  transition: opacity 180ms ease;
+  pointer-events: none;
+}
+
+.fx-history:hover .card-gif-container::after {
+  opacity: 0.85;
+  animation: scanLines 900ms linear infinite;
+}
+
+@keyframes scanLines {
+  0% { transform: translateY(-45%); }
+  100% { transform: translateY(45%); }
 }
 
 .card-gif {
@@ -491,7 +703,7 @@ const handleLogout = () => {
 
 .card-title {
   font-size: clamp(1.25rem, 2.2vw, 1.75rem);
-  color: #667eea;
+  color: var(--accent);
   margin-bottom: 0;
 }
 
@@ -504,16 +716,87 @@ const handleLogout = () => {
   display: block;
   margin: 0 auto;
   flex: 0 0 auto;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.18);
   color: white;
-  border: 2px solid white;
+  border: 2px solid rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(10px);
   padding: clamp(10px, 1.8vh, 14px) clamp(16px, 3vh, 22px);
   border-radius: 14px;
 }
 
 .logout-button:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.26);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.32);
+}
+
+/* Per-card accents (distinct hover vibes per button) */
+.fx-history {
+  --accent: #00f5ff;
+  --accent2: #7c4dff;
+  --accent-rgb: 0, 245, 255;
+  --accent2-rgb: 124, 77, 255;
+}
+
+.fx-challenges {
+  --accent: #ffd700;
+  --accent2: #ff6b6b;
+  --accent-rgb: 255, 215, 0;
+  --accent2-rgb: 255, 107, 107;
+}
+
+.fx-shop {
+  --accent: #2ecc71;
+  --accent2: #00f5ff;
+  --accent-rgb: 46, 204, 113;
+  --accent2-rgb: 0, 245, 255;
+}
+
+.fx-profile {
+  --accent: #9b59ff;
+  --accent2: #ffd700;
+  --accent-rgb: 155, 89, 255;
+  --accent2-rgb: 255, 215, 0;
+}
+
+/* Extra per-card "wow" behaviors */
+.fx-challenges:hover::after {
+  animation: borderPulse 1.05s ease-in-out infinite;
+}
+
+@keyframes borderPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 8px rgba(var(--accent-rgb), 0.12),
+      0 0 34px rgba(var(--accent2-rgb), 0.18),
+      0 18px 52px rgba(0, 0, 0, 0.22);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(var(--accent-rgb), 0.16),
+      0 0 46px rgba(var(--accent2-rgb), 0.28),
+      0 22px 62px rgba(0, 0, 0, 0.24);
+  }
+}
+
+.fx-shop:hover::before {
+  animation: shineSweep 1.35s ease-in-out infinite;
+}
+
+@keyframes shineSweep {
+  0% { transform: translate3d(-10%, 0, 0) rotate(18deg); }
+  50% { transform: translate3d(22%, 0, 0) rotate(18deg); }
+  100% { transform: translate3d(-10%, 0, 0) rotate(18deg); }
+}
+
+.fx-profile:hover .card-title {
+  text-shadow:
+    0 0 0 rgba(0,0,0,0),
+    0 0 18px rgba(var(--accent2-rgb), 0.22),
+    0 0 26px rgba(var(--accent-rgb), 0.24);
+}
+
+.fx-profile:hover::before {
+  filter: hue-rotate(18deg) saturate(1.15);
 }
 
 @media (max-width: 768px) {
@@ -562,14 +845,14 @@ const handleLogout = () => {
   color: white !important;
   padding: 20px !important;
   border-radius: 12px 12px 0 0 !important;
-  font-size: 18px !important;
+  font-size: 1.05rem !important;
   font-weight: 600 !important;
 }
 
 :deep(.v-step__content) {
   padding: 20px !important;
   color: #333 !important;
-  font-size: 15px !important;
+  font-size: 0.95rem !important;
   line-height: 1.6 !important;
 }
 
@@ -604,7 +887,7 @@ const handleLogout = () => {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 14px;
+  font-size: 0.9rem;
 }
 
 .tour-btn-primary {
