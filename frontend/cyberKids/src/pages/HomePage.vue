@@ -3,13 +3,17 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useRoute } from 'vue-router';
 import AccountOpenAlert from '../components/AccountOpenAlert.vue';
+import { AuthService } from '../services/auth.service';
 
 const router = useRouter();
 const route = useRoute();
 
 const welcomeGif = new URL('../assets/gif/welcome.gif', import.meta.url).href;
 
-const isAuthenticated = computed(() => Boolean(localStorage.getItem('access_token')));
+type SessionState = 'checking' | 'active' | 'inactive';
+const sessionState = ref<SessionState>('checking');
+
+const isAuthenticated = computed(() => sessionState.value === 'active');
 
 const sessionAlertOpen = ref(false);
 const pendingTarget = ref<'login' | 'register' | null>(null);
@@ -23,6 +27,33 @@ const clearSession = () => {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user_id');
+};
+
+const checkActiveSession = async () => {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) {
+    sessionState.value = 'inactive';
+    return;
+  }
+
+  try {
+    const res = await AuthService.refresh(refreshToken);
+    const access = res?.tokens?.access;
+    const refresh = res?.tokens?.refresh;
+
+    if (!access || !refresh) {
+      clearSession();
+      sessionState.value = 'inactive';
+      return;
+    }
+
+    localStorage.setItem('access_token', access);
+    localStorage.setItem('refresh_token', refresh);
+    sessionState.value = 'active';
+  } catch {
+    clearSession();
+    sessionState.value = 'inactive';
+  }
 };
 
 const consumeQueryAlert = () => {
@@ -39,12 +70,13 @@ const consumeQueryAlert = () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
+  await checkActiveSession();
   consumeQueryAlert();
 });
 
 watch(
-  () => route.query,
+  [() => route.query, () => isAuthenticated.value],
   () => {
     consumeQueryAlert();
   }
@@ -75,18 +107,42 @@ const goToDashboard = () => {
 };
 
 const goToRegister = () => {
+  if (sessionState.value === 'checking') {
+    checkActiveSession().finally(() => {
+      if (isAuthenticated.value) {
+        openSessionAlert('register');
+        return;
+      }
+      router.push('/register');
+    });
+    return;
+  }
+
   if (isAuthenticated.value) {
     openSessionAlert('register');
     return;
   }
+
   router.push('/register');
 };
 
 const goToLogin = () => {
+  if (sessionState.value === 'checking') {
+    checkActiveSession().finally(() => {
+      if (isAuthenticated.value) {
+        openSessionAlert('login');
+        return;
+      }
+      router.push('/login');
+    });
+    return;
+  }
+
   if (isAuthenticated.value) {
     openSessionAlert('login');
     return;
   }
+
   router.push('/login');
 };
 </script>
@@ -169,9 +225,9 @@ const goToLogin = () => {
   align-items: center;
   justify-content: center;
   padding: clamp(1rem, 2.5vw, 2rem);
-  padding-top: clamp(5.5rem, 12vh, 8rem);
+  padding-top: clamp(1rem, 4vh, 2.5rem);
   padding-bottom: clamp(1rem, 3vh, 3rem);
-  overflow-x: hidden;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -244,7 +300,7 @@ const goToLogin = () => {
 .mission-box {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 30px;
-  padding: clamp(1.2rem, 3vw, 2.5rem);
+  padding: clamp(1.2rem, 2vw, 2.5rem);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   border: 5px solid #ff6b6b;
   backdrop-filter: blur(10px);
@@ -287,7 +343,7 @@ const goToLogin = () => {
 .actions-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(220px, 1fr));
-  align-items: stretch;
+  align-items: start;
   justify-content: center;
   gap: clamp(1.2rem, 3vw, 3rem);
   width: 100%;
@@ -296,7 +352,7 @@ const goToLogin = () => {
 
 .action-card {
   width: 100%;
-  min-height: clamp(140px, 18vh, 190px);
+  min-height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -305,7 +361,7 @@ const goToLogin = () => {
 .cta-button {
   color: white;
   border: none;
-  padding: clamp(0.9rem, 2.4vw, 1.5rem) clamp(1.6rem, 4vw, 3rem);
+  padding: clamp(0.65rem, 1.8vw, 1.1rem) clamp(1.25rem, 3.2vw, 2.4rem);
   border-radius: 50px;
   font-size: clamp(1.05rem, 2.2vw, 1.6rem);
   font-weight: bold;
@@ -320,8 +376,8 @@ const goToLogin = () => {
 
 .action-button {
   width: 100%;
-  height: 100%;
-  min-height: inherit;
+  height: auto;
+  min-height: 0;
   justify-content: center;
   border-radius: 24px;
 }
@@ -377,7 +433,6 @@ const goToLogin = () => {
 .help-box {
   background: rgba(254, 202, 87, 0.95);
   border-radius: 25px;
-  padding: 1rem 1.4rem;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
   border: 5px solid #fdcb6e;
   backdrop-filter: blur(10px);
@@ -394,13 +449,13 @@ const goToLogin = () => {
 }
 
 .lightbulb-icon {
-  font-size: 3.5rem;
+  font-size: 1.5rem;
   animation: glow 2s infinite;
   flex-shrink: 0;
 }
 
 .help-text {
-  font-size: clamp(1rem, 2.2vw, 1.5rem);
+  font-size: clamp(0.5rem, 1.5vw, 1.5rem);
   color: #2c3e50;
   font-weight: bold;
   margin: 0;
@@ -495,7 +550,7 @@ const goToLogin = () => {
   
   .cta-button {
     font-size: 1.5rem;
-    padding: 1.2rem 2.5rem;
+    padding: 0.95rem 2.1rem;
   }
   
   .welcome-gif {
@@ -516,7 +571,7 @@ const goToLogin = () => {
 
 @media (max-width: 768px) {
   .home-page {
-    padding-top: clamp(7.5rem, 18vh, 10rem);
+    padding-top: clamp(1rem, 5vh, 3rem);
   }
 
   .hero-container {
@@ -551,7 +606,7 @@ const goToLogin = () => {
   
   .cta-button {
     font-size: 1.2rem;
-    padding: 1rem 2rem;
+    padding: 0.85rem 1.7rem;
     width: 100%;
     justify-content: center;
   }

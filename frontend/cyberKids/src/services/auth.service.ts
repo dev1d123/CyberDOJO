@@ -54,4 +54,21 @@ export class AuthService {
 
     return result;
   }
+
+  static async refresh(refreshToken: string): Promise<AuthResponse> {
+    const response = await fetch(`${API_BASE_URL}/refresh/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Error refrescando sesión' }));
+      throw error;
+    }
+
+    return response.json();
+  }
 }
