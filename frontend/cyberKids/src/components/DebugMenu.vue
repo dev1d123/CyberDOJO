@@ -374,7 +374,7 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 0.85rem;
   box-shadow: 0 4px 12px rgba(0, 255, 0, 0.3);
   transition: all 0.2s ease;
 }
@@ -416,14 +416,14 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
 .debug-header h3 {
   margin: 0;
   color: #00ff00;
-  font-size: 18px;
+  font-size: 1.05rem;
 }
 
 .close-btn {
   background: none;
   border: none;
   color: #00ff00;
-  font-size: 24px;
+  font-size: 1.4rem;
   cursor: pointer;
   padding: 0;
   width: 30px;
@@ -462,7 +462,7 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
 .debug-section h4 {
   margin: 0 0 12px 0;
   color: #00ff00;
-  font-size: 14px;
+  font-size: 0.85rem;
   text-transform: uppercase;
 }
 
@@ -479,20 +479,20 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
 
 .label {
   color: rgba(0, 255, 0, 0.7);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: bold;
 }
 
 .value {
   color: #fff;
   font-family: 'Courier New', monospace;
-  font-size: 13px;
+  font-size: 0.8rem;
 }
 
 .empty-state {
   color: rgba(255, 255, 255, 0.5);
   font-style: italic;
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 8px;
   text-align: center;
 }
@@ -511,7 +511,7 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
   padding: 8px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .pet-name {
@@ -522,13 +522,13 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
 .pet-id {
   color: rgba(0, 255, 0, 0.7);
   font-family: 'Courier New', monospace;
-  font-size: 11px;
+  font-size: 0.7rem;
 }
 
 .equipped-badge {
   color: #00ff00;
   font-weight: bold;
-  font-size: 11px;
+  font-size: 0.7rem;
 }
 
 .action-group {
@@ -545,7 +545,7 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
   border: 1px solid rgba(0, 255, 0, 0.3);
   border-radius: 6px;
   color: #fff;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .debug-select:focus,
@@ -560,7 +560,7 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
   border-radius: 6px;
   cursor: pointer;
   font-weight: bold;
-  font-size: 12px;
+  font-size: 0.75rem;
   transition: all 0.2s;
   white-space: nowrap;
 }
@@ -601,7 +601,7 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
   border: 1px solid #00ff00;
   border-radius: 6px;
   color: #00ff00;
-  font-size: 12px;
+  font-size: 0.75rem;
   text-align: center;
 }
 
@@ -621,7 +621,7 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
   color: #00ff00;
   cursor: pointer;
   font-weight: bold;
-  font-size: 13px;
+  font-size: 0.8rem;
   transition: all 0.2s;
 }
 
