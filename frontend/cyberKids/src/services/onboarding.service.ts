@@ -1,10 +1,39 @@
-import type { OnboardingQuestion, OnboardingResponse, UserAnswer } from '@/dto/onboarding.dto';
+import type { OnboardingQuestion, OnboardingResponse, OnboardingResponseRecord, UserAnswer } from '@/dto/onboarding.dto';
 
 import { API_CONFIG } from '../config/api.config';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
 
+function normalizeListResponse<T>(body: unknown): T[] {
+  if (Array.isArray(body)) return body as T[];
+  if (body && typeof body === 'object') {
+    const maybeResults = (body as any).results;
+    if (Array.isArray(maybeResults)) return maybeResults as T[];
+  }
+  return [];
+}
+
 export class OnboardingService {
+  /**
+   * Obtiene todas las preguntas de onboarding (incluye inactivas).
+   */
+  static async getAllQuestions(): Promise<OnboardingQuestion[]> {
+    const response = await fetch(`${API_BASE_URL}/onboarding/questions/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error al obtener preguntas: ${response.status}`);
+    }
+
+    const body = await response.json();
+    const questions = normalizeListResponse<OnboardingQuestion>(body);
+    return questions.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  }
+
   /**
    * Obtiene las preguntas activas de onboarding
    */
@@ -21,15 +50,42 @@ export class OnboardingService {
         throw new Error(`Error al obtener preguntas: ${response.status}`);
       }
 
-      const questions = await response.json();
+      const body = await response.json();
+      const questions = normalizeListResponse<OnboardingQuestion>(body);
       // Ordenar por display_order para asegurar el orden correcto
-      return questions.sort((a: OnboardingQuestion, b: OnboardingQuestion) => 
-        a.display_order - b.display_order
-      );
+      return questions.sort((a, b) => a.display_order - b.display_order);
     } catch (error) {
       console.error('Error en getActiveQuestions:', error);
       throw error;
     }
+  }
+
+  /**
+   * Obtiene las respuestas del usuario autenticado.
+   * Backend: GET /api/onboarding/responses/my-responses/
+   */
+  static async getMyResponses(): Promise<OnboardingResponseRecord[]> {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      throw new Error('No hay token de acceso');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/onboarding/responses/my-responses/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    const body = contentType.includes('application/json') ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
+    }
+
+    return body as OnboardingResponseRecord[];
   }
 
   /**
@@ -79,7 +135,9 @@ export class OnboardingService {
    * Envía múltiples respuestas en lote (upsert) para el usuario autenticado.
    * Backend: POST /api/onboarding/responses/submit-batch/
    */
-  static async submitBatch(responses: Array<{ question_id: number; option_id: number }>): Promise<unknown> {
+  static async submitBatch(
+    responses: Array<{ question_id: number; option_id: number | null; open_answer?: string | null }>
+  ): Promise<unknown> {
     const token = localStorage.getItem('access_token');
     if (!token) {
       throw new Error('No hay token de acceso');
