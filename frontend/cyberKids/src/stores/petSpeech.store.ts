@@ -1,6 +1,8 @@
 import { computed, ref } from 'vue';
 import dialoguesData from '@/data/pet_dialogues.json';
-import { hasPetEquipped } from './petState.store';
+import { hasPetEquipped, currentPetId } from './petState.store';
+import { TTSService } from '@/services/tts.service';
+import { AudioService } from '@/services/audio.service';
 
 export type PetSpeechBehavior = keyof typeof dialoguesData.behaviors | (string & {});
 
@@ -21,6 +23,134 @@ const typedText = ref('');
 const isTyping = ref(false);
 const behavior = ref<PetSpeechBehavior | null>(null);
 const currentPriority = ref(0);
+
+// IDs de las mascotas femeninas (Grimorio Místico = mage:9, Flecha Precisa = ranger:11)
+const FEMALE_PET_IDS = [9, 11];
+
+// Nombres comunes de voces femeninas y masculinas
+const FEMALE_VOICE_PATTERNS = [
+  'female', 'woman', 'femenina', 'mujer',
+  'helena', 'laura', 'monica', 'mónica', 'lucia', 'lucía', 'paulina',
+  'sabina', 'paloma', 'elena', 'carmen', 'isabel', 'natalia'
+];
+
+const MALE_VOICE_PATTERNS = [
+  'raul', 'raúl', 'jorge', 'diego', 'carlos', 'pablo', 'andrés', 'andres',
+  'juan', 'miguel', 'pedro', 'francisco', 'javier', 'alberto'
+];
+
+// Obtener voz adecuada según el género de la mascota
+async function getVoiceForPet(isFemale: boolean): Promise<string | undefined> {
+  const voices = await TTSService.getVoices();
+  
+  console.log('[PetSpeech] 🔍 Voces disponibles:', voices.map(v => ({ name: v.name, lang: v.lang })));
+  
+  // Filtrar voces españolas
+  const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+  
+  if (isFemale) {
+    // Buscar voz específicamente femenina
+    const femaleVoice = spanishVoices.find(v => {
+      const nameLower = v.name.toLowerCase();
+      // Primero excluir voces masculinas
+      const isMale = MALE_VOICE_PATTERNS.some(pattern => nameLower.includes(pattern));
+      if (isMale) return false;
+      // Luego buscar patrones femeninos
+      return FEMALE_VOICE_PATTERNS.some(pattern => nameLower.includes(pattern));
+    });
+    
+    if (femaleVoice) {
+      console.log('[PetSpeech] ✅ Voz femenina encontrada:', femaleVoice.name);
+      return femaleVoice.voiceURI;
+    }
+    
+    // Si no encuentra femenina explícita, usar la primera voz española que NO sea masculina
+    const nonMaleVoice = spanishVoices.find(v => {
+      const nameLower = v.name.toLowerCase();
+      return !MALE_VOICE_PATTERNS.some(pattern => nameLower.includes(pattern));
+    });
+    
+    if (nonMaleVoice) {
+      console.log('[PetSpeech] ⚠️ Usando voz no-masculina:', nonMaleVoice.name);
+      return nonMaleVoice.voiceURI;
+    }
+    
+    console.log('[PetSpeech] ❌ No se encontró voz femenina, usando pitch alto');
+  } else {
+    // Buscar voz específicamente masculina
+    const maleVoice = spanishVoices.find(v => {
+      const nameLower = v.name.toLowerCase();
+      return MALE_VOICE_PATTERNS.some(pattern => nameLower.includes(pattern));
+    });
+    
+    if (maleVoice) {
+      console.log('[PetSpeech] ✅ Voz masculina encontrada:', maleVoice.name);
+      return maleVoice.voiceURI;
+    }
+    
+    console.log('[PetSpeech] ⚠️ No se encontró voz masculina explícita');
+  }
+  
+  // Fallback: primera voz española disponible
+  if (spanishVoices.length > 0 && spanishVoices[0]) {
+    console.log('[PetSpeech] 📢 Usando fallback:', spanishVoices[0].name);
+    return spanishVoices[0].voiceURI;
+  }
+  
+  return undefined;
+}
+
+// Configuración de voz reactiva que se actualiza cuando cambia la mascota
+const petVoiceConfig = computed(() => {
+  const petId = currentPetId.value;
+  const isFemale = petId !== null && FEMALE_PET_IDS.includes(petId);
+  return {
+    pitch: isFemale ? 1.5 : 1.0,    // Pitch más alto si no hay voz femenina disponible
+    rate: 1,                         // Velocidad normal
+    isFemale,
+  };
+});
+
+async function speakWithTTS(text: string) {
+  if (!TTSService.isSupported()) return;
+  
+  // Detener cualquier TTS anterior para evitar errores de "interrupted"
+  TTSService.stop();
+  
+  // Obtener la configuración reactiva actual
+  const voiceConfig = petVoiceConfig.value;
+  
+  // Obtener la voz adecuada según el género
+  const voiceURI = await getVoiceForPet(voiceConfig.isFemale);
+  
+  // Obtener el volumen ACTUAL del servicio (se actualiza dinámicamente)
+  const currentVolume = AudioService.getPetTTSVolume();
+  
+  console.log('[PetSpeech] 🎤 Reproduciendo TTS:', { 
+    petId: currentPetId.value, 
+    isFemale: voiceConfig.isFemale,
+    voiceURI,
+    pitch: voiceConfig.pitch,
+    rate: voiceConfig.rate,
+    volume: currentVolume
+  });
+  
+  try {
+    await TTSService.speak({
+      text,
+      voiceURI,
+      pitch: voiceConfig.pitch,
+      rate: voiceConfig.rate,
+      volume: currentVolume, // Usar volumen actual dinámico
+      lang: 'es-ES',
+    });
+  } catch (error: any) {
+    // Ignorar errores comunes del navegador (not-allowed, interrupted)
+    if (error?.message !== 'not-allowed' && error?.message !== 'interrupted') {
+      console.warn('[PetSpeech] Error al reproducir TTS:', error);
+    }
+  }
+}
 
 let hideTimer: number | null = null;
 let typingTimer: number | null = null;
@@ -66,6 +196,7 @@ function pickDialogue(selectedBehavior: PetSpeechBehavior): string | null {
 function hide() {
   clearHideTimer();
   stopTyping();
+  TTSService.stop(); // Detener TTS al ocultar
   isOpen.value = false;
   text.value = '';
   typedText.value = '';
@@ -102,6 +233,9 @@ function speak(options: PetSpeakOptions) {
   currentPriority.value = priority;
   text.value = formatted;
   isOpen.value = true;
+
+  // Reproducir TTS con la voz de la mascota
+  speakWithTTS(formatted);
 
   const requestedHoldMs = options.ttlMs;
   const holdMsDefault = 3500;

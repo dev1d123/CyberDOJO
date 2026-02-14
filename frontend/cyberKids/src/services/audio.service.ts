@@ -23,6 +23,7 @@ class AudioServiceClass {
   private isMuted: boolean = false;
   private backgroundMusicVolume: number = 0.3;
   private sfxVolume: number = 0.5;
+  private petTTSVolume: number = 1.5; // Inicial: 1.5x para mayor audibilidad
   private shouldPlayBackground: boolean = true;
   private readonly quizSfxBoost: number = 2.0;
 
@@ -219,6 +220,14 @@ class AudioServiceClass {
 
   getSFXVolume(): number {
     return this.sfxVolume;
+  }
+
+  setPetTTSVolume(volume: number): void {
+    this.petTTSVolume = Math.max(0, Math.min(5, volume));
+  }
+
+  getPetTTSVolume(): number {
+    return this.petTTSVolume;
   }
 
   private async fadeOut(audio: HTMLAudioElement, duration: number = 1000): Promise<void> {

@@ -2,6 +2,8 @@
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { AudioService } from '../services/audio.service';
+import { TTSService } from '../services/tts.service';
+import { setPetEquipped } from '@/stores/petState.store';
 
 const isOpen = ref(false);
 const loading = ref(false);
@@ -20,13 +22,71 @@ const selectedPetToEquip = ref<number | null>(null);
 const selectedAudioToEquip = ref<number | null>(null);
 const creditsToAdd = ref(100);
 
+// TTS (client-side)
+type VoiceOption = { label: string; voiceURI: string; lang: string };
+const ttsSupported = ref<boolean>(TTSService.isSupported());
+const ttsText = ref<string>('Hola, esto es una prueba de voz desde el navegador.');
+const ttsLang = ref<string>('es-ES');
+const ttsRate = ref<number>(1);
+const ttsPitch = ref<number>(1);
+const ttsVolume = ref<number>(1);
+const ttsVoices = ref<VoiceOption[]>([]);
+const ttsSelectedVoiceURI = ref<string>('');
+const ttsStatus = ref<string>('');
+
 import { API_CONFIG } from '../config/api.config';
 
 const API_BASE_URL = API_CONFIG.BASE_URL;
 
 onMounted(async () => {
   await loadDebugData();
+
+  if (ttsSupported.value) {
+    await refreshTtsVoices();
+  }
 });
+
+const refreshTtsVoices = async () => {
+  try {
+    const voices = await TTSService.getVoices();
+    ttsVoices.value = voices.map(v => ({
+      label: `${v.name} (${v.lang})${v.default ? ' • default' : ''}`,
+      voiceURI: v.voiceURI,
+      lang: v.lang,
+    }));
+
+    // Preferir una voz española si existe
+    const preferred = voices.find(v => v.lang?.toLowerCase().startsWith('es')) || voices[0];
+    if (preferred && !ttsSelectedVoiceURI.value) {
+      ttsSelectedVoiceURI.value = preferred.voiceURI;
+      ttsLang.value = preferred.lang || ttsLang.value;
+    }
+  } catch (e: any) {
+    ttsStatus.value = `✗ TTS: ${e?.message || 'No se pudieron cargar voces'}`;
+  }
+};
+
+const handleSpeakTts = async () => {
+  ttsStatus.value = '';
+  try {
+    await TTSService.speak({
+      text: ttsText.value,
+      voiceURI: ttsSelectedVoiceURI.value || undefined,
+      lang: ttsLang.value,
+      rate: ttsRate.value,
+      pitch: ttsPitch.value,
+      volume: ttsVolume.value,
+    });
+    ttsStatus.value = '✓ TTS reproducido';
+  } catch (e: any) {
+    ttsStatus.value = `✗ TTS: ${e?.message || 'Error generando voz'}`;
+  }
+};
+
+const handleStopTts = () => {
+  TTSService.stop();
+  ttsStatus.value = '⏹️ TTS detenido';
+};
 
 const loadDebugData = async () => {
   loading.value = true;
@@ -120,6 +180,11 @@ const handleEquipPet = async () => {
     );
 
     message.value = `✓ ${response.data.message}`;
+    
+    // ¡IMPORTANTE! Actualizar el store global de la mascota equipada
+    setPetEquipped(selectedPetToEquip.value);
+    console.log('🐾 [DebugMenu] Mascota equipada actualizada:', selectedPetToEquip.value);
+    
     await loadDebugData();
   } catch (error: any) {
     console.error('Error equipping pet:', error);
@@ -341,6 +406,59 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
             <button @click="handleAddCredits" class="action-btn credits-btn" :disabled="loading">
               + Añadir
             </button>
+          </div>
+        </div>
+
+        <!-- TTS Section (Client-side) -->
+        <div class="debug-section">
+          <h4>🗣️ Voz (TTS)</h4>
+          <div v-if="!ttsSupported" class="empty-state">
+            Tu navegador no soporta TTS (speechSynthesis).
+          </div>
+
+          <div v-else>
+            <div class="empty-state" style="text-align:left;">
+              Nota: Qwen3-TTS (0.6B) no puede ejecutarse 100% en navegador sin backend.
+              Esta prueba usa la voz del sistema del navegador.
+            </div>
+
+            <div class="action-group" style="margin-top:8px;">
+              <select v-model="ttsSelectedVoiceURI" class="debug-select">
+                <option v-for="v in ttsVoices" :key="v.voiceURI" :value="v.voiceURI">
+                  {{ v.label }}
+                </option>
+              </select>
+              <button @click="refreshTtsVoices" class="action-btn equip-btn" :disabled="loading">
+                Recargar
+              </button>
+            </div>
+
+            <div class="action-group" style="margin-top:8px;">
+              <input v-model="ttsLang" class="debug-input" placeholder="Idioma (ej: es-ES)" />
+            </div>
+
+            <div class="action-group" style="margin-top:8px;">
+              <input v-model.number="ttsRate" type="number" min="0.5" max="2" step="0.1" class="debug-input" placeholder="Rate" />
+              <input v-model.number="ttsPitch" type="number" min="0" max="2" step="0.1" class="debug-input" placeholder="Pitch" />
+              <input v-model.number="ttsVolume" type="number" min="0" max="1" step="0.1" class="debug-input" placeholder="Vol" />
+            </div>
+
+            <div class="action-group" style="margin-top:8px;">
+              <textarea v-model="ttsText" class="debug-input" rows="3" placeholder="Texto a hablar" style="resize:vertical;"></textarea>
+            </div>
+
+            <div class="action-group" style="margin-top:8px;">
+              <button @click="handleSpeakTts" class="action-btn equip-btn" :disabled="loading">
+                ▶ Hablar
+              </button>
+              <button @click="handleStopTts" class="action-btn credits-btn" :disabled="loading">
+                ⏹ Detener
+              </button>
+            </div>
+
+            <div v-if="ttsStatus" class="debug-message" :class="{ error: ttsStatus.includes('✗') }">
+              {{ ttsStatus }}
+            </div>
           </div>
         </div>
 

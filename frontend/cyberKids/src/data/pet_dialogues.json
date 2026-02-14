@@ -6,98 +6,236 @@
       "¿Qué tal si exploramos un módulo?",
       "Recuerda: si algo parece sospechoso, mejor duda.",
       "Puedo darte pistas cuando pases el mouse por botones.",
-      "Tip: revisa bien los mensajes antes de responder."
+      "Tip: revisa bien los mensajes antes de responder.",
+      "¿Necesitas ayuda con algo?",
+      "Estoy listo para acompañarte.",
+      "¿Exploramos juntos?",
+      "Siempre verifica antes de hacer click.",
+      "La seguridad es lo primero.",
+      "¿Vamos a aprender algo nuevo?",
+      "Estoy atento a lo que necesites."
     ],
     "hover": [
       "Eso es: {target}.",
       "Si pasas el mouse por cosas, te explico qué hacen.",
       "Veo que estás mirando: {target}.",
-      "¿Quieres entrar a {target}?"
+      "¿Quieres entrar a {target}?",
+      "Interesante: {target}.",
+      "Mmm, {target}...",
+      "¿Te interesa {target}?",
+      "Aquí hay: {target}."
     ],
     "hover_module": [
       "Este módulo trata sobre {target}.",
       "En {target} vas a practicar para estar más seguro.",
       "¡Buenísimo! {target} te ayuda a aprender paso a paso.",
-      "Si te trabas en {target}, puedo darte pistas."
+      "Si te trabas en {target}, puedo darte pistas.",
+      "{target} es super importante.",
+      "¿Listo para {target}?",
+      "Este es un buen módulo: {target}.",
+      "{target} te enseñará cosas útiles."
     ],
     "hover_button": [
       "Ese botón sirve para {target}.",
-      "Si haces click en {target}, avanzas.",
-      "Tip: {target} es una acción importante.",
-      "¿Seguro que quieres {target}?"
+      "Si haces click aquí, {target}.",
+      "Tip: este botón es importante.",
+      "¿Seguro que quieres continuar?",
+      "Este botón hace algo interesante.",
+      "¿Hacemos click?",
+      "Piensa bien antes de presionar.",
+      "Lee con atención antes de continuar."
     ],
     "click": [
-      "¡Click! Vamos con {target}.",
-      "Listo, ejecutando: {target}.",
-      "Ok, hiciste click en {target}.",
-      "¡Hecho! {target}."
+      "¡Click! Allá vamos.",
+      "Listo, ejecutando acción.",
+      "¡Hecho!",
+      "Perfecto, continuamos.",
+      "Ok, en marcha.",
+      "¡Vamos!",
+      "Acción procesada.",
+      "¡Adelante!"
     ],
     "click_screen": [
       "¡Te vi! ¿Necesitas ayuda?",
       "Estoy atento a lo que haces.",
-      "¿Quieres que te explique algo de la pantalla?"
+      "¿Quieres que te explique algo de la pantalla?",
+      "¿Todo bien por aquí?",
+      "¡Hola! ¿Qué necesitas?",
+      "¿Buscar algo específico?",
+      "Estoy para ayudarte.",
+      "¿Alguna duda?"
     ],
     "open_page": [
       "Entrando a {target}.",
       "Cambiando a {target}.",
-      "Vamos a {target}."
+      "Vamos a {target}.",
+      "Cargando {target}...",
+      "¡Nueva sección: {target}!",
+      "Ahora en {target}.",
+      "Bienvenido a {target}."
     ],
     "start_challenge": [
       "¡Reto iniciado! {target}.",
       "A concentrarse: {target}.",
-      "Este desafío te va a enseñar muchísimo."
+      "Este desafío te va a enseñar muchísimo.",
+      "¡Suerte con este reto!",
+      "¡Tú puedes con esto!",
+      "Confía en lo que has aprendido.",
+      "¡Vamos, adelante!",
+      "Este reto te hará mejor.",
+      "¡A demostrar lo que sabes!"
     ],
     "submit_answer": [
       "Respuesta enviada. Veamos qué pasa…",
       "Ok, registré tu respuesta.",
-      "¡Bien! Ahora revisamos el resultado."
+      "¡Bien! Ahora revisamos el resultado.",
+      "Enviada. Esperemos el resultado.",
+      "Respuesta procesada. ¡Crucemos dedos!",
+      "Listo. Ahora a ver.",
+      "Respuesta guardada."
     ],
     "send_message": [
       "Enviando tu mensaje…",
       "Listo, mensaje enviado.",
       "Recuerda: no compartas datos personales.",
-      "Antes de enviar, revisa si te piden algo raro."
+      "Antes de enviar, revisa si te piden algo raro.",
+      "Mensaje enviado. ¡Bien hecho!",
+      "Nunca compartas contraseñas.",
+      "Piensa antes de enviar información.",
+      "¿Seguro que querías enviar eso?"
     ],
     "receive_message": [
       "Llegó un mensaje nuevo.",
       "Mensaje recibido. Léelo con cuidado.",
       "Ojo: si hay urgencia o presión, puede ser trampa.",
-      "Si te piden códigos o contraseñas, es sospechoso."
+      "Si te piden códigos o contraseñas, es sospechoso.",
+      "Nuevo mensaje. Revísalo bien.",
+      "¿Este mensaje es de confianza?",
+      "Lee con atención antes de responder.",
+      "Si algo no cuadra, desconfía."
     ],
     "edit": [
-      "Editando: {target}.",
-      "Ok, puedes cambiar {target}.",
-      "Asegúrate de guardar los cambios."
+      "Editando información.",
+      "Ok, puedes hacer cambios.",
+      "Asegúrate de guardar los cambios.",
+      "Modifica lo que necesites.",
+      "Recuerda guardar al terminar.",
+      "Cambios en progreso."
     ],
     "save": [
       "Guardando cambios…",
       "¡Guardado!",
-      "Listo, tus cambios quedaron guardados."
+      "Listo, tus cambios quedaron guardados.",
+      "Todo guardado con éxito.",
+      "Cambios aplicados.",
+      "¡Perfecto! Ya está guardado.",
+      "Guardado correctamente."
     ],
     "error": [
       "Uy… algo falló. Probemos de nuevo.",
       "Hubo un error. Respira y reintenta.",
-      "Si se repite, revisemos tu conexión o el servidor."
+      "Si se repite, revisemos tu conexión o el servidor.",
+      "Algo salió mal. No te preocupes.",
+      "Error detectado. Intentemos otra vez.",
+      "Esto no funcionó. Probemos de nuevo.",
+      "Parece que hubo un problema.",
+      "No pudo completarse. Reintentemos."
     ],
     "success": [
       "¡Excelente!",
       "¡Lo hiciste muy bien!",
-      "¡Buen trabajo! Sigue así."
+      "¡Buen trabajo! Sigue así.",
+      "¡Perfecto!",
+      "¡Genial!",
+      "¡Increíble!",
+      "¡Eso es!",
+      "¡Muy bien!",
+      "¡Lo lograste!",
+      "¡Fantástico!",
+      "¡Sigue así campeón!",
+      "¡Eres un crack!"
     ],
     "loading": [
       "Cargando…",
       "Un segundo…",
-      "Estoy preparando todo."
+      "Estoy preparando todo.",
+      "Casi listo…",
+      "Dame un momento…",
+      "Espera un poquito…",
+      "Procesando…",
+      "Ya casi…"
     ],
     "logout_hover": [
       "¿Te vas? Si cierras sesión, asegúrate de estar en tu cuenta.",
       "Cerrar sesión es buena idea si compartes la compu.",
-      "Tip: no dejes tu sesión abierta en público."
+      "Tip: no dejes tu sesión abierta en público.",
+      "¿Ya terminas? ¡Nos vemos!",
+      "Recuerda cerrar sesión siempre.",
+      "¿Seguro que quieres salir?",
+      "¡Vuelve pronto!"
     ],
     "pet_shown": [
       "¡Volví!",
       "Aquí estoy.",
-      "¿Seguimos?"
+      "¿Seguimos?",
+      "¡Hola de nuevo!",
+      "¿Me extrañaste?",
+      "Listo para ayudar.",
+      "¡Presente!"
+    ],
+    "profile_avatar": [
+      "Tu avatar te representa en la aplicación.",
+      "¡Escoge el avatar que más te guste!",
+      "El avatar es tu identidad visual aquí.",
+      "Personaliza tu avatar como quieras.",
+      "Este es tu avatar único.",
+      "¡Haz que sea tuyo!"
+    ],
+    "profile_pets": [
+      "¡Aquí están tus mascotas! Equipa una para que te acompañe.",
+      "Las mascotas son tus compañeros de aventura.",
+      "Puedes cambiar de mascota cuando quieras.",
+      "¿Cuál mascota prefieres?",
+      "Cada mascota tiene su personalidad.",
+      "¡Colecciónalas todas!",
+      "Equipa tu favorita."
+    ],
+    "profile_audios": [
+      "Los temas de audio personalizan los sonidos.",
+      "¡Escoge el tema que más te guste!",
+      "Cada tema tiene efectos únicos.",
+      "Cambia los sonidos a tu estilo.",
+      "Personaliza tu experiencia de audio.",
+      "¿Cuál tema suena mejor?"
+    ],
+    "profile_save": [
+      "Guarda los cambios para que se apliquen.",
+      "No olvides guardar antes de salir.",
+      "¡Asegúrate de guardar tu configuración!",
+      "Presiona guardar para confirmar.",
+      "Los cambios se perderán si no guardas.",
+      "¡Dale a guardar!"
+    ],
+    "profile_country": [
+      "Tu país nos ayuda a personalizar la experiencia.",
+      "Selecciona tu país de residencia.",
+      "Esta información es importante para tu perfil.",
+      "¿De dónde eres?",
+      "Tu ubicación es privada y segura."
+    ],
+    "profile_birthdate": [
+      "Tu fecha de nacimiento es privada y segura.",
+      "Solo tú puedes ver esta información.",
+      "Usamos esto para adaptar el contenido.",
+      "Esta información es confidencial.",
+      "Tu edad nos ayuda a personalizar."
+    ],
+    "hover_profile_section": [
+      "Aquí puedes ver y editar información.",
+      "En esta sección puedes hacer cambios.",
+      "¿Quieres modificar algo?",
+      "Esta es una sección importante.",
+      "Revisa y actualiza tu información."
     ]
   }
 }
