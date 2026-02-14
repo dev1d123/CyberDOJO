@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -25,14 +25,66 @@ let clock: THREE.Clock | null = null;
 let animationFrame: number | null = null;
 let allAnimations: THREE.AnimationClip[] = [];
 let model3D: THREE.Group | null = null;
+let currentAction: THREE.AnimationAction | null = null;
+
+const PET_RENDER_SIZE = 340;
+const PET_HALF = PET_RENDER_SIZE / 2;
+const PET_HOVER_DIM_OPACITY = 0.45;
 
 // Posición base y área de movimiento
-const basePosition = { x: window.innerWidth - 300, y: window.innerHeight - 300 };
+const basePosition = { x: window.innerWidth - (PET_RENDER_SIZE + 50), y: window.innerHeight - (PET_RENDER_SIZE + 50) };
 const petPosition = ref({ x: basePosition.x, y: basePosition.y });
 const targetPosition = ref({ x: basePosition.x, y: basePosition.y });
 const isWalking = ref(false);
 const movementRadius = 80; // Radio de movimiento desde la posición base
 const isPerformingGesture = ref(false);
+const isTalking = ref(false);
+const isHoveringPet = ref(false);
+
+let hoverRaf: number | null = null;
+let lastPointer: { x: number; y: number } | null = null;
+
+function computeHover(pointer: { x: number; y: number }) {
+  const petEl = petContainer.value;
+  if (!petEl || !isVisible.value) {
+    isHoveringPet.value = false;
+    return;
+  }
+
+  const petRect = petEl.getBoundingClientRect();
+  const inPet =
+    pointer.x >= petRect.left &&
+    pointer.x <= petRect.right &&
+    pointer.y >= petRect.top &&
+    pointer.y <= petRect.bottom;
+
+  // Also include the speech bubble area so both dim together while hovering near it.
+  const bubbleEl = document.querySelector('.pet-speech') as HTMLElement | null;
+  let inBubble = false;
+  if (bubbleEl) {
+    const bubbleRect = bubbleEl.getBoundingClientRect();
+    inBubble =
+      pointer.x >= bubbleRect.left &&
+      pointer.x <= bubbleRect.right &&
+      pointer.y >= bubbleRect.top &&
+      pointer.y <= bubbleRect.bottom;
+  }
+
+  isHoveringPet.value = inPet || inBubble;
+}
+
+function handlePointerMove(event: PointerEvent) {
+  lastPointer = { x: event.clientX, y: event.clientY };
+  if (hoverRaf !== null) return;
+  hoverRaf = requestAnimationFrame(() => {
+    hoverRaf = null;
+    if (lastPointer) computeHover(lastPointer);
+  });
+}
+
+function handlePointerLeaveWindow() {
+  isHoveringPet.value = false;
+}
 
 // Mapeo de pet_id a modelo
 const petModelMap: Record<number, string> = {
@@ -80,11 +132,23 @@ onMounted(async () => {
   setupEventListeners();
   PetSpeech.setPetVisible(isVisible.value);
   startIdleTalk();
+
+  window.addEventListener('pointermove', handlePointerMove, { passive: true });
+  window.addEventListener('blur', handlePointerLeaveWindow);
+  document.addEventListener('mouseleave', handlePointerLeaveWindow);
 });
 
 onUnmounted(() => {
   cleanup();
   removeClickListener();
+  window.removeEventListener('pointermove', handlePointerMove);
+  window.removeEventListener('blur', handlePointerLeaveWindow);
+  document.removeEventListener('mouseleave', handlePointerLeaveWindow);
+  if (hoverRaf !== null) {
+    cancelAnimationFrame(hoverRaf);
+    hoverRaf = null;
+  }
+
   if (idleInterval) clearInterval(idleInterval);
   if (randomGestureInterval) clearInterval(randomGestureInterval);
   if (petCheckInterval) clearInterval(petCheckInterval);
@@ -176,15 +240,14 @@ const loadModel = async (modelName: string) => {
   // Configurar escena
   scene = new THREE.Scene();
   
-  camera = new THREE.PerspectiveCamera(50, 250 / 250, 0.1, 1000);
-  camera.position.set(0, 1.5, 3);
+  camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
 
   renderer = new THREE.WebGLRenderer({ 
     canvas: canvasRef.value,
     antialias: true,
     alpha: true
   });
-  renderer.setSize(250, 250);
+  renderer.setSize(PET_RENDER_SIZE, PET_RENDER_SIZE);
   renderer.setPixelRatio(window.devicePixelRatio);
 
   // Luces
@@ -205,10 +268,35 @@ const loadModel = async (modelName: string) => {
     model3D.position.set(0, 0, 0);
     scene.add(model3D);
 
+    // Frame model so legs/head aren't clipped (robust across pets)
+    if (camera && model3D) {
+      const box = new THREE.Box3().setFromObject(model3D);
+      const center = box.getCenter(new THREE.Vector3());
+
+      // Center XZ; put feet at y=0
+      model3D.position.x += -center.x;
+      model3D.position.z += -center.z;
+      model3D.position.y += -box.min.y;
+
+      const framedBox = new THREE.Box3().setFromObject(model3D);
+      const framedSize = framedBox.getSize(new THREE.Vector3());
+      const maxDim = Math.max(framedSize.x, framedSize.y, framedSize.z);
+      const fovRad = (camera.fov * Math.PI) / 180;
+      let cameraZ = Math.abs((maxDim / 2) / Math.tan(fovRad / 2));
+      cameraZ *= 1.35;
+
+      camera.position.set(0, framedSize.y * 0.55, cameraZ);
+      camera.near = Math.max(0.01, cameraZ / 100);
+      camera.far = cameraZ * 100;
+      camera.updateProjectionMatrix();
+      camera.lookAt(0, framedSize.y * 0.45, 0);
+    }
+
     if (gltf.animations && gltf.animations.length > 0) {
       clock = new THREE.Clock();
       mixer = new THREE.AnimationMixer(model3D);
       allAnimations = gltf.animations;
+      currentAction = null;
       playRandomAnimation(contextAnimations.idle);
     }
 
@@ -223,15 +311,26 @@ const loadModel = async (modelName: string) => {
 const playAnimation = (animationName: string, loop: boolean = true) => {
   if (!mixer || !allAnimations.length) return;
 
-  mixer.stopAllAction();
   const clip = allAnimations.find(clip => clip.name === animationName);
   
   if (clip) {
     const action = mixer.clipAction(clip);
+    if (currentAction === action) return;
+
     action.reset();
+    action.enabled = true;
     action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
     action.clampWhenFinished = true;
     action.play();
+
+    const fadeSeconds = 0.22;
+    if (currentAction) {
+      currentAction.crossFadeTo(action, fadeSeconds, false);
+    } else {
+      action.fadeIn(fadeSeconds);
+    }
+
+    currentAction = action;
   }
 };
 
@@ -321,6 +420,7 @@ const cleanup = () => {
 
 const chooseRandomTarget = () => {
   if (!isVisible.value) return;
+  if (isTalking.value || PetSpeech.isOpen.value) return;
   
   // Elegir punto aleatorio dentro del radio de movimiento
   const angle = Math.random() * Math.PI * 2;
@@ -331,8 +431,8 @@ const chooseRandomTarget = () => {
   
   // Asegurar que no se salga de los límites de la pantalla
   const margin = 50;
-  newX = Math.max(margin, Math.min(window.innerWidth - 250 - margin, newX));
-  newY = Math.max(margin, Math.min(window.innerHeight - 250 - margin, newY));
+  newX = Math.max(margin, Math.min(window.innerWidth - PET_RENDER_SIZE - margin, newX));
+  newY = Math.max(margin, Math.min(window.innerHeight - PET_RENDER_SIZE - margin, newY));
   
   targetPosition.value = { x: newX, y: newY };
   
@@ -360,8 +460,8 @@ const handleScreenClick = (event: MouseEvent) => {
   const clickX = event.clientX;
   const clickY = event.clientY;
   
-  const dx = clickX - (petPosition.value.x + 125); // 125 = mitad del canvas (250/2)
-  const dy = clickY - (petPosition.value.y + 125);
+  const dx = clickX - (petPosition.value.x + PET_HALF);
+  const dy = clickY - (petPosition.value.y + PET_HALF);
   
   // Rotar modelo hacia el click
   if (model3D) {
@@ -576,11 +676,42 @@ const startIdleTalk = () => {
   }, 25000);
 };
 
+// Sync pet animation with speech bubble ("talking" state)
+watch(
+  () => PetSpeech.isOpen.value,
+  (open) => {
+    if (!isVisible.value) return;
+
+    if (open) {
+      isTalking.value = true;
+      // Stop walking while speaking to avoid odd motion + bubble tracking.
+      isWalking.value = false;
+      if (!isPerformingGesture.value) {
+        playRandomAnimation(contextAnimations.chatting);
+      }
+    } else {
+      isTalking.value = false;
+      if (!isPerformingGesture.value) {
+        playRandomAnimation(contextAnimations.idle);
+      }
+      // Resume walking after a short delay.
+      setTimeout(() => {
+        if (!isVisible.value) return;
+        if (PetSpeech.isOpen.value) return;
+        if (!isWalking.value && !isPerformingGesture.value) {
+          chooseRandomTarget();
+        }
+      }, 1200);
+    }
+  },
+  { immediate: true }
+);
+
 const petStyle = computed(() => ({
   left: `${petPosition.value.x}px`,
   top: `${petPosition.value.y}px`,
   display: isVisible.value ? 'block' : 'none',
-  opacity: petOpacity.value
+  opacity: petOpacity.value * (isHoveringPet.value ? PET_HOVER_DIM_OPACITY : 1)
 }));
 </script>
 
@@ -590,7 +721,7 @@ const petStyle = computed(() => ({
       {{ isVisible ? '👁️ Ocultar' : '👁️ Mostrar' }} Mascota
     </button>
 
-    <PetSpeechBubble :anchor-el="petContainer" :is-pet-visible="isVisible" />
+    <PetSpeechBubble :anchor-el="petContainer" :is-pet-visible="isVisible" :dimmed="isHoveringPet" />
 
     <div 
       ref="petContainer"
@@ -620,7 +751,7 @@ const petStyle = computed(() => ({
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
-  font-size: 13px;
+  font-size: 0.8rem;
   box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
   transition: all 0.2s ease;
   z-index: 9999;
@@ -633,16 +764,16 @@ const petStyle = computed(() => ({
 
 .pet-container {
   position: fixed;
-  width: 250px;
-  height: 250px;
+  width: 340px;
+  height: 340px;
   pointer-events: none;
   transition: left 0.05s linear, top 0.05s linear, opacity 0.5s ease;
   z-index: 9998;
 }
 
 canvas {
-  width: 250px !important;
-  height: 250px !important;
+  width: 340px !important;
+  height: 340px !important;
   display: block;
 }
 
@@ -651,6 +782,6 @@ canvas {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 24px;
+  font-size: 1.4rem;
 }
 </style>

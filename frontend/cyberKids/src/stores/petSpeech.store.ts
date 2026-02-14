@@ -10,21 +10,38 @@ export interface PetSpeakOptions {
   vars?: Record<string, string | number | boolean | null | undefined>;
   ttlMs?: number;
   priority?: number;
+  typingMsPerChar?: number;
+  instant?: boolean;
 }
 
 const petVisible = ref(true);
 const isOpen = ref(false);
 const text = ref('');
+const typedText = ref('');
+const isTyping = ref(false);
 const behavior = ref<PetSpeechBehavior | null>(null);
 const currentPriority = ref(0);
 
 let hideTimer: number | null = null;
+let typingTimer: number | null = null;
 
 function clearHideTimer() {
   if (hideTimer !== null) {
     window.clearTimeout(hideTimer);
     hideTimer = null;
   }
+}
+
+function clearTypingTimer() {
+  if (typingTimer !== null) {
+    window.clearTimeout(typingTimer);
+    typingTimer = null;
+  }
+}
+
+function stopTyping() {
+  clearTypingTimer();
+  isTyping.value = false;
 }
 
 function formatTemplate(template: string, vars: Record<string, unknown>): string {
@@ -48,8 +65,10 @@ function pickDialogue(selectedBehavior: PetSpeechBehavior): string | null {
 
 function hide() {
   clearHideTimer();
+  stopTyping();
   isOpen.value = false;
   text.value = '';
+  typedText.value = '';
   behavior.value = null;
   currentPriority.value = 0;
 }
@@ -77,24 +96,72 @@ function speak(options: PetSpeakOptions) {
   if (!formatted) return;
 
   clearHideTimer();
+  stopTyping();
 
   behavior.value = options.behavior;
   currentPriority.value = priority;
   text.value = formatted;
   isOpen.value = true;
 
-  const ttlMs = options.ttlMs ?? 3500;
-  if (ttlMs > 0) {
-    hideTimer = window.setTimeout(() => {
-      hide();
-    }, ttlMs);
+  const requestedHoldMs = options.ttlMs;
+  const holdMsDefault = 3500;
+  const holdMs = requestedHoldMs ?? holdMsDefault;
+
+  // Instant mode (useful for hover hints if desired)
+  if (options.instant) {
+    typedText.value = formatted;
+    isTyping.value = false;
+    if (holdMs > 0) {
+      hideTimer = window.setTimeout(() => hide(), holdMs);
+    }
+    return;
   }
+
+  // Typewriter
+  typedText.value = '';
+  isTyping.value = true;
+
+  const msPerChar = Math.max(10, options.typingMsPerChar ?? 28);
+  const totalChars = formatted.length;
+  let i = 0;
+
+  const typeNext = () => {
+    if (!isOpen.value) return;
+    if (i >= totalChars) {
+      typedText.value = formatted;
+      isTyping.value = false;
+
+      // TTL starts after typing finished (so text isn't cut off mid-sentence).
+      if (holdMs > 0) {
+        hideTimer = window.setTimeout(() => hide(), holdMs);
+      }
+      return;
+    }
+
+    i += 1;
+    typedText.value = formatted.slice(0, i);
+
+    const lastChar = formatted[i - 1] ?? '';
+    const extraPause = lastChar === '.' || lastChar === '!' || lastChar === '?' ? 180 : lastChar === ',' || lastChar === ';' || lastChar === ':' ? 90 : 0;
+    typingTimer = window.setTimeout(typeNext, msPerChar + extraPause);
+  };
+
+  typeNext();
+}
+
+function revealAll() {
+  if (!isOpen.value) return;
+  if (!text.value) return;
+  stopTyping();
+  typedText.value = text.value;
 }
 
 const petSpeechState = {
   petVisible,
   isOpen,
   text,
+  typedText,
+  isTyping,
   behavior,
   currentPriority,
 };
@@ -104,8 +171,11 @@ export const PetSpeech = {
   isVisible: computed(() => petVisible.value),
   isOpen: computed(() => isOpen.value),
   text: computed(() => text.value),
+  typedText: computed(() => typedText.value),
+  isTyping: computed(() => isTyping.value),
   behavior: computed(() => behavior.value),
   speak,
   hide,
+  revealAll,
   setPetVisible,
 };
