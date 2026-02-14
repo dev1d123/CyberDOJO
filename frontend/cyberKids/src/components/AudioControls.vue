@@ -90,6 +90,30 @@
               <span class="volume-value">{{ sfxVolume }}%</span>
             </div>
           </div>
+
+          <!-- Control de volumen de voz de mascotas -->
+          <div class="control-item">
+            <label class="control-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M12 14c-4 0-7 2-7 5v2h14v-2c0-3-3-5-7-5z"></path>
+                <path d="M9 11l-1 3h8l-1-3"></path>
+              </svg>
+              <span>Voz de Mascota</span>
+            </label>
+            <div class="volume-control">
+              <input 
+                type="range" 
+                min="0" 
+                max="500" 
+                v-model="petTTSVolume"
+                @input="updatePetTTSVolume"
+                :disabled="isMuted"
+                class="volume-slider"
+              />
+              <span class="volume-value">{{ (petTTSVolume / 100).toFixed(1) }}x</span>
+            </div>
+          </div>
         </div>
       </div>
     </Transition>
@@ -104,6 +128,7 @@ const showPanel = ref(false);
 const isMuted = ref(false);
 const backgroundVolume = ref(30);
 const sfxVolume = ref(50);
+const petTTSVolume = ref(150); // Inicial: 1.5 (150/100)
 
 const togglePanel = () => {
   showPanel.value = !showPanel.value;
@@ -120,6 +145,10 @@ const updateBackgroundVolume = () => {
 
 const updateSFXVolume = () => {
   AudioService.setSFXVolume(sfxVolume.value / 100);
+};
+
+const updatePetTTSVolume = () => {
+  AudioService.setPetTTSVolume(petTTSVolume.value / 100); // Convertir de 0-300 a 0.0-3.0
 };
 
 // Cerrar panel al hacer click fuera

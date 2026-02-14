@@ -14,6 +14,7 @@ import { API_CONFIG } from '../config/api.config';
 import petsData from '../data/pets.json';
 import { OnboardingService } from '../services/onboarding.service';
 import type { OnboardingQuestion, OnboardingResponseRecord } from '../dto/onboarding.dto';
+import { setPetEquipped } from '@/stores/petState.store';
 
 import pet1Img from '@/assets/images/pet1.png';
 import pet2Img from '@/assets/images/pet2.png';
@@ -231,6 +232,10 @@ const equipPet = async (petId: number) => {
       is_equipped: p.pet === petId,
     }));
     
+    // ¡IMPORTANTE! Actualizar el store global de la mascota equipada
+    setPetEquipped(petId);
+    console.log('🐾 [ProfilePage] Mascota equipada actualizada:', petId);
+    
     success.value = '¡Mascota equipada!';
   } catch (e: any) {
     console.error(e);
@@ -417,7 +422,10 @@ const changePassword = async () => {
             </div>
 
             <div class="avatar-row">
-              <div class="avatar-wrap">
+              <div 
+                class="avatar-wrap"
+                v-pet-hint="{ behavior: 'profile_avatar', ttlMs: 2500, priority: 0 }"
+              >
                 <img v-if="avatarPreviewUrl" :src="avatarPreviewUrl" class="avatar" alt="Avatar" />
                 <div v-else class="avatar placeholder">👤</div>
               </div>
@@ -444,7 +452,11 @@ const changePassword = async () => {
 
               <label class="field">
                 <span class="label">País</span>
-                <select v-model="formCountry" class="input">
+                <select 
+                  v-model="formCountry" 
+                  class="input"
+                  v-pet-hint="{ behavior: 'profile_country', ttlMs: 2800, priority: 0 }"
+                >
                   <option value="">Selecciona un país</option>
                   <option v-for="c in countries" :key="c.country_id" :value="c.country_id">
                     {{ c.name }}
@@ -452,7 +464,13 @@ const changePassword = async () => {
                 </select>
               </label>
 
-              <button class="primary" type="button" :disabled="saving" @click="saveProfile">
+              <button 
+                class="primary" 
+                type="button" 
+                :disabled="saving" 
+                @click="saveProfile"
+                v-pet-hint="{ behavior: 'profile_save', click: { behavior: 'save', ttlMs: 1500, priority: 1 }, ttlMs: 2200, priority: 0 }"
+              >
                 {{ saving ? 'Guardando…' : 'Guardar perfil' }}
               </button>
             </div>
@@ -539,7 +557,10 @@ const changePassword = async () => {
           </div>
 
           <!-- Card: Mascotas -->
-          <div class="card card-wide">
+          <div 
+            class="card card-wide"
+            v-pet-hint="{ behavior: 'profile_pets', ttlMs: 3000, priority: 0 }"
+          >
             <div class="card-header">
               <h2 class="card-title">🐾 Mis Mascotas</h2>
               <span class="hint">Equipa tu mascota favorita</span>
@@ -568,6 +589,7 @@ const changePassword = async () => {
                     type="button"
                     :disabled="saving"
                     @click="equipPet(pet.pet)"
+                    v-pet-hint="{ behavior: 'hover_button', vars: { target: 'equipar esta mascota' }, click: { behavior: 'success', ttlMs: 1500, priority: 1 }, ttlMs: 2000, priority: 0 }"
                   >
                     Equipar
                   </button>
@@ -578,7 +600,10 @@ const changePassword = async () => {
           </div>
 
           <!-- Card: Audios -->
-          <div class="card card-wide">
+          <div 
+            class="card card-wide"
+            v-pet-hint="{ behavior: 'profile_audios', ttlMs: 2800, priority: 0 }"
+          >
             <div class="card-header">
               <h2 class="card-title">🎵 Mis Audios</h2>
               <span class="hint">Cambia el pack de sonidos del juego</span>
@@ -606,6 +631,7 @@ const changePassword = async () => {
                   type="button"
                   :disabled="saving"
                   @click="equipCosmetic(cosmetic.item)"
+                  v-pet-hint="{ behavior: 'hover_button', vars: { target: 'equipar este audio' }, click: { behavior: 'success', ttlMs: 1500, priority: 1 }, ttlMs: 2000, priority: 0 }"
                 >
                   Equipar
                 </button>

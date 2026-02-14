@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { AudioService } from '../services/audio.service';
 import { TTSService } from '../services/tts.service';
+import { setPetEquipped } from '@/stores/petState.store';
 
 const isOpen = ref(false);
 const loading = ref(false);
@@ -179,6 +180,11 @@ const handleEquipPet = async () => {
     );
 
     message.value = `✓ ${response.data.message}`;
+    
+    // ¡IMPORTANTE! Actualizar el store global de la mascota equipada
+    setPetEquipped(selectedPetToEquip.value);
+    console.log('🐾 [DebugMenu] Mascota equipada actualizada:', selectedPetToEquip.value);
+    
     await loadDebugData();
   } catch (error: any) {
     console.error('Error equipping pet:', error);

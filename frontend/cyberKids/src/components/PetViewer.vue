@@ -520,24 +520,48 @@ const removeClickListener = () => {
 
 const startRandomGestures = () => {
   randomGestureInterval = window.setInterval(() => {
-    if (isVisible.value && Math.random() > 0.6 && !isPerformingGesture.value) {
+    // Solo si está visible, no está hablando, y con probabilidad
+    if (!isVisible.value) return;
+    if (isPerformingGesture.value) return;
+    if (PetSpeech.isOpen.value) return;
+    
+    // Mayor frecuencia de gestos
+    if (Math.random() > 0.5) {
       isPerformingGesture.value = true;
-      const currentlyWalking = isWalking.value;
+      const wasWalking = isWalking.value;
       
       playRandomAnimation(contextAnimations.random);
       
-      // Tiempo muerto de 1 segundo después de la animación
+      // Garantizar retorno a estado base después de animación
       setTimeout(() => {
         isPerformingGesture.value = false;
-        // Volver a caminar o idle según el estado
-        if (currentlyWalking || isWalking.value) {
+        
+        // Siempre volver a un estado válido
+        if (wasWalking || isWalking.value) {
           playRandomAnimation(contextAnimations.walking);
         } else {
           playRandomAnimation(contextAnimations.idle);
         }
-      }, 2500); // Duración de animación + 1 segundo de tiempo muerto
+        
+        // Reanudar ciclo de movimiento si no está caminando
+        if (!isWalking.value && !PetSpeech.isOpen.value) {
+          setTimeout(() => {
+            if (!isWalking.value && !isPerformingGesture.value) {
+              chooseRandomTarget();
+            }
+          }, 1500);
+        }
+      }, 2500);
+    } else if (!isWalking.value && !isPerformingGesture.value) {
+      // Si no hace gesto, considerar iniciar movimiento
+      if (Math.random() > 0.7) {
+        chooseRandomTarget();
+      } else {
+        // O mantener animación idle activa
+        playRandomAnimation(contextAnimations.idle);
+      }
     }
-  }, 5000); // Cada 5 segundos intenta hacer una animación
+  }, 4000); // Cada 4 segundos para más vida
 };
 
 // Event listeners específicos por contexto (sin click en pantalla)
@@ -668,12 +692,13 @@ const startIdleTalk = () => {
   idleTalkInterval = window.setInterval(() => {
     if (!isVisible.value) return;
     if (PetSpeech.isOpen.value) return;
+    if (isPerformingGesture.value) return;
 
-    // Hablar ocasionalmente, no siempre.
-    if (Math.random() > 0.75) {
+    // Hablar con mayor frecuencia para dar más vida
+    if (Math.random() > 0.65) {
       PetSpeech.speak({ behavior: 'idle', ttlMs: 3200, priority: 0 });
     }
-  }, 25000);
+  }, 18000); // Cada 18 segundos en lugar de 25
 };
 
 // Sync pet animation with speech bubble ("talking" state)
@@ -691,6 +716,7 @@ watch(
       }
     } else {
       isTalking.value = false;
+      // Siempre retornar a animación idle al terminar de hablar
       if (!isPerformingGesture.value) {
         playRandomAnimation(contextAnimations.idle);
       }
@@ -706,6 +732,22 @@ watch(
   },
   { immediate: true }
 );
+
+// Mantener animación idle activa
+let idleMaintenanceInterval: number | null = null;
+idleMaintenanceInterval = window.setInterval(() => {
+  if (!isVisible.value) return;
+  if (isPerformingGesture.value) return;
+  if (isWalking.value) return;
+  if (PetSpeech.isOpen.value) return;
+  
+  // Reforzar animación idle cada cierto tiempo
+  playRandomAnimation(contextAnimations.idle);
+}, 8000);
+
+onUnmounted(() => {
+  if (idleMaintenanceInterval) clearInterval(idleMaintenanceInterval);
+});
 
 const petStyle = computed(() => ({
   left: `${petPosition.value.x}px`,
