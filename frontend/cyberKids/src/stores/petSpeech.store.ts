@@ -92,7 +92,7 @@ async function getVoiceForPet(isFemale: boolean): Promise<string | undefined> {
   }
   
   // Fallback: primera voz española disponible
-  if (spanishVoices.length > 0) {
+  if (spanishVoices.length > 0 && spanishVoices[0]) {
     console.log('[PetSpeech] 📢 Usando fallback:', spanishVoices[0].name);
     return spanishVoices[0].voiceURI;
   }
