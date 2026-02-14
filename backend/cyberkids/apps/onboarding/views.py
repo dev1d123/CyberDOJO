@@ -12,7 +12,7 @@ from .serializers import (
     UserStatisticSerializer,
     GlobalStatisticSerializer
 )
-from apps.cyberUser.models import CyberUser, RiskLevel
+from apps.cyberUser.models import CyberUser, RiskLevel, Preferences
 
 
 class OnboardingQuestionViewSet(viewsets.ModelViewSet):
@@ -58,6 +58,7 @@ class OnboardingResponseViewSet(viewsets.ModelViewSet):
         user = request.user
         question_id = request.data.get('question_id')
         option_id = request.data.get('option_id')
+        open_answer = request.data.get('open_answer')
         
         if not question_id:
             return Response({'error': 'question_id es requerido'}, status=status.HTTP_400_BAD_REQUEST)
@@ -69,8 +70,26 @@ class OnboardingResponseViewSet(viewsets.ModelViewSet):
         response, created = OnboardingResponse.objects.update_or_create(
             user=user,
             question=question,
-            defaults={'option': option}
+            defaults={'option': option, 'open_answer': open_answer}
         )
+
+        # Si esta pregunta es de edad, sincronizar con Preferences.age
+        if getattr(question, 'response_type', None) == 'age' and open_answer is not None:
+            try:
+                age_int = int(str(open_answer).strip())
+                if age_int < 1:
+                    age_int = 1
+                if age_int > 120:
+                    age_int = 120
+                if getattr(user, 'preferences', None) is None:
+                    prefs = Preferences.objects.create(age=age_int)
+                    user.preferences = prefs
+                    user.save(update_fields=['preferences'])
+                else:
+                    user.preferences.age = age_int
+                    user.preferences.save(update_fields=['age'])
+            except Exception:
+                pass
         
         return Response({
             'response': OnboardingResponseSerializer(response).data,
@@ -92,6 +111,7 @@ class OnboardingResponseViewSet(viewsets.ModelViewSet):
         for item in responses_data:
             question_id = item.get('question_id')
             option_id = item.get('option_id')
+            open_answer = item.get('open_answer')
             
             if not question_id:
                 continue
@@ -103,8 +123,26 @@ class OnboardingResponseViewSet(viewsets.ModelViewSet):
                 response, created = OnboardingResponse.objects.update_or_create(
                     user=user,
                     question=question,
-                    defaults={'option': option}
+                    defaults={'option': option, 'open_answer': open_answer}
                 )
+
+                # Si esta pregunta es de edad, sincronizar con Preferences.age
+                if getattr(question, 'response_type', None) == 'age' and open_answer is not None:
+                    try:
+                        age_int = int(str(open_answer).strip())
+                        if age_int < 1:
+                            age_int = 1
+                        if age_int > 120:
+                            age_int = 120
+                        if getattr(user, 'preferences', None) is None:
+                            prefs = Preferences.objects.create(age=age_int)
+                            user.preferences = prefs
+                            user.save(update_fields=['preferences'])
+                        else:
+                            user.preferences.age = age_int
+                            user.preferences.save(update_fields=['age'])
+                    except Exception:
+                        pass
                 
                 if created:
                     created_responses.append(response)
