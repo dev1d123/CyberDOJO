@@ -7,9 +7,15 @@
 
 :root {
   font-family: 'CyberKids', 'Comic Sans MS', 'Chalkboard SE', Arial, sans-serif;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1.6;
   font-weight: 400;
+
+  --fs-h1: clamp(2.4rem, 4.5vw, 3.8rem);
+  --fs-h2: clamp(1.8rem, 3.4vw, 2.6rem);
+  --fs-body: 1rem;
+  --fs-body-lg: 1.1rem;
+  --fs-button: 1.1rem;
 
   color-scheme: light;
   color: #2c3e50;
@@ -32,7 +38,7 @@ body {
   min-width: 320px;
   height: 100vh;
   overflow: hidden;
-  font-size: 1rem;
+  font-size: var(--fs-body);
 }
 
 #app {
@@ -42,24 +48,24 @@ body {
 }
 
 h1 {
-  font-size: 3.5em;
+  font-size: var(--fs-h1);
   line-height: 1.2;
   font-weight: bold;
 }
 
 h2 {
-  font-size: 2em;
+  font-size: var(--fs-h2);
 }
 
 p, li, input, textarea {
-  font-size: 1.05rem;
+  font-size: var(--fs-body-lg);
 }
 
 button {
   border-radius: 25px;
   border: 3px solid transparent;
   padding: 1em 2em;
-  font-size: 1.15em;
+  font-size: var(--fs-button);
   font-weight: bold;
   font-family: 'CyberKids', 'Comic Sans MS', Arial, sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

@@ -12,6 +12,8 @@ import { CosmeticService } from '../services/cosmetic.service';
 import { AudioService } from '../services/audio.service';
 import { API_CONFIG } from '../config/api.config';
 import petsData from '../data/pets.json';
+import { OnboardingService } from '../services/onboarding.service';
+import type { OnboardingQuestion, OnboardingResponseRecord } from '../dto/onboarding.dto';
 
 import pet1Img from '@/assets/images/pet1.png';
 import pet2Img from '@/assets/images/pet2.png';
@@ -30,6 +32,19 @@ const userPets = ref<UserPet[]>([]);
 const userCosmetics = ref<UserInventory[]>([]);
 
 const prefs = ref<UserPreferencesDto | null>(null);
+
+type OnboardingAnswerView = {
+  response_id: number;
+  question_id: number;
+  question_content: string;
+  option_id: number | null;
+  option_content: string;
+  submitted_at: string;
+};
+
+const onboardingAnswersLoading = ref(false);
+const onboardingAnswersError = ref<string | null>(null);
+const onboardingAnswers = ref<OnboardingAnswerView[]>([]);
 
 const formUsername = ref('');
 const formEmail = ref('');
@@ -135,6 +150,54 @@ const loadAll = async () => {
       })
       .filter(c => c.item_type === 'effect');
     console.log('🎵 [ProfilePage] Audios del usuario:', userCosmetics.value);
+
+    // Cargar preguntas respondidas en onboarding (para mostrarlas en Preferencias)
+    onboardingAnswersLoading.value = true;
+    onboardingAnswersError.value = null;
+    try {
+      const [questions, responses] = await Promise.all([
+        OnboardingService.getAllQuestions(),
+        OnboardingService.getMyResponses(),
+      ]);
+
+      const questionById = new Map<number, OnboardingQuestion>(
+        questions.map((q) => [q.question_id, q])
+      );
+
+      const viewRows: OnboardingAnswerView[] = (responses ?? []).map((r: OnboardingResponseRecord) => {
+        const q = questionById.get(r.question);
+        const question_content = q?.content ?? `Pregunta #${r.question}`;
+        const option = q?.options?.find((o) => o.option_id === r.option) ?? null;
+        const option_content = option?.content ?? (r.open_answer ? r.open_answer : '—');
+
+        return {
+          response_id: r.response_id,
+          question_id: r.question,
+          question_content,
+          option_id: r.option,
+          option_content,
+          submitted_at: r.submitted_at,
+        };
+      });
+
+      // Ordenar por display_order cuando se pueda
+      const orderByQuestionId = new Map<number, number>(
+        questions.map((q) => [q.question_id, q.display_order])
+      );
+      viewRows.sort((a, b) => {
+        const ao = orderByQuestionId.get(a.question_id) ?? 9999;
+        const bo = orderByQuestionId.get(b.question_id) ?? 9999;
+        return ao - bo;
+      });
+
+      onboardingAnswers.value = viewRows;
+    } catch (e: any) {
+      console.error('❌ [ProfilePage] Error cargando respuestas de onboarding:', e);
+      onboardingAnswersError.value = 'No se pudieron cargar tus respuestas del onboarding.';
+      onboardingAnswers.value = [];
+    } finally {
+      onboardingAnswersLoading.value = false;
+    }
   } catch (e: any) {
     console.error('❌ [ProfilePage] Error:', e);
     error.value = 'No se pudo cargar tu perfil. Intenta de nuevo.';
@@ -419,6 +482,27 @@ const changePassword = async () => {
                 <input v-model="age" class="input" type="number" min="1" max="120" placeholder="(opcional)" />
               </label>
 
+              <div class="divider"></div>
+
+              <div class="onboarding-block">
+                <div class="onboarding-head">
+                  <h3 class="onboarding-title">Tus respuestas del onboarding</h3>
+                  <span class="onboarding-sub">Para que puedas revisarlas y editarlas luego</span>
+                </div>
+
+                <div v-if="onboardingAnswersLoading" class="onboarding-state">Cargando respuestas…</div>
+                <div v-else-if="onboardingAnswersError" class="onboarding-state error">{{ onboardingAnswersError }}</div>
+                <div v-else-if="onboardingAnswers.length === 0" class="onboarding-state">
+                  Aún no has respondido preguntas de onboarding.
+                </div>
+                <div v-else class="onboarding-list">
+                  <div v-for="row in onboardingAnswers" :key="row.response_id" class="onboarding-item">
+                    <div class="q">{{ row.question_content }}</div>
+                    <div class="a">{{ row.option_content }}</div>
+                  </div>
+                </div>
+              </div>
+
               <button class="primary" type="button" :disabled="saving" @click="savePreferences">
                 {{ saving ? 'Guardando…' : 'Guardar preferencias' }}
               </button>
@@ -557,6 +641,74 @@ const changePassword = async () => {
 .profile-page::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 10px;
+}
+
+.divider {
+  height: 1px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 6px 0 8px;
+}
+
+.onboarding-block {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.onboarding-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.onboarding-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.onboarding-sub {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.onboarding-state {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.onboarding-state.error {
+  color: rgba(255, 210, 210, 0.95);
+}
+
+.onboarding-list {
+  display: grid;
+  gap: 10px;
+}
+
+.onboarding-item {
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.onboarding-item .q {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 6px;
+}
+
+.onboarding-item .a {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.25;
 }
 
 .profile-page::-webkit-scrollbar-thumb {

@@ -11,7 +11,7 @@ export interface AnswerOption {
 export interface OnboardingQuestion {
   question_id: number;
   content: string;
-  response_type: 'multiple_choice' | 'yes_no' | 'scale';
+  response_type: 'multiple_choice' | 'yes_no' | 'scale' | 'age';
   risk_weight: number;
   display_order: number;
   is_active: boolean;
@@ -21,8 +21,18 @@ export interface OnboardingQuestion {
 export interface OnboardingResponse {
   user: number;
   question: number;
-  option: number;
+  option: number | null;
   open_answer?: string;
+}
+
+// Registro tal cual lo devuelve el backend (GET /onboarding/responses/*)
+export interface OnboardingResponseRecord {
+  response_id: number;
+  user: number;
+  question: number;
+  option: number | null;
+  open_answer: string | null;
+  submitted_at: string;
 }
 
 export interface UserAnswer {

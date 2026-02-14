@@ -196,7 +196,7 @@ onMounted(() => {
 
 .panel-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -204,7 +204,7 @@ onMounted(() => {
   background: none;
   border: none;
   color: white;
-  font-size: 28px;
+  font-size: 1.6rem;
   cursor: pointer;
   padding: 0;
   width: 28px;
@@ -239,7 +239,7 @@ onMounted(() => {
   gap: 8px;
   font-weight: 500;
   color: #333;
-  font-size: 14px;
+  font-size: 0.9rem;
 }
 
 .control-label svg {
@@ -255,7 +255,7 @@ onMounted(() => {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 14px;
+  font-size: 0.9rem;
 }
 
 .mute-btn:hover {
@@ -313,7 +313,7 @@ onMounted(() => {
 .volume-value {
   min-width: 40px;
   text-align: right;
-  font-size: 13px;
+  font-size: 0.85rem;
   color: #666;
   font-weight: 500;
 }
