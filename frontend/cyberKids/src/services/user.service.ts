@@ -152,7 +152,8 @@ export class UserService {
       throw new Error('No hay token de acceso');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/me/preferences/`, {
+    const url = `${API_BASE_URL}/auth/me/preferences/`;
+    const response = await fetch(url, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${token}`,
