@@ -194,7 +194,8 @@ class AudioServiceClass {
   }
 
   setBackgroundVolume(volume: number): void {
-    this.backgroundMusicVolume = Math.max(0, Math.min(1, volume));
+    // Cap intencional para evitar música demasiado alta
+    this.backgroundMusicVolume = Math.max(0, Math.min(0.5, volume));
     if (this.backgroundMusic) {
       this.backgroundMusic.volume = this.backgroundMusicVolume;
     }
