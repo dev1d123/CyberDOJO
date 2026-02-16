@@ -225,7 +225,7 @@ class AudioServiceClass {
   }
 
   setPetTTSVolume(volume: number): void {
-    this.petTTSVolume = Math.max(0, Math.min(5, volume));
+    this.petTTSVolume = Math.max(0, Math.min(1, volume));
   }
 
   getPetTTSVolume(): number {
