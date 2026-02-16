@@ -173,8 +173,35 @@ const persistVolumesLocal = () => {
   }
 };
 
+const loadVolumesFromLocal = () => {
+  try {
+    const raw = localStorage.getItem(AUDIO_PREFS_STORAGE_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+
+    if (typeof p?.background_music_volume === 'number') {
+      const v = Math.max(0, Math.min(BG_MAX, p.background_music_volume));
+      backgroundVolume.value = Math.round(v * 100);
+      AudioService.setBackgroundVolume(v);
+    }
+    if (typeof p?.sfx_volume === 'number') {
+      const v = Math.max(0, Math.min(SFX_MAX, p.sfx_volume));
+      sfxVolume.value = Math.round(v * 100);
+      AudioService.setSFXVolume(v);
+    }
+    if (typeof p?.pet_tts_volume === 'number') {
+      const v = Math.max(0, Math.min(1, p.pet_tts_volume));
+      petTTSVolume.value = Math.round(v * 100);
+      AudioService.setPetTTSVolume(v);
+    }
+  } catch {
+    // ignore
+  }
+};
+
 // Cerrar panel al hacer click fuera
 onMounted(() => {
+  loadVolumesFromLocal();
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
     const audioControls = document.querySelector('.audio-controls');
