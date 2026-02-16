@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 from cloudinary.models import CloudinaryField
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Country(models.Model):
     country_id = models.AutoField(primary_key=True)
@@ -66,9 +67,18 @@ class Preferences(models.Model):
     preference_id = models.AutoField(primary_key=True)
     receive_newsletters = models.BooleanField(default=False)
     dark_mode = models.BooleanField(default=False)
-    background_music_volume = models.FloatField(default=0.3)
-    sfx_volume = models.FloatField(default=0.5)
-    pet_tts_volume = models.FloatField(default=1.5)
+    background_music_volume = models.FloatField(
+        default=0.3,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+    )
+    sfx_volume = models.FloatField(
+        default=0.5,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+    )
+    pet_tts_volume = models.FloatField(
+        default=1.0,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+    )
     base_content = models.TextField(null=True, blank=True)
     tone_instructions = models.TextField(null=True, blank=True)
     age = models.IntegerField(null=True, blank=True)
