@@ -146,15 +146,31 @@ const toggleMute = () => {
 };
 
 const updateBackgroundVolume = () => {
-  AudioService.setBackgroundVolume(backgroundVolume.value / 100);
+  AudioService.setBackgroundVolume(Math.min(BG_MAX, backgroundVolume.value / 100));
+  persistVolumesLocal();
 };
 
 const updateSFXVolume = () => {
-  AudioService.setSFXVolume(sfxVolume.value / 100);
+  AudioService.setSFXVolume(Math.min(SFX_MAX, sfxVolume.value / 100));
+  persistVolumesLocal();
 };
 
 const updatePetTTSVolume = () => {
   AudioService.setPetTTSVolume(petTTSVolume.value / 100); // 0-100 => 0.0-1.0
+  persistVolumesLocal();
+};
+
+const persistVolumesLocal = () => {
+  try {
+    const payload = {
+      background_music_volume: Math.min(BG_MAX, backgroundVolume.value / 100),
+      sfx_volume: Math.min(SFX_MAX, sfxVolume.value / 100),
+      pet_tts_volume: petTTSVolume.value / 100,
+    };
+    localStorage.setItem(AUDIO_PREFS_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore
+  }
 };
 
 // Cerrar panel al hacer click fuera
