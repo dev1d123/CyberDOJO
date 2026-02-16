@@ -13,7 +13,8 @@ export class UserService {
       throw new Error('No hay token de acceso');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/me/`, {
+    const url = `${API_BASE_URL}/auth/me/`;
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -24,11 +25,10 @@ export class UserService {
     if (!response.ok) {
       const contentType = response.headers.get('content-type') || '';
       const errorBody = contentType.includes('application/json') ? await response.json() : await response.text();
-      console.warn('⚠️ [UserService.updatePreferences] Request failed', {
+      console.warn('⚠️ [UserService.getCurrentUser] Request failed', {
         url,
         status: response.status,
         body: errorBody,
-        sent: data,
       });
       throw errorBody;
     }
@@ -44,7 +44,8 @@ export class UserService {
       throw new Error('No hay token de acceso');
     }
 
-    const response = await fetch(`${API_BASE_URL}/${userId}/`, {
+    const url = `${API_BASE_URL}/${userId}/`;
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -55,7 +56,7 @@ export class UserService {
     if (!response.ok) {
       const contentType = response.headers.get('content-type') || '';
       const errorBody = contentType.includes('application/json') ? await response.json() : await response.text();
-      console.warn('⚠️ [UserService.getPreferences] Request failed', {
+      console.warn('⚠️ [UserService.getUserById] Request failed', {
         url,
         status: response.status,
         body: errorBody,
