@@ -62,6 +62,7 @@
                 max="100" 
                 v-model="backgroundVolume"
                 @input="updateBackgroundVolume"
+                @change="persistVolumes"
                 :disabled="isMuted"
                 class="volume-slider"
               />
@@ -84,6 +85,7 @@
                 max="100" 
                 v-model="sfxVolume"
                 @input="updateSFXVolume"
+                @change="persistVolumes"
                 :disabled="isMuted"
                 class="volume-slider"
               />
@@ -108,6 +110,7 @@
                 max="100" 
                 v-model="petTTSVolume"
                 @input="updatePetTTSVolume"
+                @change="persistVolumes"
                 :disabled="isMuted"
                 class="volume-slider"
               />
@@ -146,25 +149,28 @@ const toggleMute = () => {
 };
 
 const updateBackgroundVolume = () => {
-  AudioService.setBackgroundVolume(Math.min(BG_MAX, backgroundVolume.value / 100));
+  AudioService.setBackgroundVolume((backgroundVolume.value / 100) * BG_MAX);
   persistVolumesLocal();
+  schedulePersistVolumes();
 };
 
 const updateSFXVolume = () => {
-  AudioService.setSFXVolume(Math.min(SFX_MAX, sfxVolume.value / 100));
+  AudioService.setSFXVolume((sfxVolume.value / 100) * SFX_MAX);
   persistVolumesLocal();
+  schedulePersistVolumes();
 };
 
 const updatePetTTSVolume = () => {
   AudioService.setPetTTSVolume(petTTSVolume.value / 100); // 0-100 => 0.0-1.0
   persistVolumesLocal();
+  schedulePersistVolumes();
 };
 
 const persistVolumesLocal = () => {
   try {
     const payload = {
-      background_music_volume: Math.min(BG_MAX, backgroundVolume.value / 100),
-      sfx_volume: Math.min(SFX_MAX, sfxVolume.value / 100),
+      background_music_volume: (backgroundVolume.value / 100) * BG_MAX,
+      sfx_volume: (sfxVolume.value / 100) * SFX_MAX,
       pet_tts_volume: petTTSVolume.value / 100,
     };
     localStorage.setItem(AUDIO_PREFS_STORAGE_KEY, JSON.stringify(payload));
@@ -181,12 +187,12 @@ const loadVolumesFromLocal = () => {
 
     if (typeof p?.background_music_volume === 'number') {
       const v = Math.max(0, Math.min(BG_MAX, p.background_music_volume));
-      backgroundVolume.value = Math.round(v * 100);
+      backgroundVolume.value = Math.round((v / BG_MAX) * 100);
       AudioService.setBackgroundVolume(v);
     }
     if (typeof p?.sfx_volume === 'number') {
       const v = Math.max(0, Math.min(SFX_MAX, p.sfx_volume));
-      sfxVolume.value = Math.round(v * 100);
+      sfxVolume.value = Math.round((v / SFX_MAX) * 100);
       AudioService.setSFXVolume(v);
     }
     if (typeof p?.pet_tts_volume === 'number') {
@@ -208,12 +214,12 @@ const loadVolumesFromPreferences = async () => {
 
     if (typeof p?.background_music_volume === 'number') {
       const v = Math.max(0, Math.min(BG_MAX, p.background_music_volume));
-      backgroundVolume.value = Math.round(v * 100);
+      backgroundVolume.value = Math.round((v / BG_MAX) * 100);
       AudioService.setBackgroundVolume(v);
     }
     if (typeof p?.sfx_volume === 'number') {
       const v = Math.max(0, Math.min(SFX_MAX, p.sfx_volume));
-      sfxVolume.value = Math.round(v * 100);
+      sfxVolume.value = Math.round((v / SFX_MAX) * 100);
       AudioService.setSFXVolume(v);
     }
     if (typeof p?.pet_tts_volume === 'number') {
@@ -245,7 +251,21 @@ const schedulePersistVolumes = () => {
 };
 
 const persistVolumes = async () => {
-  // implemented in a follow-up commit
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+
+  try {
+    const res = await UserService.updatePreferences({
+      background_music_volume: (backgroundVolume.value / 100) * BG_MAX,
+      sfx_volume: (sfxVolume.value / 100) * SFX_MAX,
+      pet_tts_volume: petTTSVolume.value / 100,
+    });
+
+    if ((res as any)?.tokens?.access) localStorage.setItem('access_token', (res as any).tokens.access);
+    if ((res as any)?.tokens?.refresh) localStorage.setItem('refresh_token', (res as any).tokens.refresh);
+  } catch {
+    console.warn('[AudioControls] No se pudieron guardar volúmenes en preferencias.');
+  }
 };
 
 // Cerrar panel al hacer click fuera
