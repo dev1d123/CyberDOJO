@@ -199,9 +199,39 @@ const loadVolumesFromLocal = () => {
   }
 };
 
+const loadVolumesFromPreferences = async () => {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+
+  try {
+    const p = (await UserService.getPreferences()) as any;
+
+    if (typeof p?.background_music_volume === 'number') {
+      const v = Math.max(0, Math.min(BG_MAX, p.background_music_volume));
+      backgroundVolume.value = Math.round(v * 100);
+      AudioService.setBackgroundVolume(v);
+    }
+    if (typeof p?.sfx_volume === 'number') {
+      const v = Math.max(0, Math.min(SFX_MAX, p.sfx_volume));
+      sfxVolume.value = Math.round(v * 100);
+      AudioService.setSFXVolume(v);
+    }
+    if (typeof p?.pet_tts_volume === 'number') {
+      const v = Math.max(0, Math.min(1, p.pet_tts_volume));
+      petTTSVolume.value = Math.round(v * 100);
+      AudioService.setPetTTSVolume(v);
+    }
+
+    persistVolumesLocal();
+  } catch {
+    console.warn('[AudioControls] No se pudieron cargar volúmenes desde preferencias.');
+  }
+};
+
 // Cerrar panel al hacer click fuera
 onMounted(() => {
   loadVolumesFromLocal();
+  loadVolumesFromPreferences();
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
     const audioControls = document.querySelector('.audio-controls');
