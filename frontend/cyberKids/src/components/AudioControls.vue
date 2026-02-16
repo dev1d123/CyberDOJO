@@ -123,6 +123,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { AudioService } from '../services/audio.service';
+import { UserService } from '../services/user.service';
+
+const AUDIO_PREFS_STORAGE_KEY = 'audio_prefs_v1';
+
+const BG_MAX = 0.5;
+const SFX_MAX = 0.7;
 
 const showPanel = ref(false);
 const isMuted = ref(false);
