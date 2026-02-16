@@ -105,13 +105,13 @@
               <input 
                 type="range" 
                 min="0" 
-                max="500" 
+                max="100" 
                 v-model="petTTSVolume"
                 @input="updatePetTTSVolume"
                 :disabled="isMuted"
                 class="volume-slider"
               />
-              <span class="volume-value">{{ (petTTSVolume / 100).toFixed(1) }}x</span>
+              <span class="volume-value">{{ petTTSVolume }}%</span>
             </div>
           </div>
         </div>
@@ -128,7 +128,7 @@ const showPanel = ref(false);
 const isMuted = ref(false);
 const backgroundVolume = ref(30);
 const sfxVolume = ref(50);
-const petTTSVolume = ref(150); // Inicial: 1.5 (150/100)
+const petTTSVolume = ref(100); // 100% = 1.0
 
 const togglePanel = () => {
   showPanel.value = !showPanel.value;
@@ -148,7 +148,7 @@ const updateSFXVolume = () => {
 };
 
 const updatePetTTSVolume = () => {
-  AudioService.setPetTTSVolume(petTTSVolume.value / 100); // Convertir de 0-300 a 0.0-3.0
+  AudioService.setPetTTSVolume(petTTSVolume.value / 100); // 0-100 => 0.0-1.0
 };
 
 // Cerrar panel al hacer click fuera
