@@ -46,6 +46,9 @@ def generate_tokens_for_cyberuser(user):
         'preferences': {
             'receive_newsletters': preferences.receive_newsletters,
             'dark_mode': preferences.dark_mode,
+            'background_music_volume': preferences.background_music_volume,
+            'sfx_volume': preferences.sfx_volume,
+            'pet_tts_volume': preferences.pet_tts_volume,
         },
         'exp': datetime.utcnow() + timedelta(hours=1),
         'iat': datetime.utcnow(),
