@@ -228,6 +228,26 @@ const loadVolumesFromPreferences = async () => {
   }
 };
 
+let persistTimer: number | null = null;
+
+const schedulePersistVolumes = () => {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+
+  if (persistTimer !== null) {
+    window.clearTimeout(persistTimer);
+  }
+
+  persistTimer = window.setTimeout(() => {
+    persistTimer = null;
+    persistVolumes();
+  }, 450);
+};
+
+const persistVolumes = async () => {
+  // implemented in a follow-up commit
+};
+
 // Cerrar panel al hacer click fuera
 onMounted(() => {
   loadVolumesFromLocal();
