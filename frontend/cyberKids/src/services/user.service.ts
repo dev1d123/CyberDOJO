@@ -53,8 +53,14 @@ export class UserService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      const contentType = response.headers.get('content-type') || '';
+      const errorBody = contentType.includes('application/json') ? await response.json() : await response.text();
+      console.warn('⚠️ [UserService.getPreferences] Request failed', {
+        url,
+        status: response.status,
+        body: errorBody,
+      });
+      throw errorBody;
     }
 
     return await response.json();
