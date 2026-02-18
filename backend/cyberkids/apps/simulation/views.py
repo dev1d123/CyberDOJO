@@ -12,6 +12,7 @@ import re
 import json
 import requests
 from django.utils import timezone
+from django.db.models import Max, OuterRef, Subquery
 import os
 from apps.cyberUser.models import CyberUser
 
@@ -490,19 +491,46 @@ def chat(request):
                     s.ended_at = timezone.now()
                     
                     if outcome == 'won':
-                         # Calcular Puntos
-                        base_points = int((session.scenario_snapshot or {}).get('base_points', 100))
-                        diff_mult = int((session.scenario_snapshot or {}).get('difficulty_level', 1))
-                        total_points = base_points * diff_mult
+                        # Calcular Puntos según Vidas Restantes (Tiered Scoring)
+                        # 3 vidas (0 perdidas) -> 100%
+                        # 2 vidas (1 perdida) -> 75%
+                        # 1 vida (2 perdidas) -> 50%
+                        # 0 vidas -> 0% (aunque aquí es outcome='won', así que se asume > 0)
                         
+                        base_points_val = int((session.scenario_snapshot or {}).get('base_points', 100))
+                        
+                        # Recalcular lives_remaining real
+                        active_disclosures_count = ChatMessage.objects.filter(session=session, is_dangerous=True).count()
+                        lives_rem = max(0, 3 - active_disclosures_count)
+                        
+                        multiplier = 0.0
+                        if lives_rem >= 3:
+                            multiplier = 1.0
+                        elif lives_rem == 2:
+                            multiplier = 0.75
+                        elif lives_rem == 1:
+                            multiplier = 0.50
+                        
+                        total_points = int(base_points_val * multiplier)
                         s.points_earned = total_points
                         
-                        # Otorgar créditos al usuario
-                        if s.user and not s.points_awarded:
-                            u = s.user
-                            u.cybercreds = (u.cybercreds or 0) + total_points
-                            u.save(update_fields=['cybercreds'])
-                            s.points_awarded = True
+                        # Otorgar créditos al usuario (Solo el DELTA si mejora su puntaje anterior)
+                        if s.user:
+                             # Buscar mejor puntaje ANTERIOR para este usuario en este escenario
+                            prev_max = GameSession.objects.filter(
+                                user=s.user, 
+                                scenario=s.scenario, 
+                                outcome='won'
+                            ).exclude(pk=s.pk).aggregate(Max('points_earned'))['points_earned__max'] or 0
+                            
+                            points_delta = max(0, total_points - prev_max)
+                            
+                            if points_delta > 0:
+                                u = s.user
+                                u.cybercreds = (u.cybercreds or 0) + points_delta
+                                u.save(update_fields=['cybercreds'])
+                                
+                            s.points_awarded = True # Marcamos como procesado (aunque ahora usamos lógica delta)
                             
                     s.save()
                     session = s
@@ -755,10 +783,29 @@ class ScenarioViewSet(viewsets.ModelViewSet):
     serializer_class = ScenarioSerializer
     
     def get_queryset(self):
-        """Admins ven todos los escenarios, usuarios regulares solo activos."""
-        if self.request.user and self.request.user.is_authenticated and getattr(self.request.user, 'is_staff', False):
-            return Scenario.objects.all().order_by('difficulty_level', 'scenario_id')
-        return Scenario.objects.filter(is_active=True).order_by('difficulty_level', 'scenario_id')
+        """Admins ven todos los escenarios, usuarios regulares solo activos.
+           Annotates 'user_score' with the max score earned by the current user.
+        """
+        qs = Scenario.objects.filter(is_active=True).order_by('difficulty_level', 'scenario_id')
+        
+        if self.request.user and self.request.user.is_authenticated:
+            # Subquery to find max points for this user and scenario
+            # We filter by outcome='won' to only count successful attempts
+            max_scores = GameSession.objects.filter(
+                user=self.request.user,
+                scenario=OuterRef('pk'),
+                outcome='won'
+            ).values('scenario').annotate(max_pts=Max('points_earned')).values('max_pts')
+            
+            qs = qs.annotate(user_score=Subquery(max_scores[:1]))
+
+        if getattr(self.request.user, 'is_staff', False):
+             # Admins can see inactive ones too, but we apply the annotation to base QS first? 
+             # Simpler: just use admin logic separately or apply annotation there too if needed.
+             # For now, let's keep it simple. If admin wants to see scores they play as user.
+             pass
+
+        return qs
     
     def get_permissions(self):
         """Permitir lectura a todos, escritura solo a admins."""

@@ -15,9 +15,11 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
 
 class ScenarioSerializer(serializers.ModelSerializer):
+    user_score = serializers.IntegerField(required=False, allow_null=True)
+
     class Meta:
         model = Scenario
-        fields = ['scenario_id', 'name', 'description', 'antagonist_goal', 'difficulty_level', 'base_points', 'threat_type', 'is_active']
+        fields = ['scenario_id', 'name', 'description', 'antagonist_goal', 'difficulty_level', 'base_points', 'threat_type', 'is_active', 'user_score']
 
 
 class SensitivePatternSerializer(serializers.ModelSerializer):

@@ -13,6 +13,7 @@ export interface ScenarioDto {
   base_points: number;
   threat_type: string | null;
   is_active: boolean;
+  user_score?: number;
 }
 
 interface StartSessionResponse {
