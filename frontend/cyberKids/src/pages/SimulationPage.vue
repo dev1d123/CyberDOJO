@@ -8,8 +8,20 @@
         </button>
         <div class="scenario-info">
           <h2 class="scenario-title">{{ scenarioName }}</h2>
-          <div v-if="!showInitScreen" class="attempts-indicator">
-            Intentos del antagonista: {{ antagonistAttempts }}/3
+          <div v-if="!showInitScreen" class="game-status-bar">
+            <!-- Lives Counter -->
+            <div class="status-item lives" title="Vidas Restantes">
+              <span class="status-icon" v-for="i in 3" :key="`life-${i}`">
+                {{ i <= livesRemaining ? '❤️' : '🖤' }}
+              </span>
+            </div>
+            <!-- Progress Counter -->
+            <div class="status-item progress" title="Intentos Evasivos Exitosos">
+               <span class="status-label">Progreso:</span>
+               <span class="status-icon" v-for="i in 3" :key="`prog-${i}`">
+                {{ i <= currentProgress ? '🛡️' : '⚪' }}
+              </span>
+            </div>
           </div>
         </div>
       </header>
@@ -71,6 +83,17 @@
           </div>
         </div>
 
+        <!-- Warning Overlay -->
+        <div v-if="warning" class="warning-overlay" @click="dismissWarning">
+          <div class="warning-card" @click.stop>
+            <div class="warning-icon">⚠️</div>
+            <h3 class="warning-title">{{ warning.title }}</h3>
+            <p class="warning-message">{{ warning.message }}</p>
+            <p class="warning-footer">Te quedan {{ warning.lives_remaining }} vidas.</p>
+            <button class="warning-button" @click="dismissWarning">Entendido</button>
+          </div>
+        </div>
+
         <!-- Game Over Overlay -->
         <div v-if="gameOver" class="game-over-overlay">
           <div class="game-over-card">
@@ -123,7 +146,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { SimulationService } from '../services/simulation.service';
+import { SimulationService, GameWarning } from '../services/simulation.service';
 import { useAudio } from '../composables/useAudio';
 import { PetSpeech } from '@/stores/petSpeech.store';
 
@@ -144,7 +167,11 @@ const gameOver = ref(false);
 const outcome = ref<string | null>(null);
 const gameOverMessage = ref('');
 const pointsEarned = ref(0);
-const antagonistAttempts = ref(0);
+// const antagonistAttempts = ref(0); // Deprecated in UI
+const livesRemaining = ref(3);
+const currentProgress = ref(0);
+const warning = ref<GameWarning | null>(null);
+
 const chatContainer = ref<HTMLElement | null>(null);
 const showInitScreen = ref(true);
 const hasActiveSession = ref(false);
@@ -191,6 +218,10 @@ async function checkActiveSession() {
   }
 }
 
+function dismissWarning() {
+    warning.value = null;
+}
+
 async function continueSession() {
   try {
     loading.value = true;
@@ -202,7 +233,8 @@ async function continueSession() {
     const resumeResponse = await SimulationService.resumeSession(scenarioId.value);
     sessionId.value = resumeResponse.session_id;
     messages.value = resumeResponse.messages;
-    antagonistAttempts.value = resumeResponse.antagonist_attempts || 0;
+    livesRemaining.value = 3; 
+    currentProgress.value = (resumeResponse.antagonist_attempts || 0);
 
     loading.value = false;
     await scrollToBottom();
@@ -234,6 +266,9 @@ async function startNewSession() {
   try {
     loading.value = true;
     showInitScreen.value = false;
+    livesRemaining.value = 3;
+    currentProgress.value = 0;
+    warning.value = null;
 
     // Reproducir sonido de diálogo
     playDialog();
@@ -247,7 +282,7 @@ async function startNewSession() {
         sent_at: new Date().toISOString(),
       },
     ];
-    antagonistAttempts.value = 0;
+    // antagonistAttempts.value = 0;
     hasActiveSession.value = true;
 
     loading.value = false;
@@ -298,10 +333,21 @@ async function sendMessage() {
       console.log('🧠 [SimulationPage] LLM analysis:', response.llm_analysis);
     }
 
-    antagonistAttempts.value = response.antagonist_attempts;
+    // Update Game State
+    if (response.game_state) {
+        livesRemaining.value = response.game_state.lives_remaining;
+        currentProgress.value = response.game_state.current_progress;
+    }
+
+    // Handle Warning
+    if (response.warning) {
+        warning.value = response.warning;
+        // Play warning sound?
+        PetSpeech.speak({ behavior: 'error', ttlMs: 3000, priority: 2 });
+    }
 
     // Check if game is over
-    if (response.is_game_over !== null) {
+    if (response.is_game_over !== null && response.is_game_over === true) { // Explicit check
       gameOver.value = true;
       outcome.value = response.outcome;
 
@@ -382,7 +428,7 @@ function retryLevel() {
 .simulation-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 20px 24px;
+  padding: 16px 24px;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -406,12 +452,40 @@ function retryLevel() {
 
 .scenario-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .scenario-title {
-  margin: 0 0 4px 0;
-  font-size: 1.5rem;
+  margin: 0;
+  font-size: 1.2rem;
   font-weight: 700;
+}
+
+.game-status-bar {
+  display: flex;
+  gap: 24px;
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.status-label {
+    font-weight: 600;
+    opacity: 0.9;
+    margin-right: 4px;
+}
+
+.status-icon {
+  font-size: 1.1rem;
 }
 
 .attempts-indicator {
@@ -558,6 +632,7 @@ function retryLevel() {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding-bottom: 24px;
 }
 
 .message {
@@ -613,6 +688,76 @@ function retryLevel() {
   word-wrap: break-word;
 }
 
+/* Warning Overlay */
+.warning-overlay {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 400px;
+  z-index: 20;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from { transform: translate(-50%, -20px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.warning-card {
+  background: #fff;
+  border-left: 6px solid #ff4d4f;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.warning-icon {
+    font-size: 2rem;
+    align-self: center;
+    margin-bottom: 4px;
+}
+
+.warning-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ff4d4f;
+    text-align: center;
+}
+
+.warning-message {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #333;
+    text-align: center;
+}
+
+.warning-footer {
+    margin: 4px 0 0 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #666;
+    text-align: center;
+}
+
+.warning-button {
+    margin-top: 8px;
+    background: #ff4d4f;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: center;
+    width: 100%;
+}
+
 .game-over-overlay {
   position: absolute;
   inset: 0;
@@ -621,7 +766,7 @@ function retryLevel() {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  z-index: 10;
+  z-index: 30;
 }
 
 .game-over-card {

@@ -8,7 +8,7 @@ export class UserService {
   // Obtener información del usuario autenticado
   static async getCurrentUser(): Promise<UserDto> {
     const token = localStorage.getItem('access_token');
-    
+
     if (!token) {
       throw new Error('No hay token de acceso');
     }
@@ -25,6 +25,12 @@ export class UserService {
     if (!response.ok) {
       const contentType = response.headers.get('content-type') || '';
       const errorBody = contentType.includes('application/json') ? await response.json() : await response.text();
+
+      // Attach status to error object if possible
+      if (typeof errorBody === 'object' && errorBody !== null) {
+        (errorBody as any).status = response.status;
+      }
+
       console.warn('⚠️ [UserService.getCurrentUser] Request failed', {
         url,
         status: response.status,
@@ -39,7 +45,7 @@ export class UserService {
   // Obtener usuario por ID
   static async getUserById(userId: number): Promise<UserDto> {
     const token = localStorage.getItem('access_token');
-    
+
     if (!token) {
       throw new Error('No hay token de acceso');
     }
@@ -70,10 +76,10 @@ export class UserService {
   // Actualizar el perfil del usuario autenticado
   static async updateMe(data: UpdateUserDto): Promise<UpdateMeResponseDto> {
     const token = localStorage.getItem('access_token');
-    
+
     console.log('🔧 UserService.updateMe called');
     console.log('📦 Data to send:', data);
-    
+
     if (!token) {
       throw new Error('No hay token de acceso');
     }
@@ -91,7 +97,7 @@ export class UserService {
     });
 
     console.log('📡 Response status:', response.status);
-    
+
     if (!response.ok) {
       const error = await response.json();
       console.error('❌ Error response:', error);
@@ -161,7 +167,7 @@ export class UserService {
   // Actualizar preferencias de usuario
   static async updatePreferences(data: UpdatePreferencesDto): Promise<{ message: string; preferences: unknown; tokens: { access: string; refresh: string } }> {
     const token = localStorage.getItem('access_token');
-    
+
     if (!token) {
       throw new Error('No hay token de acceso');
     }
@@ -212,7 +218,7 @@ export class UserService {
   // Verificar si el usuario ya completó el onboarding
   static async checkOnboardingStatus(userId: number): Promise<{ completed: boolean; has_responses: boolean }> {
     const token = localStorage.getItem('access_token');
-    
+
     if (!token) {
       throw new Error('No hay token de acceso');
     }

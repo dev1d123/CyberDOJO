@@ -154,7 +154,9 @@ def start_with_role(request):
             completed_ids = list(GameSession.objects.filter(user=user, outcome='won').values_list('scenario_id', flat=True))
         except Exception:
             completed_ids = []
-        scenario = Scenario.objects.filter(is_active=True).exclude(scenario_id__in=completed_ids).order_by('difficulty_level', 'scenario_id').first()
+        scenario = Scenario.objects.filter(is_active=True).exclude(
+            scenario_id__in=completed_ids
+        ).order_by('difficulty_level', 'scenario_id').first()
         if not scenario:
             scenario = Scenario.objects.filter(is_active=True).order_by('scenario_id').first()
     
@@ -187,12 +189,15 @@ def start_with_role(request):
         "current_attempts_used": 0,
         "user_context": {
             "username": user.username,
-            "country": user.country.name if user and getattr(user, 'country', None) else ""
+            "country": user.country.name if user and getattr(user, 'country', None) else "",
+            "age": (user.preferences.age if hasattr(user, 'preferences') and user.preferences and user.preferences.age else 12)
         },
         "scenario_context": {
             "platform": scenario.threat_type or "generic",
             "antagonist_goal": scenario.antagonist_goal or "información sensible",
-            "difficulty": str(scenario.difficulty_level)
+            "difficulty": str(scenario.difficulty_level),
+            "theme_name": scenario.name,
+            "description": scenario.description
         },
         "chat_history": []
     }
@@ -286,28 +291,43 @@ def chat(request):
         return JsonResponse({'error': 'authentication_required'}, status=401)
 
     if not session_id:
-        # Buscar sesión activa del usuario
-        active = GameSession.objects.filter(user=user_obj, is_game_over__isnull=True).order_by('-started_at').first()
-        if not active:
-            return JsonResponse({
-                'error': 'missing "session_id" in request body',
+        # Buscar la ÚLTIMA sesión del usuario (evitar zombies)
+        last_session = GameSession.objects.filter(user=user_obj).order_by('-started_at').first()
+        
+        if not last_session:
+             return JsonResponse({
+                'error': 'no_session_history',
                 'hint': 'Primero inicia una sesión con /api/simulation/session/start-role/'
             }, status=400)
-        session_id = active.session_id
+            
+        if last_session.is_game_over is not None:
+            return JsonResponse({
+                'error': 'session_closed',
+                'message': 'La última sesión ha terminado. Inicia una nueva.',
+                'is_game_over': True
+            }, status=400)
+            
+        session_id = last_session.session_id
 
-    # user_obj ya obtenido arriba
-
-    # Obtener sesión
-    session = None
+    # Obtener el objeto sesión
     try:
         session = GameSession.objects.get(session_id=int(session_id))
-    except Exception:
-        return JsonResponse({'error': 'session_not_found'}, status=404)
+    except (ValueError, TypeError, GameSession.DoesNotExist):
+        return JsonResponse({'error': 'invalid_session_id'}, status=404)
 
-    # Si la sesión ya terminó, bloquear mensajes
+    # Validar pertenencia
+    if session.user != user_obj:
+        return JsonResponse({'error': 'permission_denied'}, status=403)
+        
+    # GUARD CLAUSE: No permitir chat en sesiones terminadas
     if session.is_game_over is not None:
-        return JsonResponse({'error': 'session_ended', 'reason': session.game_over_reason}, status=400)
-
+         return JsonResponse({
+            'error': 'session_closed',
+            'message': 'Esta sesión ya ha terminado.',
+            'is_game_over': True,
+            'outcome': session.outcome
+        }, status=400)
+    
     # Guardar mensaje del usuario
     user_msg = None
     try:
@@ -330,19 +350,43 @@ def chat(request):
     # Preparar payload para el backend LLM externo
     max_attempts = getattr(__import__('django.conf').conf.settings, 'SIM_MAX_ATTEMPTS', 3)
     
+    # ---------------------------------------------------------
+    # 1. Preparar Payload para el LLM con Contexto del Escenario
+    # ---------------------------------------------------------
+    
+    # Obtener el contexto del escenario de la sesión (snapshot o real)
+    scenario_snapshot = session.scenario_snapshot or {}
+    
+    # Mapeo de campos requeridos por el LLM
+    scenario_context = {
+        "platform": scenario_snapshot.get('threat_type', 'generic'), # Usamos threat_type como "plataforma/contexto"
+        "antagonist_goal": scenario_snapshot.get('antagonist_goal', 'información sensible'),
+        "difficulty": str(scenario_snapshot.get('difficulty_level', 1)), # Nivel 1-6
+        "theme_name": scenario_snapshot.get('name', 'Ingeniería Social'), # Nombre del escenario (ej: "Robo de Identidad")
+        "description": scenario_snapshot.get('description', '')
+    }
+
+    # ---------------------------------------------------------
+    # 2. Preparar Payload
+    # ---------------------------------------------------------
+
+    # Historial de chat
+    chat_msgs = ChatMessage.objects.filter(session=session).order_by('sent_at')
+    chat_history = [{'role': m.role, 'content': m.content} for m in chat_msgs]
+    
+    # Calculate actual turns used (antagonist messages) to determine pacing
+    antagonist_msgs_count = chat_msgs.filter(role='antagonist').count()
+
     payload = {
         "session_id": str(session.session_id),
         "max_attempts": max_attempts,
-        "current_attempts_used": session.antagonist_attempts or 0,
+        "current_attempts_used": antagonist_msgs_count, # Use actual turn count for pacing
         "user_context": {
             "username": user_obj.username,
-            "country": getattr(getattr(user_obj, 'country', None), 'name', None) or ""
+            "country": getattr(getattr(user_obj, 'country', None), 'name', None) or "Global",
+            "age": (user_obj.preferences.age if hasattr(user_obj, 'preferences') and user_obj.preferences and user_obj.preferences.age else 12)
         },
-        "scenario_context": {
-            "platform": (session.scenario_snapshot.get('threat_type') if session.scenario_snapshot else None) or "generic",
-            "antagonist_goal": (session.scenario_snapshot.get('antagonist_goal') if session.scenario_snapshot else None) or "información sensible",
-            "difficulty": str(session.scenario_snapshot.get('difficulty', 1) if session.scenario_snapshot else 1)
-        },
+        "scenario_context": scenario_context,
         "chat_history": chat_history
     }
 
@@ -360,18 +404,20 @@ def chat(request):
     disclosure_reason = analysis.get('disclosure_reason', '')
     is_attack_attempt = analysis.get('is_attack_attempt', False)
     is_user_evasion = analysis.get('is_user_evasion', False)
-    force_end_session = analysis.get('force_end_session', False)
+    # force_end_session = analysis.get('force_end_session', False) # DEPRECATED: Backend decide
 
-    # Guardar respuesta del antagonista
+    # ---------------------------------------------------------
+    # 3. Procesar Lógica de Juego (3 Strikes)
+    # ---------------------------------------------------------
+    
+    # A. Guardar respuesta del antagonista
     try:
         ChatMessage.objects.create(session=session, role='antagonist', content=reply_text)
     except Exception:
         logger.exception('Failed to persist antagonist message')
 
-    # Procesar lógica de juego
-    disclosure = has_disclosure or force_end_session
-    
-    # Verificar patrones sensibles en el mensaje del usuario (detección local adicional)
+    # B. Verificar Patrones Sensibles (Safety Net Local)
+    disclosure = has_disclosure
     from apps.simulation.models import SensitivePattern
     if user_msg and user_msg.content:
         patterns = SensitivePattern.objects.all()
@@ -386,69 +432,89 @@ def chat(request):
                     break
             except Exception:
                 continue
-
-    # Lógica de cierre de sesión
+    
+    # C. Actualizar estado del mensaje de usuario si el LLM lo marcó
     if disclosure:
-        # Usuario reveló información sensible: PERDIÓ
+        try:
+             if user_msg and not user_msg.is_dangerous:
+                user_msg.is_dangerous = True
+                user_msg.save(update_fields=['is_dangerous'])
+        except Exception:
+             logger.exception('Failed to mark user message as dangerous')
+
+    # D. Calcular Vidas (Disclosures) y Progreso (Evasiones)
+    # Vidas = 3 - (# mensajes peligrosos)
+    max_lives = 3
+    active_disclosures = ChatMessage.objects.filter(session=session, is_dangerous=True).count()
+    lives_remaining = max(0, max_lives - active_disclosures)
+    
+    # Progreso = # evasiones exitosas
+    # Usamos session.antagonist_attempts para guardar el número de EVASIONES exitosas (Progress)
+    if is_user_evasion:
+         try:
+            previous_progress = session.antagonist_attempts or 0
+            session.antagonist_attempts = previous_progress + 1
+            session.save(update_fields=['antagonist_attempts'])
+         except Exception:
+            logger.exception(f'Failed to increment progress (evasions) for session {session.session_id}')
+    
+    current_progress = session.antagonist_attempts or 0
+    max_progress_needed = 3
+    
+    # E. Determinar Fin del Juego
+    game_over = False
+    outcome = None
+    reason = None
+    
+    # Caso 1: Perdió todas las vidas (3 Disclosures)
+    if lives_remaining <= 0:
+        game_over = True
+        outcome = 'failed'
+        reason = disclosure_reason or 'sensitive_data_limit_reached'
+        
+    # Caso 2: Ganó (3 Evasiones/Progreso)
+    elif current_progress >= max_progress_needed:
+        game_over = True
+        outcome = 'won'
+        reason = 'max_evasions_reached'
+        
+    # F. Persistir Fin del Juego
+    if game_over:
         try:
             with transaction.atomic():
                 s = GameSession.objects.select_for_update().get(pk=session.pk)
-                if user_msg and not user_msg.is_dangerous:
-                    user_msg.is_dangerous = True
-                    user_msg.save(update_fields=['is_dangerous'])
                 if s.is_game_over is None:
                     s.is_game_over = True
-                    s.outcome = 'failed'
-                    s.game_over_reason = disclosure_reason or 'sensitive_data'
+                    s.outcome = outcome
+                    s.game_over_reason = reason
                     s.ended_at = timezone.now()
-                    s.save(update_fields=['is_game_over', 'outcome', 'game_over_reason', 'ended_at'])
-                # Asegurar que la respuesta use el estado persistido
-                session = s
-        except Exception:
-            logger.exception(f'Failed to mark session as failed for session {session.session_id}')
-    else:
-        # No hubo disclosure: verificar si fue un intento de ataque
-        if is_attack_attempt:
-            try:
-                session.antagonist_attempts = (session.antagonist_attempts or 0) + 1
-                session.save(update_fields=['antagonist_attempts'])
-            except Exception:
-                logger.exception(f'Failed to increment antagonist_attempts for session {session.session_id}')
-
-        # Verificar si el antagonista agotó los intentos
-        if session.antagonist_attempts >= max_attempts:
-            try:
-                with transaction.atomic():
-                    s = GameSession.objects.select_for_update().get(pk=session.pk)
-                    # Verificar si hay algún mensaje peligroso en toda la conversación
-                    disclosure_exists = ChatMessage.objects.filter(session=s, is_dangerous=True).exists()
-                    if not disclosure_exists and s.is_game_over is None:
-                        # Usuario GANÓ: resistió todos los intentos sin compartir datos
-                        points = 0
-                        if s.scenario:
-                            points = int(getattr(s.scenario, 'base_points', 0) or 0)
-                        else:
-                            points = int((s.scenario_snapshot or {}).get('base_points', 0) or 0)
-
+                    
+                    if outcome == 'won':
+                         # Calcular Puntos
+                        base_points = int((session.scenario_snapshot or {}).get('base_points', 100))
+                        diff_mult = int((session.scenario_snapshot or {}).get('difficulty_level', 1))
+                        total_points = base_points * diff_mult
+                        
+                        s.points_earned = total_points
+                        
+                        # Otorgar créditos al usuario
                         if s.user and not s.points_awarded:
-                            try:
-                                u = s.user
-                                u.cybercreds = (u.cybercreds or 0) + int(points)
-                                u.save(update_fields=['cybercreds'])
-                            except Exception:
-                                logger.exception(f'Failed to award points to user for session {s.session_id}')
-
-                        s.points_earned = int(points)
-                        s.points_awarded = True
-                        s.is_game_over = False  # Usuario resistió y ganó
-                        s.outcome = 'won'
-                        s.game_over_reason = 'antagonist_exhausted_no_disclosure'
-                        s.ended_at = timezone.now()
-                        s.save(update_fields=['points_earned', 'points_awarded', 'is_game_over', 'outcome', 'game_over_reason', 'ended_at'])
-                    # Asegurar que la respuesta use el estado persistido
+                            u = s.user
+                            u.cybercreds = (u.cybercreds or 0) + total_points
+                            u.save(update_fields=['cybercreds'])
+                            s.points_awarded = True
+                            
+                    s.save()
                     session = s
-            except Exception:
-                logger.exception(f'Error closing/awarding points for session {session.session_id}')
+        except Exception:
+             logger.exception(f'Failed to close session {session.session_id}')
+
+    # NOTE: Legacy block removed. logic handled above (current_progress >= 3 -> won)
+    # The redundant check for antagonist_attempts >= max_attempts created conflicts
+    # because antagonist_attempts is now used for Progress (Evasions).
+    # 
+    # if session.antagonist_attempts >= max_attempts:
+    #     ...
 
     # Refrescar por seguridad si hubo cambios en DB fuera del objeto actual
     try:
@@ -465,16 +531,33 @@ def chat(request):
             'disclosure_reason': disclosure_reason or '',
             'is_attack_attempt': bool(is_attack_attempt),
             'is_user_evasion': bool(is_user_evasion),
-            'force_end_session': bool(force_end_session),
+            # 'force_end_session': bool(force_end_session),
+        },
+        'game_state': {
+            'lives_remaining': max(0, 3 - ChatMessage.objects.filter(session=session, is_dangerous=True).count()),
+            'max_lives': 3,
+            'current_progress': session.antagonist_attempts or 0,
+            'max_progress': 3,
+            'is_game_over': bool(session.is_game_over),
+            'outcome': session.outcome
         },
         'disclosure': disclosure,
         'disclosure_reason': disclosure_reason,
-        'antagonist_attempts': session.antagonist_attempts,
-        'is_game_over': session.is_game_over,
-        'outcome': session.outcome,
+        'is_game_over': bool(session.is_game_over), # Add to root for Frontend compatibility
+        'outcome': session.outcome,                 # Add to root for Frontend compatibility
         'game_over_reason': session.game_over_reason,
         'points_earned': getattr(session, 'points_earned', 0) or 0,
     }
+
+    # Si hubo disclosure pero quedan vidas (y no es game over), añadir advertencia
+    lives = resp['game_state']['lives_remaining']
+    if disclosure and lives > 0 and not session.is_game_over:
+         resp['warning'] = {
+            'message': disclosure_reason or "¡Cuidado! Has compartido información sensible.",
+            'title': "¡Alerta de Seguridad!",
+            'type': 'disclosure',
+            'lives_remaining': lives
+        }
 
     return JsonResponse(resp)
 
@@ -522,6 +605,25 @@ def create_session(request):
 
     if not user:
         return JsonResponse({'error': 'authentication_required'}, status=401)
+
+    # Limpieza: Marcar como 'abandoned' cualquier sesión previa que haya quedado abierta (is_game_over=None)
+    # para evitar "Zombie Sessions".
+    try:
+        from django.utils import timezone
+        active_sessions = GameSession.objects.filter(user=user, is_game_over__isnull=True)
+        if scenario:
+             active_sessions = active_sessions.filter(scenario=scenario)
+        
+        count = active_sessions.update(
+            is_game_over=True, 
+            outcome='abandoned', 
+            game_over_reason='started_new_session',
+            ended_at=timezone.now()
+        )
+        if count > 0:
+            logger.info(f"Auto-closed {count} abandoned sessions for user {user.username}")
+    except Exception:
+        logger.warning("Failed to auto-close abandoned sessions")
 
     session = GameSession.objects.create(user=user, scenario=scenario)
     return JsonResponse({'session_id': session.session_id})
@@ -590,19 +692,28 @@ def resume_session(request):
     
     # Filtrar por scenario_id si se proporciona
     scenario_id = request.GET.get('scenario_id')
-    filters = {'user': user, 'is_game_over__isnull': True}
-    
+    # Buscar la ÚLTIMA sesión del usuario para este escenario (o global)
+    # No filtramos por is_game_over todavía, para ver cuál es la más reciente.
+    base_filters = {'user': user}
     if scenario_id:
         try:
-            filters['scenario_id'] = int(scenario_id)
+            base_filters['scenario_id'] = int(scenario_id)
         except (ValueError, TypeError):
             return JsonResponse({'error': 'invalid_scenario_id'}, status=400)
     
-    session = GameSession.objects.filter(**filters).order_by('-started_at').first()
+    # Obtenemos la más reciente
+    last_session = GameSession.objects.filter(**base_filters).order_by('-started_at').first()
     
-    if not session:
-        return JsonResponse({'error': 'no_active_session', 'has_active_session': False}, status=404)
+    if not last_session:
+        return JsonResponse({'error': 'no_session_history', 'has_active_session': False}, status=404)
+        
+    # Verificamos si está activa
+    if last_session.is_game_over is not None:
+        # La última sesión ya terminó. No reanudamos sesiones antiguas (zombis).
+         return JsonResponse({'error': 'last_session_finished', 'has_active_session': False}, status=404)
     
+    session = last_session
+
     # Obtener todos los mensajes de la sesión
     messages = ChatMessage.objects.filter(session=session).order_by('sent_at')
 
@@ -614,10 +725,16 @@ def resume_session(request):
         } for m in messages
     ]
     
+    # Calculate lives remaining
+    max_lives = 3
+    active_disclosures = ChatMessage.objects.filter(session=session, is_dangerous=True).count()
+    lives_remaining = max(0, max_lives - active_disclosures)
+    
     return JsonResponse({
         'session_id': session.session_id,
         'scenario_id': session.scenario_id,
         'antagonist_attempts': session.antagonist_attempts or 0,
+        'lives_remaining': lives_remaining,
         'messages': messages_data,
         'has_active_session': True,
         'resumed': True
