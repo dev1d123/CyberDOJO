@@ -59,6 +59,7 @@ interface ChatResponse {
   // New fields
   game_state?: GameState;
   warning?: GameWarning;
+  credits_awarded?: number; // Actual credits added to wallet
 }
 
 interface ChatMessage {

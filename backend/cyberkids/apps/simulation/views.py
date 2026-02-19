@@ -480,6 +480,7 @@ def chat(request):
         reason = 'max_evasions_reached'
         
     # F. Persistir Fin del Juego
+    final_reward = 0  # To track actual credits given for UI display
     if game_over:
         try:
             with transaction.atomic():
@@ -514,23 +515,35 @@ def chat(request):
                         total_points = int(base_points_val * multiplier)
                         s.points_earned = total_points
                         
-                        # Otorgar créditos al usuario (Solo el DELTA si mejora su puntaje anterior)
+                        # Otorgar créditos al usuario (Híbrido: Delta + Farming)
+                        # - Primera vez o Mejora: Puntos extra por mejora.
+                        # - Repetición: 10% de base_points.
                         if s.user:
                              # Buscar mejor puntaje ANTERIOR para este usuario en este escenario
-                            prev_max = GameSession.objects.filter(
+                            prev_wins = GameSession.objects.filter(
                                 user=s.user, 
                                 scenario=s.scenario, 
                                 outcome='won'
-                            ).exclude(pk=s.pk).aggregate(Max('points_earned'))['points_earned__max'] or 0
+                            ).exclude(pk=s.pk)
+                            
+                            has_won_before = prev_wins.exists()
+                            prev_max = prev_wins.aggregate(Max('points_earned'))['points_earned__max'] or 0
                             
                             points_delta = max(0, total_points - prev_max)
+                            farming_reward = 0
                             
-                            if points_delta > 0:
+                            if has_won_before:
+                                # Si ya ganó antes, otorgar farming reward (10% de base)
+                                farming_reward = int(base_points_val * 0.10)
+                            
+                            final_reward = points_delta + farming_reward
+                            
+                            if final_reward > 0:
                                 u = s.user
-                                u.cybercreds = (u.cybercreds or 0) + points_delta
+                                u.cybercreds = (u.cybercreds or 0) + final_reward
                                 u.save(update_fields=['cybercreds'])
                                 
-                            s.points_awarded = True # Marcamos como procesado (aunque ahora usamos lógica delta)
+                            s.points_awarded = True
                             
                     s.save()
                     session = s
@@ -575,6 +588,7 @@ def chat(request):
         'outcome': session.outcome,                 # Add to root for Frontend compatibility
         'game_over_reason': session.game_over_reason,
         'points_earned': getattr(session, 'points_earned', 0) or 0,
+        'credits_awarded': final_reward, # Actual credits added to wallet
     }
 
     # Si hubo disclosure pero quedan vidas (y no es game over), añadir advertencia

@@ -360,7 +360,8 @@ async function sendMessage() {
       
       if (response.outcome === 'won') {
         gameOverMessage.value = '¡Excelente trabajo! Resististe todos los intentos de ingeniería social.';
-        pointsEarned.value = response.points_earned ?? 0;
+        // Mostrar los créditos REALES ganados (farming/mejora), no el puntaje total del nivel
+        pointsEarned.value = response.credits_awarded ?? 0;
       } else {
         gameOverMessage.value = response.game_over_reason || 'Compartiste información sensible. ¡Inténtalo de nuevo!';
       }
