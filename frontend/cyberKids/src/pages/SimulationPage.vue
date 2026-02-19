@@ -82,41 +82,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Warning Overlay -->
-        <div v-if="warning" class="warning-overlay" @click="dismissWarning">
-          <div class="warning-card" @click.stop>
-            <div class="warning-icon">⚠️</div>
-            <h3 class="warning-title">{{ warning.title }}</h3>
-            <p class="warning-message">{{ warning.message }}</p>
-            <p class="warning-footer">Te quedan {{ warning.lives_remaining }} vidas.</p>
-            <button class="warning-button" @click="dismissWarning">Entendido</button>
-          </div>
-        </div>
-
-        <!-- Game Over Overlay -->
-        <div v-if="gameOver" class="game-over-overlay">
-          <div class="game-over-card">
-            <div :class="['game-over-icon', outcome]">
-              {{ outcome === 'won' ? '🎉' : '😞' }}
-            </div>
-            <h2 class="game-over-title">
-              {{ outcome === 'won' ? '¡Felicitaciones!' : '¡Juego Terminado!' }}
-            </h2>
-            <p class="game-over-message">{{ gameOverMessage }}</p>
-            <div v-if="outcome === 'won' && pointsEarned > 0" class="points-earned">
-              +{{ pointsEarned }} CyberCreds
-            </div>
-            <div class="game-over-actions">
-              <button class="primary-button" @click="goBack">
-                Volver al Mapa
-              </button>
-              <button v-if="outcome === 'failed'" class="secondary-button" @click="retryLevel">
-                Reintentar Nivel
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Input Area -->
@@ -140,6 +105,42 @@
         </button>
       </div>
     </div>
+
+    <!-- Warning Overlay (Fixed Position, Blocking) -->
+    <div v-if="warning" class="warning-overlay">
+        <div class="warning-card">
+        <div class="warning-icon">⚠️</div>
+        <h3 class="warning-title">{{ warning.title }}</h3>
+        <p class="warning-message">{{ warning.message }}</p>
+        <p class="warning-footer">Te quedan {{ warning.lives_remaining }} vidas.</p>
+        <button class="warning-button" @click="dismissWarning">Entendido</button>
+        </div>
+    </div>
+
+    <!-- Game Over Overlay (Fixed Full Screen) -->
+    <div v-if="gameOver" class="game-over-overlay">
+        <div class="game-over-card">
+        <div :class="['game-over-icon', outcome]">
+            {{ outcome === 'won' ? '🎉' : '😞' }}
+        </div>
+        <h2 class="game-over-title">
+            {{ outcome === 'won' ? '¡Felicitaciones!' : '¡Juego Terminado!' }}
+        </h2>
+        <p class="game-over-message">{{ gameOverMessage }}</p>
+        <div v-if="outcome === 'won' && pointsEarned > 0" class="points-earned">
+            +{{ pointsEarned }} CyberCreds
+        </div>
+        <div class="game-over-actions">
+            <button class="primary-button" @click="goBack">
+            Volver al Mapa
+            </button>
+            <button v-if="outcome === 'failed'" class="secondary-button" @click="retryLevel">
+            Reintentar Nivel
+            </button>
+        </div>
+        </div>
+    </div>
+
   </div>
 </template>
 
@@ -690,19 +691,28 @@ function retryLevel() {
 
 /* Warning Overlay */
 .warning-overlay {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90%;
-  max-width: 400px;
-  z-index: 20;
-  animation: slideDown 0.3s ease-out;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.75); /* Más oscuro para resaltar el mensaje */
+  z-index: 999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes slideDown {
-    from { transform: translate(-50%, -20px); opacity: 0; }
-    to { transform: translate(-50%, 0); opacity: 1; }
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 .warning-card {
@@ -759,14 +769,17 @@ function retryLevel() {
 }
 
 .game-over-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.92); /* Fondo casi negro y total */
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  z-index: 30;
+  z-index: 1000; /* Por encima de todo */
+  backdrop-filter: blur(5px);
 }
 
 .game-over-card {
