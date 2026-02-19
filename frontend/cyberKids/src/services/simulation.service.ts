@@ -1,5 +1,6 @@
 // Service for simulation/game session API calls
 import { API_CONFIG } from '../config/api.config';
+import { AuthService } from './auth.service';
 
 const API_BASE_URL = `${API_CONFIG.BASE_URL}/simulation`;
 
@@ -12,12 +13,29 @@ export interface ScenarioDto {
   base_points: number;
   threat_type: string | null;
   is_active: boolean;
+  user_score?: number;
 }
 
 interface StartSessionResponse {
   session_id: number;
   initial_message: string;
   resumed: boolean;
+}
+
+export interface GameState {
+  lives_remaining: number;
+  max_lives: number;
+  current_progress: number;
+  max_progress: number;
+  is_game_over: boolean;
+  outcome: string | null;
+}
+
+export interface GameWarning {
+  message: string;
+  title: string;
+  type: string;
+  lives_remaining: number;
 }
 
 interface ChatResponse {
@@ -37,6 +55,11 @@ interface ChatResponse {
   outcome: string | null;
   game_over_reason: string | null;
   points_earned?: number;
+
+  // New fields
+  game_state?: GameState;
+  warning?: GameWarning;
+  credits_awarded?: number; // Actual credits added to wallet
 }
 
 interface ChatMessage {
@@ -49,7 +72,8 @@ interface ResumeSessionResponse {
   session_id: number;
   messages: ChatMessage[];
   resumed: boolean;
-  antagonist_attempts?: number;
+  antagonist_attempts?: number; // Repurposed as progress
+  lives_remaining?: number;
 }
 
 export class SimulationService {
@@ -64,12 +88,60 @@ export class SimulationService {
     };
   }
 
-  static async getScenarios(): Promise<ScenarioDto[]> {
-    const response = await fetch(`${API_BASE_URL}/scenarios/`, {
-      method: 'GET',
+  // Wrapper function to handle 401 token expiration and refresh logic
+  private static async fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+    const headers = this.getAuthHeaders();
+    const finalOptions = {
+      ...options,
       headers: {
-        'Content-Type': 'application/json',
-      },
+        ...headers,
+        ...(options.headers || {}),
+      }
+    };
+
+    let response = await fetch(url, finalOptions);
+
+    if (response.status === 401) {
+      // Attempt token refresh
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          console.log('🔄 Token expired, attempting refresh...');
+          const authData = await AuthService.refresh(refreshToken);
+
+          // Update tokens
+          localStorage.setItem('access_token', authData.access);
+          if (authData.refresh) localStorage.setItem('refresh_token', authData.refresh); // Rotate if provided
+
+          // Retry original request with new token
+          const newHeaders = this.getAuthHeaders();
+          const retryOptions = {
+            ...options,
+            headers: {
+              ...newHeaders,
+              ...(options.headers || {}),
+            }
+          };
+          console.log('🔄 Retrying request with new token...');
+          response = await fetch(url, retryOptions);
+        } catch (refreshError) {
+          console.error('❌ Token refresh failed:', refreshError);
+          // Redirect to login or throw error (let interceptors handle redirection if present)
+          window.location.href = '/login'; // Simple client-side redirect fallback
+          throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
+        }
+      } else {
+        // No refresh token available
+        throw new Error('Sesión expirada. No refresh token available.');
+      }
+    }
+
+    return response;
+  }
+
+  static async getScenarios(): Promise<ScenarioDto[]> {
+    const response = await this.fetchWithAuth(`${API_BASE_URL}/scenarios/`, {
+      method: 'GET',
     });
 
     if (!response.ok) {
@@ -84,10 +156,9 @@ export class SimulationService {
 
   static async startSession(scenarioId: number): Promise<StartSessionResponse> {
     console.log('🚀 [START SESSION] Request:', { scenario_id: scenarioId });
-    
-    const response = await fetch(`${API_BASE_URL}/session/start-role/`, {
+
+    const response = await this.fetchWithAuth(`${API_BASE_URL}/session/start-role/`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
       body: JSON.stringify({ scenario_id: scenarioId }),
     });
 
@@ -106,14 +177,13 @@ export class SimulationService {
 
   static async resumeSession(scenarioId?: number): Promise<ResumeSessionResponse> {
     console.log('🔄 [RESUME SESSION] Request:', scenarioId ? { scenario_id: scenarioId } : {});
-    
-    const url = scenarioId 
+
+    const url = scenarioId
       ? `${API_BASE_URL}/session/resume/?scenario_id=${scenarioId}`
       : `${API_BASE_URL}/session/resume/`;
-    
-    const response = await fetch(url, {
+
+    const response = await this.fetchWithAuth(url, {
       method: 'GET',
-      headers: this.getAuthHeaders(),
     });
 
     console.log('📥 [RESUME SESSION] Response status:', response.status);
@@ -139,10 +209,9 @@ export class SimulationService {
 
   static async sendMessage(sessionId: number, message: string): Promise<ChatResponse> {
     console.log('💬 [SEND MESSAGE] Request:', { session_id: sessionId, message });
-    
-    const response = await fetch(`${API_BASE_URL}/chat/`, {
+
+    const response = await this.fetchWithAuth(`${API_BASE_URL}/chat/`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
       body: JSON.stringify({
         session_id: sessionId,
         message: message,
@@ -170,10 +239,9 @@ export class SimulationService {
 
   static async getSessionMessages(sessionId: number) {
     console.log('📨 [GET MESSAGES] Request:', { session_id: sessionId });
-    
-    const response = await fetch(`${API_BASE_URL}/session/${sessionId}/messages/`, {
+
+    const response = await this.fetchWithAuth(`${API_BASE_URL}/session/${sessionId}/messages/`, {
       method: 'GET',
-      headers: this.getAuthHeaders(),
     });
 
     console.log('📥 [GET MESSAGES] Response status:', response.status);
