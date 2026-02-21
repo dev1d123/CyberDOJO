@@ -93,6 +93,12 @@ const routes = [
     component: () => import('../pages/quiz/QuizDetailPage.vue'),
     meta: { requiresAuth: true, enterAnim: 'animate__fadeInRight', leaveAnim: 'animate__fadeOutLeft' },
   },
+  {
+    path: '/achievements',
+    name: 'Achievements',
+    component: () => import('../pages/AchievementsPage.vue'),
+    meta: { requiresAuth: true, enterAnim: 'animate__fadeInUp', leaveAnim: 'animate__fadeOutDown' },
+  },
 ];
 
 const router = createRouter({
