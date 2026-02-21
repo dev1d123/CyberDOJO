@@ -124,6 +124,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { QuizService } from '@/services/quiz.service'
 import { useQuizProgress, type QuizProgressData } from '@/composables/useQuizProgress'
 import { AudioService } from '@/services/audio.service'
+import { achievementNotifications } from '@/stores/achievementNotification.store'
 
 const { saveProgress, loadProgress, clearProgress, hasProgress, updateAnswer } = useQuizProgress()
 
@@ -431,6 +432,11 @@ const submitAnswer = async () => {
       
       if (typeof response.cybercreds_balance === 'number') {
         console.log('💰 CyberCredits actualizados:', response.cybercreds_balance)
+      }
+
+      // Notificar logros desbloqueados
+      if (response.achievements_unlocked?.length) {
+        achievementNotifications.handleApiResponse(response)
       }
     } else {
       console.log('📝 Quiz NO completado aún, continúa...')
