@@ -15,6 +15,7 @@ from django.utils import timezone
 from django.db.models import Max, OuterRef, Subquery
 import os
 from apps.cyberUser.models import CyberUser
+from apps.progression.services import AchievementService
 
 
 def _extract_json_from_text(text):
@@ -547,6 +548,25 @@ def chat(request):
                             
                     s.save()
                     session = s
+                    
+                    # Verificar y desbloquear logros
+                    unlocked_achievements = []
+                    try:
+                        unlocked = AchievementService.on_simulation_completed(s.user, s)
+                        if unlocked:
+                            unlocked_achievements = [{
+                                'achievement_id': a['achievement'].achievement_id,
+                                'name': a['achievement'].name,
+                                'description': a['achievement'].description,
+                                'category': a['achievement'].category,
+                                'icon': a['achievement'].icon.url if a['achievement'].icon else None,
+                                'cybercreds_reward': a['achievement'].cybercreds_reward,
+                                'xp_reward': a['achievement'].xp_reward,
+                            } for a in unlocked]
+                            logger.info(f"🏆 Logros desbloqueados: {[a['name'] for a in unlocked_achievements]}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Error verificando logros: {e}")
+                        
         except Exception:
              logger.exception(f'Failed to close session {session.session_id}')
 
@@ -590,6 +610,10 @@ def chat(request):
         'points_earned': getattr(session, 'points_earned', 0) or 0,
         'credits_awarded': final_reward, # Actual credits added to wallet
     }
+
+    # Incluir logros desbloqueados (si los hay)
+    if session.is_game_over and 'unlocked_achievements' in dir() and unlocked_achievements:
+        resp['achievements_unlocked'] = unlocked_achievements
 
     # Si hubo disclosure pero quedan vidas (y no es game over), añadir advertencia
     lives = resp['game_state']['lives_remaining']

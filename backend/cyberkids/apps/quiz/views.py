@@ -161,4 +161,9 @@ class QuizViewSet(viewsets.ReadOnlyModelViewSet):
                 "cybercreds_balance": session.user.cybercreds
             })
 
+            # Incluir logros desbloqueados (si los hay)
+            unlocked = getattr(answer, '_unlocked_achievements', [])
+            if unlocked:
+                response_data["achievements_unlocked"] = unlocked
+
         return Response(response_data, status=status.HTTP_201_CREATED)

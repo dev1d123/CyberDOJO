@@ -9,6 +9,7 @@ from .models import (
     QuizSession
 )
 from .rewards_config import get_coins_reward, get_points_reward, get_expected_questions
+from apps.progression.services import AchievementService
 
 
 class QuizAlternativeSerializer(serializers.ModelSerializer):
@@ -241,6 +242,27 @@ class QuizAnswerCreateSerializer(serializers.Serializer):
                 session.coins_earned = 0
                 session.points_earned = 0
                 print(f"🔄 Reintento #{session.attempt_number} - Sin recompensas")
+
+            # Verificar y desbloquear logros
+            unlocked_achievements = []
+            try:
+                unlocked = AchievementService.on_quiz_completed(session.user, session)
+                if unlocked:
+                    unlocked_achievements = [{
+                        'achievement_id': a['achievement'].achievement_id,
+                        'name': a['achievement'].name,
+                        'description': a['achievement'].description,
+                        'category': a['achievement'].category,
+                        'icon': a['achievement'].icon.url if a['achievement'].icon else None,
+                        'cybercreds_reward': a['achievement'].cybercreds_reward,
+                        'xp_reward': a['achievement'].xp_reward,
+                    } for a in unlocked]
+                    print(f"🏆 Logros desbloqueados: {[a['name'] for a in unlocked_achievements]}")
+            except Exception as e:
+                print(f"⚠️ Error verificando logros: {e}")
+
+            # Adjuntar al answer para que la vista pueda leerlos
+            answer._unlocked_achievements = unlocked_achievements
 
         session.save()
 
