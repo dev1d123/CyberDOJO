@@ -147,9 +147,11 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { SimulationService, GameWarning } from '../services/simulation.service';
+import { SimulationService } from '../services/simulation.service';
+import type { GameWarning } from '../services/simulation.service';
 import { useAudio } from '../composables/useAudio';
 import { PetSpeech } from '@/stores/petSpeech.store';
+import { achievementNotifications } from '@/stores/achievementNotification.store';
 
 const router = useRouter();
 const route = useRoute();
@@ -364,6 +366,14 @@ async function sendMessage() {
         pointsEarned.value = response.credits_awarded ?? 0;
       } else {
         gameOverMessage.value = response.game_over_reason || 'Compartiste información sensible. ¡Inténtalo de nuevo!';
+      }
+
+      // Notificar logros desbloqueados
+      if (response.achievements_unlocked?.length) {
+        // Retrasar ligeramente para que se vea después de la pantalla de game over
+        setTimeout(() => {
+          achievementNotifications.handleApiResponse(response)
+        }, 1500)
       }
     }
 

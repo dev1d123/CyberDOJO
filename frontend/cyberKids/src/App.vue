@@ -5,6 +5,7 @@ import AnimatedBackground from './components/AnimatedBackground.vue';
 import Navbar from './components/Navbar.vue';
 import PetViewer from './components/PetViewer.vue';
 import AudioControls from './components/AudioControls.vue';
+import AchievementToast from './components/AchievementToast.vue';
 import { AudioService } from './services/audio.service';
 import { setPetEquipped } from './stores/petState.store';
 
@@ -134,6 +135,7 @@ const transitionDuration = computed(() => {
     </div>
     <PetViewer v-if="showPetViewer" />
     <AudioControls v-if="showAudioControls" />
+    <AchievementToast />
   </div>
 </template>
 

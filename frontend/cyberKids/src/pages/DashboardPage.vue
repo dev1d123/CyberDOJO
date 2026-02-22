@@ -126,6 +126,17 @@
         </div>
       </div>
 
+      <!-- Botón de Logros flotante -->
+      <button
+        class="achievements-floating-btn"
+        data-tour-step="achievements"
+        v-pet-hint="{ behavior: 'hover_module', vars: { target: 'Logros' }, click: { behavior: 'open_page', vars: { target: 'Logros' }, ttlMs: 1600, priority: 1 } }"
+        @click="goToAchievements"
+      >
+        <span class="achievements-btn-icon">🏆</span>
+        <span class="achievements-btn-text">Logros</span>
+      </button>
+
       <!-- Logout Button -->
       <button
         data-logout-btn
@@ -217,6 +228,14 @@ const tourSteps = ref([
       title: 'Perfil 👤',
     },
     content: 'En tu <strong>Perfil</strong> puedes:<br>• Ver tu progreso y estadísticas<br>• Cambiar tu avatar<br>• Equipar mascotas y temas de audio<br>• Personalizar tu experiencia',
+    placement: 'left',
+  },
+  {
+    target: '[data-tour-step="achievements"]',
+    header: {
+      title: 'Logros 🏆',
+    },
+    content: 'En <strong>Logros</strong> puedes ver todas tus hazañas y recompensas:<br>• Desbloquea logros completando actividades<br>• Reclama CyberCredits y XP por tus logros<br>• ¡Compite por conseguirlos todos!',
     placement: 'left',
   },
   {
@@ -315,6 +334,10 @@ const goToShop = () => {
 
 const goToProfile = () => {
   router.push('/profile');
+};
+
+const goToAchievements = () => {
+  router.push('/achievements');
 };
 
 const handleLogout = () => {
@@ -756,6 +779,79 @@ onUnmounted(() => {
   --accent2: #ffd700;
   --accent-rgb: 155, 89, 255;
   --accent2-rgb: 255, 215, 0;
+}
+
+/* Botón flotante de Logros */
+.achievements-floating-btn {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  border: 2px solid rgba(255, 215, 0, 0.5);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.achievements-floating-btn:hover {
+  background: rgba(255, 215, 0, 0.25);
+  border-color: rgba(255, 215, 0, 0.9);
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 8px 30px rgba(255, 215, 0, 0.35);
+}
+
+.achievements-btn-icon {
+  font-size: 1.8rem;
+  animation: trophyFloat 3s ease-in-out infinite;
+}
+
+.achievements-btn-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.achievements-floating-btn:hover .achievements-btn-icon {
+  animation: trophyWiggle 0.5s ease-in-out;
+}
+
+@keyframes trophyFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-3px) rotate(-3deg); }
+  75% { transform: translateY(-3px) rotate(3deg); }
+}
+
+@keyframes trophyWiggle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-10deg) scale(1.15); }
+  75% { transform: rotate(10deg) scale(1.15); }
+}
+
+/* Responsive para el botón de logros */
+@media (max-width: 768px) {
+  .achievements-floating-btn {
+    right: 10px;
+    padding: 10px 12px;
+  }
+  
+  .achievements-btn-icon {
+    font-size: 1.5rem;
+  }
+  
+  .achievements-btn-text {
+    font-size: 0.65rem;
+  }
 }
 
 /* Extra per-card "wow" behaviors */

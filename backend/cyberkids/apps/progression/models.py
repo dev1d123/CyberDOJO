@@ -81,3 +81,48 @@ class UserProgress(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - Level {self.current_level.level_number if self.current_level else 0}"
+
+
+class Achievement(models.Model):
+    """Modelo para definir los logros disponibles en el sistema."""
+    CATEGORY_CHOICES = [
+        ('quiz', 'Quiz'),
+        ('simulation', 'Simulación'),
+        ('progression', 'Progresión'),
+        ('social', 'Social'),
+        ('collection', 'Colección'),
+    ]
+    
+    achievement_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    description = models.CharField(max_length=255)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='progression')
+    icon = CloudinaryField('icon', folder='achievements/icons/', null=True, blank=True)
+    cybercreds_reward = models.IntegerField(default=0)
+    xp_reward = models.IntegerField(default=0)
+    requirement_type = models.CharField(max_length=50)  # count, level, score, etc.
+    requirement_value = models.IntegerField(default=1)
+    is_hidden = models.BooleanField(default=False)  # Logros secretos
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'achievement'
+
+    def __str__(self):
+        return f"{self.name} ({self.category})"
+
+
+class UserAchievement(models.Model):
+    user_achievement_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(CyberUser, on_delete=models.CASCADE, related_name='achievements')
+    achievement = models.ForeignKey(Achievement, on_delete=models.CASCADE, related_name='users_achieved')
+    unlocked_at = models.DateTimeField(auto_now_add=True)
+    progress = models.IntegerField(default=0)  
+    is_claimed = models.BooleanField(default=False)
+    class Meta:
+        db_table = 'user_achievement'
+        unique_together = ['user', 'achievement']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.achievement.name}"

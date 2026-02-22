@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     ProgressionLevelViewSet, CosmeticItemViewSet,
     UserInventoryViewSet, CreditTransactionViewSet, UserProgressViewSet,
-    ShopViewSet
+    ShopViewSet, AchievementViewSet, UserAchievementViewSet
 )
 
 router = DefaultRouter()
@@ -13,6 +13,8 @@ router.register(r'inventory', UserInventoryViewSet, basename='user-inventory')
 router.register(r'transactions', CreditTransactionViewSet, basename='credit-transactions')
 router.register(r'progress', UserProgressViewSet, basename='user-progress')
 router.register(r'shop', ShopViewSet, basename='shop')
+router.register(r'achievements', AchievementViewSet, basename='achievements')
+router.register(r'user-achievements', UserAchievementViewSet, basename='user-achievements')
 
 urlpatterns = [
     path('', include(router.urls)),

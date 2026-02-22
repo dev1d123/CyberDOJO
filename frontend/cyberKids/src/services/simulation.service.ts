@@ -60,6 +60,7 @@ interface ChatResponse {
   game_state?: GameState;
   warning?: GameWarning;
   credits_awarded?: number; // Actual credits added to wallet
+  achievements_unlocked?: Array<{ id: number; name: string; description: string; icon?: string }>;
 }
 
 interface ChatMessage {
@@ -110,7 +111,7 @@ export class SimulationService {
           const authData = await AuthService.refresh(refreshToken);
 
           // Update tokens
-          localStorage.setItem('access_token', authData.access);
+          if (authData.access) localStorage.setItem('access_token', authData.access);
           if (authData.refresh) localStorage.setItem('refresh_token', authData.refresh); // Rotate if provided
 
           // Retry original request with new token

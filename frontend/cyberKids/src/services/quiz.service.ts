@@ -81,6 +81,7 @@ export type SubmitAnswerResponse = {
   points_earned?: number;
   percentage?: number;
   cybercreds_balance?: number;
+  achievements_unlocked?: Array<{ id: number; name: string; description: string; icon?: string }>;
 };
 
 /* =========================
