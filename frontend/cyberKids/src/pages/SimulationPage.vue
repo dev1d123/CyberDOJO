@@ -3,23 +3,24 @@
     <div class="simulation-container">
       <!-- Header -->
       <header class="simulation-header">
-        <button class="back-button" @click="goBack">
-          ← Volver
-        </button>
+        <button class="back-button" @click="goBack">← Volver</button>
         <div class="scenario-info">
           <h2 class="scenario-title">{{ scenarioName }}</h2>
           <div v-if="!showInitScreen" class="game-status-bar">
             <!-- Lives Counter -->
             <div class="status-item lives" title="Vidas Restantes">
               <span class="status-icon" v-for="i in 3" :key="`life-${i}`">
-                {{ i <= livesRemaining ? '❤️' : '🖤' }}
+                {{ i <= livesRemaining ? "❤️" : "🖤" }}
               </span>
             </div>
             <!-- Progress Counter -->
-            <div class="status-item progress" title="Intentos Evasivos Exitosos">
-               <span class="status-label">Progreso:</span>
-               <span class="status-icon" v-for="i in 3" :key="`prog-${i}`">
-                {{ i <= currentProgress ? '🛡️' : '⚪' }}
+            <div
+              class="status-item progress"
+              title="Intentos Evasivos Exitosos"
+            >
+              <span class="status-label">Progreso:</span>
+              <span class="status-icon" v-for="i in 3" :key="`prog-${i}`">
+                {{ i <= currentProgress ? "🛡️" : "⚪" }}
               </span>
             </div>
           </div>
@@ -30,21 +31,23 @@
       <div v-if="showInitScreen" class="init-screen">
         <div class="init-card">
           <h2 class="init-title">{{ scenarioName }}</h2>
-          <p class="init-description">Prepárate para enfrentar un escenario de ingeniería social</p>
-          
+          <p class="init-description">
+            Prepárate para enfrentar un escenario de ingeniería social
+          </p>
+
           <div class="init-actions">
-            <button 
-              v-if="hasActiveSession" 
-              class="continue-button" 
+            <button
+              v-if="hasActiveSession"
+              class="continue-button"
               @click="continueSession"
               :disabled="loading"
             >
               <span class="button-icon">▶️</span>
               Continuar Conversación
             </button>
-            
-            <button 
-              class="new-session-button" 
+
+            <button
+              class="new-session-button"
               @click="confirmNewSession"
               :disabled="loading"
             >
@@ -52,7 +55,7 @@
               Nueva Conversación
             </button>
           </div>
-          
+
           <div v-if="loading" class="init-loading">
             <div class="spinner"></div>
             <p>Cargando...</p>
@@ -75,20 +78,42 @@
           >
             <div class="message-content">
               <div class="message-header">
-                <span class="message-sender">{{ getSenderName(msg.role) }}</span>
+                <span class="message-sender">{{
+                  getSenderName(msg.role)
+                }}</span>
                 <span class="message-time">{{ formatTime(msg.sent_at) }}</span>
               </div>
               <p class="message-text">{{ msg.content }}</p>
+            </div>
+          </div>
+
+          <!-- Typing Indicator -->
+          <div v-if="sending" class="message antagonist typing-message">
+            <div class="message-content typing-content">
+              <div class="message-header">
+                <span class="message-sender">Desconocido</span>
+              </div>
+              <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Input Area -->
-      <div v-if="!gameOver && !showInitScreen" class="input-container">
+      <div
+        v-if="!gameOver && !limitReached && !showInitScreen"
+        class="input-container"
+      >
         <textarea
           v-model="userInput"
-          v-pet-hint="{ behavior: 'hover', vars: { target: 'escribir tu respuesta' } }"
+          v-pet-hint="{
+            behavior: 'hover',
+            vars: { target: 'escribir tu respuesta' },
+          }"
           @keydown.enter.prevent="sendMessage"
           placeholder="Escribe tu respuesta..."
           class="message-input"
@@ -97,61 +122,88 @@
         ></textarea>
         <button
           @click="sendMessage"
-          v-pet-hint="{ behavior: 'hover_button', vars: { target: 'enviar tu mensaje' }, click: { behavior: 'send_message', ttlMs: 2200, priority: 1 } }"
+          v-pet-hint="{
+            behavior: 'hover_button',
+            vars: { target: 'enviar tu mensaje' },
+            click: { behavior: 'send_message', ttlMs: 2200, priority: 1 },
+          }"
           :disabled="!userInput.trim() || sending"
           class="send-button"
         >
-          {{ sending ? '...' : '➤' }}
+          {{ sending ? "..." : "➤" }}
         </button>
       </div>
     </div>
 
     <!-- Warning Overlay (Fixed Position, Blocking) -->
     <div v-if="warning" class="warning-overlay">
-        <div class="warning-card">
+      <div class="warning-card">
         <div class="warning-icon">⚠️</div>
         <h3 class="warning-title">{{ warning.title }}</h3>
         <p class="warning-message">{{ warning.message }}</p>
-        <p class="warning-footer">Te quedan {{ warning.lives_remaining }} vidas.</p>
-        <button class="warning-button" @click="dismissWarning">Entendido</button>
-        </div>
+        <p class="warning-footer">
+          Te quedan {{ warning.lives_remaining }} vidas.
+        </p>
+        <button class="warning-button" @click="dismissWarning">
+          Entendido
+        </button>
+      </div>
     </div>
 
     <!-- Game Over Overlay (Fixed Full Screen) -->
     <div v-if="gameOver" class="game-over-overlay">
-        <div class="game-over-card">
+      <div class="game-over-card">
         <div :class="['game-over-icon', outcome]">
-            {{ outcome === 'won' ? '🎉' : '😞' }}
+          {{ outcome === "won" ? "🎉" : "😞" }}
         </div>
         <h2 class="game-over-title">
-            {{ outcome === 'won' ? '¡Felicitaciones!' : '¡Juego Terminado!' }}
+          {{ outcome === "won" ? "¡Felicitaciones!" : "¡Juego Terminado!" }}
         </h2>
         <p class="game-over-message">{{ gameOverMessage }}</p>
         <div v-if="outcome === 'won' && pointsEarned > 0" class="points-earned">
-            +{{ pointsEarned }} CyberCreds
+          +{{ pointsEarned }} CyberCreds
         </div>
         <div class="game-over-actions">
-            <button class="primary-button" @click="goBack">
-            Volver al Mapa
-            </button>
-            <button v-if="outcome === 'failed'" class="secondary-button" @click="retryLevel">
+          <button class="primary-button" @click="goBack">Volver al Mapa</button>
+          <button
+            v-if="outcome === 'failed'"
+            class="secondary-button"
+            @click="retryLevel"
+          >
             Reintentar Nivel
-            </button>
+          </button>
         </div>
-        </div>
+      </div>
     </div>
 
+    <!-- Limit Reached Overlay -->
+    <div v-if="limitReached" class="game-over-overlay">
+      <div class="game-over-card limit-reached-card">
+        <div class="game-over-icon">⏱️</div>
+        <h2 class="game-over-title">¡Tiempo Agotado!</h2>
+        <p class="game-over-message">
+          Has alcanzado el límite de mensajes de esta conversación. ¿Quieres
+          intentarlo de nuevo?
+        </p>
+        <div class="game-over-actions">
+          <button class="primary-button" @click="goBack">Volver al Mapa</button>
+          <button class="secondary-button" @click="retryLevel">
+            Reintentar Nivel
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { SimulationService } from '../services/simulation.service';
-import type { GameWarning } from '../services/simulation.service';
-import { useAudio } from '../composables/useAudio';
-import { PetSpeech } from '@/stores/petSpeech.store';
-import { achievementNotifications } from '@/stores/achievementNotification.store';
+import { ref, onMounted, nextTick } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { SimulationService } from "../services/simulation.service";
+import type { GameWarning } from "../services/simulation.service";
+import { useAudio } from "../composables/useAudio";
+import { PetSpeech } from "@/stores/petSpeech.store";
+import { achievementNotifications } from "@/stores/achievementNotification.store";
 
 const router = useRouter();
 const route = useRoute();
@@ -160,32 +212,33 @@ const route = useRoute();
 const { playSend, playReceive, playDialog } = useAudio();
 
 const scenarioId = ref<number>(parseInt(route.params.scenarioId as string));
-const scenarioName = ref<string>('');
+const scenarioName = ref<string>("");
 const sessionId = ref<number | null>(null);
 const messages = ref<any[]>([]);
-const userInput = ref('');
+const userInput = ref("");
 const loading = ref(false);
 const sending = ref(false);
 const gameOver = ref(false);
 const outcome = ref<string | null>(null);
-const gameOverMessage = ref('');
+const gameOverMessage = ref("");
 const pointsEarned = ref(0);
 // const antagonistAttempts = ref(0); // Deprecated in UI
 const livesRemaining = ref(3);
 const currentProgress = ref(0);
 const warning = ref<GameWarning | null>(null);
+const limitReached = ref(false);
 
 const chatContainer = ref<HTMLElement | null>(null);
 const showInitScreen = ref(true);
 const hasActiveSession = ref(false);
 
 const scenarioNamesFallback: Record<number, string> = {
-  6: 'Ingeniería Social',
-  7: 'Suplantación Digital',
-  8: 'Fuga de Datos',
-  9: 'Pretextos Falsos',
-  10: 'Trampas Digitales',
-  11: 'Suplantación de Identidad',
+  6: "Ingeniería Social",
+  7: "Suplantación Digital",
+  8: "Fuga de Datos",
+  9: "Pretextos Falsos",
+  10: "Trampas Digitales",
+  11: "Suplantación de Identidad",
 };
 
 // Initialize on mount
@@ -193,9 +246,11 @@ onMounted(async () => {
   try {
     const scenarios = await SimulationService.getScenarios();
     const scenario = scenarios.find((s) => s.scenario_id === scenarioId.value);
-    scenarioName.value = scenario?.name || scenarioNamesFallback[scenarioId.value] || 'Simulación';
+    scenarioName.value =
+      scenario?.name || scenarioNamesFallback[scenarioId.value] || "Simulación";
   } catch {
-    scenarioName.value = scenarioNamesFallback[scenarioId.value] || 'Simulación';
+    scenarioName.value =
+      scenarioNamesFallback[scenarioId.value] || "Simulación";
   }
   checkActiveSession();
 });
@@ -203,16 +258,16 @@ onMounted(async () => {
 async function checkActiveSession() {
   try {
     loading.value = true;
-    
+
     // Check if there's an active session for this scenario
     await SimulationService.resumeSession(scenarioId.value);
-    
+
     // If we get here, there's an active session
     hasActiveSession.value = true;
   } catch (error) {
     // No active session found
-    if ((error as any)?.message !== 'no_active_session') {
-      console.log('No hay sesión activa, mostrando pantalla inicial');
+    if ((error as any)?.message !== "no_active_session") {
+      console.log("No hay sesión activa, mostrando pantalla inicial");
     }
     hasActiveSession.value = false;
   } finally {
@@ -222,7 +277,7 @@ async function checkActiveSession() {
 }
 
 function dismissWarning() {
-    warning.value = null;
+  warning.value = null;
 }
 
 async function continueSession() {
@@ -233,17 +288,19 @@ async function continueSession() {
     // Reproducir sonido de diálogo
     playDialog();
 
-    const resumeResponse = await SimulationService.resumeSession(scenarioId.value);
+    const resumeResponse = await SimulationService.resumeSession(
+      scenarioId.value,
+    );
     sessionId.value = resumeResponse.session_id;
     messages.value = resumeResponse.messages;
-    livesRemaining.value = 3; 
-    currentProgress.value = (resumeResponse.antagonist_attempts || 0);
+    livesRemaining.value = 3;
+    currentProgress.value = resumeResponse.antagonist_attempts || 0;
 
     loading.value = false;
     await scrollToBottom();
   } catch (error: any) {
-    console.error('Error continuing session:', error);
-    alert('Error al continuar la sesión: ' + error.message);
+    console.error("Error continuing session:", error);
+    alert("Error al continuar la sesión: " + error.message);
     showInitScreen.value = true;
     loading.value = false;
   }
@@ -252,16 +309,16 @@ async function continueSession() {
 async function confirmNewSession() {
   if (hasActiveSession.value) {
     const confirmed = confirm(
-      '⚠️ Ya tienes una conversación activa en este nivel.\n\n' +
-      'Si inicias una nueva conversación, perderás el progreso de la conversación actual.\n\n' +
-      '¿Estás seguro de que deseas comenzar de nuevo?'
+      "⚠️ Ya tienes una conversación activa en este nivel.\n\n" +
+        "Si inicias una nueva conversación, perderás el progreso de la conversación actual.\n\n" +
+        "¿Estás seguro de que deseas comenzar de nuevo?",
     );
-    
+
     if (!confirmed) {
       return;
     }
   }
-  
+
   await startNewSession();
 }
 
@@ -272,15 +329,18 @@ async function startNewSession() {
     livesRemaining.value = 3;
     currentProgress.value = 0;
     warning.value = null;
+    limitReached.value = false;
 
     // Reproducir sonido de diálogo
     playDialog();
 
-    const startResponse = await SimulationService.startSession(scenarioId.value);
+    const startResponse = await SimulationService.startSession(
+      scenarioId.value,
+    );
     sessionId.value = startResponse.session_id;
     messages.value = [
       {
-        role: 'antagonist',
+        role: "antagonist",
         content: startResponse.initial_message,
         sent_at: new Date().toISOString(),
       },
@@ -291,8 +351,8 @@ async function startNewSession() {
     loading.value = false;
     await scrollToBottom();
   } catch (error: any) {
-    console.error('Error starting new session:', error);
-    alert('Error al iniciar nueva sesión: ' + error.message);
+    console.error("Error starting new session:", error);
+    alert("Error al iniciar nueva sesión: " + error.message);
     showInitScreen.value = true;
     loading.value = false;
   }
@@ -302,16 +362,16 @@ async function sendMessage() {
   if (!userInput.value.trim() || sending.value || !sessionId.value) return;
 
   const messageText = userInput.value.trim();
-  userInput.value = '';
+  userInput.value = "";
   sending.value = true;
 
   // Reproducir sonido de enviar
   playSend();
-  PetSpeech.speak({ behavior: 'send_message', ttlMs: 2400, priority: 1 });
+  PetSpeech.speak({ behavior: "send_message", ttlMs: 2400, priority: 1 });
 
   // Add user message to UI
   messages.value.push({
-    role: 'user',
+    role: "user",
     content: messageText,
     sent_at: new Date().toISOString(),
   });
@@ -319,83 +379,95 @@ async function sendMessage() {
   await scrollToBottom();
 
   try {
-    const response = await SimulationService.sendMessage(sessionId.value, messageText);
+    const response = await SimulationService.sendMessage(
+      sessionId.value,
+      messageText,
+    );
 
     // Reproducir sonido de recibir
     playReceive();
-    PetSpeech.speak({ behavior: 'receive_message', ttlMs: 3200, priority: 1 });
+    PetSpeech.speak({ behavior: "receive_message", ttlMs: 3200, priority: 1 });
 
     // Add antagonist response
     messages.value.push({
-      role: 'antagonist',
+      role: "antagonist",
       content: response.reply,
       sent_at: new Date().toISOString(),
     });
 
     if (response.llm_analysis) {
-      console.log('🧠 [SimulationPage] LLM analysis:', response.llm_analysis);
+      console.log("🧠 [SimulationPage] LLM analysis:", response.llm_analysis);
     }
 
     // Update Game State
     if (response.game_state) {
-        livesRemaining.value = response.game_state.lives_remaining;
-        currentProgress.value = response.game_state.current_progress;
+      livesRemaining.value = response.game_state.lives_remaining;
+      currentProgress.value = response.game_state.current_progress;
     }
 
     // Handle Warning
     if (response.warning) {
-        warning.value = response.warning;
-        // Play warning sound?
-        PetSpeech.speak({ behavior: 'error', ttlMs: 3000, priority: 2 });
+      warning.value = response.warning;
+      // Play warning sound?
+      PetSpeech.speak({ behavior: "error", ttlMs: 3000, priority: 2 });
     }
 
     // Check if game is over
-    if (response.is_game_over !== null && response.is_game_over === true) { // Explicit check
-      gameOver.value = true;
-      outcome.value = response.outcome;
-
-      PetSpeech.speak({
-        behavior: response.outcome === 'won' ? 'success' : 'error',
-        ttlMs: 2800,
-        priority: 2,
-      });
-      
-      if (response.outcome === 'won') {
-        gameOverMessage.value = '¡Excelente trabajo! Resististe todos los intentos de ingeniería social.';
-        // Mostrar los créditos REALES ganados (farming/mejora), no el puntaje total del nivel
-        pointsEarned.value = response.credits_awarded ?? 0;
+    if (response.is_game_over !== null && response.is_game_over === true) {
+      // Detectar si es por límite de mensajes
+      if (response.llm_analysis?.limit_reached) {
+        limitReached.value = true;
       } else {
-        gameOverMessage.value = response.game_over_reason || 'Compartiste información sensible. ¡Inténtalo de nuevo!';
-      }
+        gameOver.value = true;
+        outcome.value = response.outcome;
 
-      // Notificar logros desbloqueados
-      if (response.achievements_unlocked?.length) {
-        // Retrasar ligeramente para que se vea después de la pantalla de game over
-        setTimeout(() => {
-          achievementNotifications.handleApiResponse(response)
-        }, 1500)
+        PetSpeech.speak({
+          behavior: response.outcome === "won" ? "success" : "error",
+          ttlMs: 2800,
+          priority: 2,
+        });
+
+        if (response.outcome === "won") {
+          gameOverMessage.value =
+            "¡Excelente trabajo! Resististe todos los intentos de ingeniería social.";
+          pointsEarned.value = response.credits_awarded ?? 0;
+        } else {
+          gameOverMessage.value =
+            response.game_over_reason ||
+            "Compartiste información sensible. ¡Inténtalo de nuevo!";
+        }
+
+        // Notificar logros desbloqueados
+        if (response.achievements_unlocked?.length) {
+          setTimeout(() => {
+            achievementNotifications.handleApiResponse(response);
+          }, 1500);
+        }
       }
     }
 
     await scrollToBottom();
   } catch (error: any) {
-    console.error('Error sending message:', error);
-    PetSpeech.speak({ behavior: 'error', ttlMs: 2800, priority: 2 });
-    alert('Error al enviar mensaje: ' + error.message);
+    console.error("Error sending message:", error);
+    PetSpeech.speak({ behavior: "error", ttlMs: 2800, priority: 2 });
+    alert("Error al enviar mensaje: " + error.message);
   } finally {
     sending.value = false;
   }
 }
 
 function getSenderName(role: string): string {
-  if (role === 'user') return 'Tú';
-  if (role === 'antagonist') return 'Desconocido';
-  return 'Sistema';
+  if (role === "user") return "Tú";
+  if (role === "antagonist") return "Desconocido";
+  return "Sistema";
 }
 
 function formatTime(timestamp: string): string {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 async function scrollToBottom() {
@@ -406,7 +478,7 @@ async function scrollToBottom() {
 }
 
 function goBack() {
-  router.push('/history');
+  router.push("/history");
 }
 
 function retryLevel() {
@@ -491,9 +563,9 @@ function retryLevel() {
 }
 
 .status-label {
-    font-weight: 600;
-    opacity: 0.9;
-    margin-right: 4px;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-right: 4px;
 }
 
 .status-icon {
@@ -637,7 +709,9 @@ function retryLevel() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .messages {
@@ -717,13 +791,23 @@ function retryLevel() {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideDown {
-    from { transform: translateY(-20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .warning-card {
@@ -731,52 +815,52 @@ function retryLevel() {
   border-left: 6px solid #ff4d4f;
   padding: 16px;
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .warning-icon {
-    font-size: 2rem;
-    align-self: center;
-    margin-bottom: 4px;
+  font-size: 2rem;
+  align-self: center;
+  margin-bottom: 4px;
 }
 
 .warning-title {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #ff4d4f;
-    text-align: center;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ff4d4f;
+  text-align: center;
 }
 
 .warning-message {
-    margin: 0;
-    font-size: 0.95rem;
-    color: #333;
-    text-align: center;
+  margin: 0;
+  font-size: 0.95rem;
+  color: #333;
+  text-align: center;
 }
 
 .warning-footer {
-    margin: 4px 0 0 0;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #666;
-    text-align: center;
+  margin: 4px 0 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  text-align: center;
 }
 
 .warning-button {
-    margin-top: 8px;
-    background: #ff4d4f;
-    color: white;
-    border: none;
-    padding: 8px;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    align-self: center;
-    width: 100%;
+  margin-top: 8px;
+  background: #ff4d4f;
+  color: white;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: center;
+  width: 100%;
 }
 
 .game-over-overlay {
@@ -930,6 +1014,63 @@ function retryLevel() {
 
   .message {
     max-width: 85%;
+  }
+}
+.limit-reached-card {
+  border-top: 5px solid #fa8c16;
+}
+
+/* Typing Indicator Animation */
+.typing-message {
+  margin-top: 8px;
+  animation: fadeIn 0.3s ease;
+}
+.typing-content {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 60px;
+}
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  gap: 4px;
+  padding: 4px 8px;
+}
+.typing-indicator span {
+  display: block;
+  width: 6px;
+  height: 6px;
+  background-color: #64748b;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+.typing-indicator span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.typing-indicator span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>
