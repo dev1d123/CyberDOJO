@@ -183,12 +183,14 @@ def start_with_role(request):
         return JsonResponse({'error': 'failed_to_create_session'}, status=500)
     
     # Preparar payload para el backend LLM externo
-    max_attempts = getattr(__import__('django.conf').conf.settings, 'SIM_MAX_ATTEMPTS', 3)
+    max_attempts = MAX_ATTEMPTS
+    max_user_messages = MAX_USER_MESSAGES
     
     payload = {
         "session_id": str(session.session_id),
         "max_attempts": max_attempts,
         "current_attempts_used": 0,
+        "longitud_mensajes_usuario": max_user_messages,
         "user_context": {
             "username": user.username,
             "country": user.country.name if user and getattr(user, 'country', None) else "",
@@ -232,8 +234,9 @@ def start_with_role(request):
 
 logger = logging.getLogger(__name__)
 
-# Configuración de negocio: umbral de intentos del antagonista
-MAX_ATTEMPTS = getattr(__import__('django.conf').conf.settings, 'SIM_MAX_ATTEMPTS', 3)
+# Configuración de negocio: constantes de la lógica de chat de simulación
+MAX_ATTEMPTS = 3            # Intentos del antagonista antes de game over
+MAX_USER_MESSAGES = 10     # Límite de mensajes del usuario por sesión
 # NOTE: Keyword/dictionary heuristics removed intentionally. Detection of
 # solicitation must be determined by the model via the `attempted` flag
 # (driven by prompt mode/instructions). Server will no longer use a
@@ -350,7 +353,8 @@ def chat(request):
         logger.exception('Failed to load chat history')
 
     # Preparar payload para el backend LLM externo
-    max_attempts = getattr(__import__('django.conf').conf.settings, 'SIM_MAX_ATTEMPTS', 3)
+    max_attempts = MAX_ATTEMPTS
+    max_user_messages = MAX_USER_MESSAGES
     
     # ---------------------------------------------------------
     # 1. Preparar Payload para el LLM con Contexto del Escenario
@@ -361,10 +365,10 @@ def chat(request):
     
     # Mapeo de campos requeridos por el LLM
     scenario_context = {
-        "platform": scenario_snapshot.get('threat_type', 'generic'), # Usamos threat_type como "plataforma/contexto"
+        "platform": scenario_snapshot.get('threat_type', 'generic'),
         "antagonist_goal": scenario_snapshot.get('antagonist_goal', 'información sensible'),
-        "difficulty": str(scenario_snapshot.get('difficulty_level', 1)), # Nivel 1-6
-        "theme_name": scenario_snapshot.get('name', 'Ingeniería Social'), # Nombre del escenario (ej: "Robo de Identidad")
+        "difficulty": str(scenario_snapshot.get('difficulty_level', 1)),
+        "theme_name": scenario_snapshot.get('name', 'Ingeniería Social'),
         "description": scenario_snapshot.get('description', '')
     }
 
@@ -382,7 +386,8 @@ def chat(request):
     payload = {
         "session_id": str(session.session_id),
         "max_attempts": max_attempts,
-        "current_attempts_used": antagonist_msgs_count, # Use actual turn count for pacing
+        "current_attempts_used": antagonist_msgs_count,
+        "longitud_mensajes_usuario": max_user_messages,
         "user_context": {
             "username": user_obj.username,
             "country": getattr(getattr(user_obj, 'country', None), 'name', None) or "Global",
@@ -406,7 +411,7 @@ def chat(request):
     disclosure_reason = analysis.get('disclosure_reason', '')
     is_attack_attempt = analysis.get('is_attack_attempt', False)
     is_user_evasion = analysis.get('is_user_evasion', False)
-    # force_end_session = analysis.get('force_end_session', False) # DEPRECATED: Backend decide
+    limit_reached = analysis.get('limit_reached', False)  # Límite de mensajes alcanzado
 
     # ---------------------------------------------------------
     # 3. Procesar Lógica de Juego (3 Strikes)
@@ -468,8 +473,14 @@ def chat(request):
     outcome = None
     reason = None
     
+    # Caso 0: Límite de mensajes alcanzado (tiene prioridad sobre el resto de checks)
+    if limit_reached:
+        game_over = True
+        outcome = 'limit_reached'
+        reason = 'max_user_messages_reached'
+
     # Caso 1: Perdió todas las vidas (3 Disclosures)
-    if lives_remaining <= 0:
+    elif lives_remaining <= 0:
         game_over = True
         outcome = 'failed'
         reason = disclosure_reason or 'sensitive_data_limit_reached'
@@ -592,7 +603,7 @@ def chat(request):
             'disclosure_reason': disclosure_reason or '',
             'is_attack_attempt': bool(is_attack_attempt),
             'is_user_evasion': bool(is_user_evasion),
-            # 'force_end_session': bool(force_end_session),
+            'limit_reached': bool(limit_reached),
         },
         'game_state': {
             'lives_remaining': max(0, 3 - ChatMessage.objects.filter(session=session, is_dangerous=True).count()),
