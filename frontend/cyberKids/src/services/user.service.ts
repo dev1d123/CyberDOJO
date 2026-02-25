@@ -3,6 +3,11 @@ import type { UserDto, UpdateUserDto, UpdateMeResponseDto, UpdatePreferencesDto 
 import { API_CONFIG } from '../config/api.config';
 
 const API_BASE_URL = `${API_CONFIG.BASE_URL}/users`;
+const devLog = (...args: unknown[]) => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
 
 export class UserService {
   // Obtener información del usuario autenticado
@@ -57,15 +62,15 @@ export class UserService {
   static async updateMe(data: UpdateUserDto): Promise<UpdateMeResponseDto> {
     const token = localStorage.getItem('access_token');
     
-    console.log('🔧 UserService.updateMe called');
-    console.log('📦 Data to send:', data);
+    devLog('🔧 UserService.updateMe called');
+    devLog('📦 Data to send:', data);
     
     if (!token) {
       throw new Error('No hay token de acceso');
     }
 
     const url = `${API_BASE_URL}/auth/me/update/`;
-    console.log('🌐 URL:', url);
+    devLog('🌐 URL:', url);
 
     const response = await fetch(url, {
       method: 'PATCH',
@@ -76,7 +81,7 @@ export class UserService {
       body: JSON.stringify(data),
     });
 
-    console.log('📡 Response status:', response.status);
+    devLog('📡 Response status:', response.status);
     
     if (!response.ok) {
       const error = await response.json();
@@ -85,7 +90,7 @@ export class UserService {
     }
 
     const result = await response.json();
-    console.log('✅ Success response:', result);
+    devLog('✅ Success response:', result);
     return result as UpdateMeResponseDto;
   }
 
@@ -97,8 +102,8 @@ export class UserService {
   }): Promise<UpdateMeResponseDto> {
     const token = localStorage.getItem('access_token');
 
-    console.log('🔧 UserService.updateMeMultipart called');
-    console.log('📦 Data to send (multipart):', {
+    devLog('🔧 UserService.updateMeMultipart called');
+    devLog('📦 Data to send (multipart):', {
       username: data.username,
       country: data.country,
       avatarFile: data.avatarFile
@@ -111,7 +116,7 @@ export class UserService {
     }
 
     const url = `${API_BASE_URL}/auth/me/update/`;
-    console.log('🌐 URL:', url);
+    devLog('🌐 URL:', url);
 
     const form = new FormData();
     if (data.username != null) form.append('username', data.username);
@@ -127,14 +132,14 @@ export class UserService {
       body: form,
     });
 
-    console.log('📡 Response status:', response.status);
+    devLog('📡 Response status:', response.status);
 
     const contentType = response.headers.get('content-type') || '';
     const responseBody = contentType.includes('application/json')
       ? await response.json()
       : await response.text();
 
-    console.log('📥 Response body:', responseBody);
+    devLog('📥 Response body:', responseBody);
 
     if (!response.ok) {
       console.error('❌ Error response:', responseBody);

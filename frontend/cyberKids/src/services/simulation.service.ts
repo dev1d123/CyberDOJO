@@ -2,6 +2,11 @@
 import { API_CONFIG } from '../config/api.config';
 
 const API_BASE_URL = `${API_CONFIG.BASE_URL}/simulation`;
+const devLog = (...args: unknown[]) => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
 
 export interface ScenarioDto {
   scenario_id: number;
@@ -83,7 +88,7 @@ export class SimulationService {
   }
 
   static async startSession(scenarioId: number): Promise<StartSessionResponse> {
-    console.log('🚀 [START SESSION] Request:', { scenario_id: scenarioId });
+    devLog('🚀 [START SESSION] Request:', { scenario_id: scenarioId });
     
     const response = await fetch(`${API_BASE_URL}/session/start-role/`, {
       method: 'POST',
@@ -91,7 +96,7 @@ export class SimulationService {
       body: JSON.stringify({ scenario_id: scenarioId }),
     });
 
-    console.log('📥 [START SESSION] Response status:', response.status);
+    devLog('📥 [START SESSION] Response status:', response.status);
 
     if (!response.ok) {
       const error = await response.json();
@@ -100,12 +105,12 @@ export class SimulationService {
     }
 
     const data = await response.json();
-    console.log('✅ [START SESSION] Success:', data);
+    devLog('✅ [START SESSION] Success:', data);
     return data;
   }
 
   static async resumeSession(scenarioId?: number): Promise<ResumeSessionResponse> {
-    console.log('🔄 [RESUME SESSION] Request:', scenarioId ? { scenario_id: scenarioId } : {});
+    devLog('🔄 [RESUME SESSION] Request:', scenarioId ? { scenario_id: scenarioId } : {});
     
     const url = scenarioId 
       ? `${API_BASE_URL}/session/resume/?scenario_id=${scenarioId}`
@@ -116,7 +121,7 @@ export class SimulationService {
       headers: this.getAuthHeaders(),
     });
 
-    console.log('📥 [RESUME SESSION] Response status:', response.status);
+    devLog('📥 [RESUME SESSION] Response status:', response.status);
 
     if (!response.ok) {
       // Backend retorna 404 con { error: 'no_active_session' } cuando no hay sesión.
@@ -133,12 +138,12 @@ export class SimulationService {
     }
 
     const data = await response.json();
-    console.log('✅ [RESUME SESSION] Success:', data);
+    devLog('✅ [RESUME SESSION] Success:', data);
     return data;
   }
 
   static async sendMessage(sessionId: number, message: string): Promise<ChatResponse> {
-    console.log('💬 [SEND MESSAGE] Request:', { session_id: sessionId, message });
+    devLog('💬 [SEND MESSAGE] Request:', { session_id: sessionId, message });
     
     const response = await fetch(`${API_BASE_URL}/chat/`, {
       method: 'POST',
@@ -149,7 +154,7 @@ export class SimulationService {
       }),
     });
 
-    console.log('📥 [SEND MESSAGE] Response status:', response.status);
+    devLog('📥 [SEND MESSAGE] Response status:', response.status);
 
     const contentType = response.headers.get('content-type') || '';
     const body = contentType.includes('application/json') ? await response.json() : await response.text();
@@ -161,22 +166,22 @@ export class SimulationService {
     }
 
     const data = body as ChatResponse;
-    console.log('✅ [SEND MESSAGE] Success:', data);
+    devLog('✅ [SEND MESSAGE] Success:', data);
     if (data.llm_analysis) {
-      console.log('🧠 [LLM] analysis:', data.llm_analysis);
+      devLog('🧠 [LLM] analysis:', data.llm_analysis);
     }
     return data;
   }
 
   static async getSessionMessages(sessionId: number) {
-    console.log('📨 [GET MESSAGES] Request:', { session_id: sessionId });
+    devLog('📨 [GET MESSAGES] Request:', { session_id: sessionId });
     
     const response = await fetch(`${API_BASE_URL}/session/${sessionId}/messages/`, {
       method: 'GET',
       headers: this.getAuthHeaders(),
     });
 
-    console.log('📥 [GET MESSAGES] Response status:', response.status);
+    devLog('📥 [GET MESSAGES] Response status:', response.status);
 
     if (!response.ok) {
       console.error('❌ [GET MESSAGES] Error');
@@ -184,7 +189,7 @@ export class SimulationService {
     }
 
     const data = await response.json();
-    console.log('✅ [GET MESSAGES] Success:', data);
+    devLog('✅ [GET MESSAGES] Success:', data);
     return data;
   }
 }

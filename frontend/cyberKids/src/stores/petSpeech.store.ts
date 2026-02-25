@@ -4,6 +4,12 @@ import { hasPetEquipped, currentPetId } from './petState.store';
 import { TTSService } from '@/services/tts.service';
 import { AudioService } from '@/services/audio.service';
 
+const devLog = (...args: unknown[]) => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
+
 export type PetSpeechBehavior = keyof typeof dialoguesData.behaviors | (string & {});
 
 export interface PetSpeakOptions {
@@ -43,7 +49,7 @@ const MALE_VOICE_PATTERNS = [
 async function getVoiceForPet(isFemale: boolean): Promise<string | undefined> {
   const voices = await TTSService.getVoices();
   
-  console.log('[PetSpeech] 🔍 Voces disponibles:', voices.map(v => ({ name: v.name, lang: v.lang })));
+  devLog('[PetSpeech] 🔍 Voces disponibles:', voices.map(v => ({ name: v.name, lang: v.lang })));
   
   // Filtrar voces españolas
   const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
@@ -60,7 +66,7 @@ async function getVoiceForPet(isFemale: boolean): Promise<string | undefined> {
     });
     
     if (femaleVoice) {
-      console.log('[PetSpeech] ✅ Voz femenina encontrada:', femaleVoice.name);
+      devLog('[PetSpeech] ✅ Voz femenina encontrada:', femaleVoice.name);
       return femaleVoice.voiceURI;
     }
     
@@ -71,11 +77,11 @@ async function getVoiceForPet(isFemale: boolean): Promise<string | undefined> {
     });
     
     if (nonMaleVoice) {
-      console.log('[PetSpeech] ⚠️ Usando voz no-masculina:', nonMaleVoice.name);
+      devLog('[PetSpeech] ⚠️ Usando voz no-masculina:', nonMaleVoice.name);
       return nonMaleVoice.voiceURI;
     }
     
-    console.log('[PetSpeech] ❌ No se encontró voz femenina, usando pitch alto');
+    devLog('[PetSpeech] ❌ No se encontró voz femenina, usando pitch alto');
   } else {
     // Buscar voz específicamente masculina
     const maleVoice = spanishVoices.find(v => {
@@ -84,16 +90,16 @@ async function getVoiceForPet(isFemale: boolean): Promise<string | undefined> {
     });
     
     if (maleVoice) {
-      console.log('[PetSpeech] ✅ Voz masculina encontrada:', maleVoice.name);
+      devLog('[PetSpeech] ✅ Voz masculina encontrada:', maleVoice.name);
       return maleVoice.voiceURI;
     }
     
-    console.log('[PetSpeech] ⚠️ No se encontró voz masculina explícita');
+    devLog('[PetSpeech] ⚠️ No se encontró voz masculina explícita');
   }
   
   // Fallback: primera voz española disponible
   if (spanishVoices.length > 0 && spanishVoices[0]) {
-    console.log('[PetSpeech] 📢 Usando fallback:', spanishVoices[0].name);
+    devLog('[PetSpeech] 📢 Usando fallback:', spanishVoices[0].name);
     return spanishVoices[0].voiceURI;
   }
   
@@ -126,7 +132,7 @@ async function speakWithTTS(text: string) {
   // Obtener el volumen ACTUAL del servicio (se actualiza dinámicamente)
   const currentVolume = AudioService.getPetTTSVolume();
   
-  console.log('[PetSpeech] 🎤 Reproduciendo TTS:', { 
+  devLog('[PetSpeech] 🎤 Reproduciendo TTS:', { 
     petId: currentPetId.value, 
     isFemale: voiceConfig.isFemale,
     voiceURI,
