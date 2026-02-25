@@ -83,10 +83,22 @@ class UpdatePreferencesSerializer(serializers.ModelSerializer):
     """Serializer para actualizar preferencias del usuario"""
     class Meta:
         model = Preferences
-        fields = ['receive_newsletters', 'dark_mode', 'base_content', 'tone_instructions', 'age']
+        fields = [
+            'receive_newsletters',
+            'dark_mode',
+            'background_music_volume',
+            'sfx_volume',
+            'pet_tts_volume',
+            'base_content',
+            'tone_instructions',
+            'age',
+        ]
         extra_kwargs = {
             'receive_newsletters': {'required': False},
             'dark_mode': {'required': False},
+            'background_music_volume': {'required': False},
+            'sfx_volume': {'required': False},
+            'pet_tts_volume': {'required': False},
             'base_content': {'required': False},
             'tone_instructions': {'required': False},
             'age': {'required': False},

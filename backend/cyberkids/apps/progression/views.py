@@ -4,15 +4,20 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.shortcuts import get_object_or_404
+import logging
 
-from .models import ProgressionLevel, CosmeticItem, UserInventory, CreditTransaction, UserProgress
+from .models import ProgressionLevel, CosmeticItem, UserInventory, CreditTransaction, UserProgress, Achievement, UserAchievement
 from .serializers import (
     ProgressionLevelSerializer, CosmeticItemSerializer,
-    UserInventorySerializer, CreditTransactionSerializer, UserProgressSerializer
+    UserInventorySerializer, CreditTransactionSerializer, UserProgressSerializer,
+    AchievementSerializer, UserAchievementSerializer
 )
+from .services import AchievementService
 from apps.cyberUser.models import CyberUser
 from apps.pets.models import Pet, UserPet
 from apps.pets.serializers import PetSerializer, UserPetSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class ProgressionLevelViewSet(viewsets.ModelViewSet):
@@ -376,10 +381,21 @@ class ShopViewSet(viewsets.ViewSet):
         # Crear relación usuario-mascota
         user_pet = UserPet.objects.create(user=user, pet=pet)
 
+        # Verificar y desbloquear logros
+        unlocked_achievements = []
+        try:
+            unlocked = AchievementService.on_pet_purchased(user)
+            unlocked_achievements = [a['achievement'].name for a in unlocked]
+            if unlocked:
+                logger.info(f"🏆 Logros desbloqueados por compra de mascota: {unlocked_achievements}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error verificando logros: {e}")
+
         return Response({
             'message': f'Has comprado a {pet.name}!',
             'user_pet': UserPetSerializer(user_pet).data,
-            'remaining_cybercreds': user.cybercreds
+            'remaining_cybercreds': user.cybercreds,
+            'achievements_unlocked': unlocked_achievements
         }, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['post'], url_path='buy-cosmetic')
@@ -503,3 +519,186 @@ class ShopViewSet(viewsets.ViewSet):
             'message': f'Has equipado {item.name}!',
             'inventory': UserInventorySerializer(inventory).data
         })
+
+
+class AchievementViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestionar logros."""
+    queryset = Achievement.objects.all()
+    serializer_class = AchievementSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        queryset = Achievement.objects.filter(is_active=True)
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+        return queryset
+
+    @action(detail=False, methods=['get'])
+    def categories(self, request):
+        """Lista las categorías de logros disponibles."""
+        categories = Achievement.CATEGORY_CHOICES
+        return Response([{'value': c[0], 'label': c[1]} for c in categories])
+
+
+class UserAchievementViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestionar logros de usuario."""
+    queryset = UserAchievement.objects.all()
+    serializer_class = UserAchievementSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return UserAchievement.objects.filter(user=self.request.user).select_related('achievement')
+
+    @action(detail=False, methods=['get'], url_path='my-achievements')
+    def my_achievements(self, request):
+        """Obtiene todos los logros con su estado para el usuario actual."""
+        user = request.user
+        all_achievements = Achievement.objects.filter(is_active=True).order_by('category', 'requirement_value')
+        user_achievements = {ua.achievement_id: ua for ua in UserAchievement.objects.filter(user=user)}
+
+        # Pre-calcular progreso real por tipo de check
+        progress_cache = {}
+        for req_type, definition in AchievementService.ACHIEVEMENT_DEFINITIONS.items():
+            check_method_name = definition['check']
+            if check_method_name not in progress_cache:
+                check_method = getattr(AchievementService, check_method_name, None)
+                if check_method:
+                    try:
+                        progress_cache[check_method_name] = check_method(user)
+                    except Exception:
+                        progress_cache[check_method_name] = 0
+
+        result = []
+        for achievement in all_achievements:
+            user_achievement = user_achievements.get(achievement.achievement_id)
+            is_unlocked = user_achievement is not None
+
+            # Calcular progreso real para logros no desbloqueados
+            if is_unlocked:
+                current_progress = user_achievement.progress
+            else:
+                definition = AchievementService.ACHIEVEMENT_DEFINITIONS.get(achievement.requirement_type)
+                if definition:
+                    check_method_name = definition['check']
+                    raw_progress = progress_cache.get(check_method_name, 0)
+                    current_progress = min(raw_progress, achievement.requirement_value)
+                else:
+                    current_progress = 0
+
+            # Si el logro es oculto y no está desbloqueado, mostrar info limitada
+            if achievement.is_hidden and not is_unlocked:
+                result.append({
+                    'achievement_id': achievement.achievement_id,
+                    'name': '???',
+                    'description': 'Logro secreto — ¡Descúbrelo jugando!',
+                    'category': achievement.category,
+                    'icon': None,
+                    'cybercreds_reward': 0,
+                    'xp_reward': 0,
+                    'requirement_type': achievement.requirement_type,
+                    'requirement_value': achievement.requirement_value,
+                    'is_hidden': True,
+                    'is_unlocked': False,
+                    'progress': 0,
+                    'unlocked_at': None,
+                    'is_claimed': False
+                })
+            else:
+                result.append({
+                    'achievement_id': achievement.achievement_id,
+                    'name': achievement.name,
+                    'description': achievement.description,
+                    'category': achievement.category,
+                    'icon': achievement.icon.url if achievement.icon else None,
+                    'cybercreds_reward': achievement.cybercreds_reward,
+                    'xp_reward': achievement.xp_reward,
+                    'requirement_type': achievement.requirement_type,
+                    'requirement_value': achievement.requirement_value,
+                    'is_hidden': achievement.is_hidden,
+                    'is_unlocked': is_unlocked,
+                    'progress': current_progress,
+                    'unlocked_at': user_achievement.unlocked_at if user_achievement else None,
+                    'is_claimed': user_achievement.is_claimed if user_achievement else False
+                })
+
+        # Ordenar: desbloqueados sin reclamar primero, luego desbloqueados, luego por progreso desc
+        result.sort(key=lambda x: (
+            0 if (x['is_unlocked'] and not x['is_claimed']) else 1,
+            0 if x['is_unlocked'] else 1,
+            -(x['progress'] / x['requirement_value'] if x['requirement_value'] > 0 else 0)
+        ))
+
+        return Response(result)
+
+    @action(detail=False, methods=['post'], url_path='claim')
+    def claim_achievement(self, request):
+        """Reclamar la recompensa de un logro desbloqueado."""
+        user = request.user
+        achievement_id = request.data.get('achievement_id')
+
+        if not achievement_id:
+            return Response({'error': 'achievement_id es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_achievement = get_object_or_404(
+            UserAchievement, 
+            user=user, 
+            achievement_id=achievement_id
+        )
+
+        if user_achievement.is_claimed:
+            return Response({'error': 'Ya reclamaste este logro'}, status=status.HTTP_400_BAD_REQUEST)
+
+        achievement = user_achievement.achievement
+
+        # Dar recompensas
+        if achievement.cybercreds_reward > 0:
+            user.cybercreds += achievement.cybercreds_reward
+            user.save(update_fields=['cybercreds'])
+
+            # Registrar transacción
+            CreditTransaction.objects.create(
+                user=user,
+                amount=achievement.cybercreds_reward,
+                transaction_type='achievement',
+                description=f'Recompensa: {achievement.name}',
+                reference_id=achievement.achievement_id,
+                reference_type='achievement'
+            )
+
+        if achievement.xp_reward > 0:
+            progress = UserProgress.objects.filter(user=user).first()
+            if progress:
+                progress.current_xp += achievement.xp_reward
+                progress.save(update_fields=['current_xp'])
+
+        user_achievement.is_claimed = True
+        user_achievement.save(update_fields=['is_claimed'])
+
+        return Response({
+            'message': f'¡Has reclamado la recompensa de "{achievement.name}"!',
+            'cybercreds_earned': achievement.cybercreds_reward,
+            'xp_earned': achievement.xp_reward,
+            'new_cybercreds': user.cybercreds
+        })
+
+    @action(detail=False, methods=['get'], url_path='summary')
+    def summary(self, request):
+        """Obtiene un resumen de logros del usuario."""
+        user = request.user
+        total_achievements = Achievement.objects.filter(is_active=True).count()
+        unlocked_achievements = UserAchievement.objects.filter(user=user).count()
+        claimed_achievements = UserAchievement.objects.filter(user=user, is_claimed=True).count()
+
+        # Últimos logros desbloqueados
+        recent_achievements = UserAchievement.objects.filter(user=user).select_related('achievement').order_by('-unlocked_at')[:5]
+
+        return Response({
+            'total': total_achievements,
+            'unlocked': unlocked_achievements,
+            'claimed': claimed_achievements,
+            'pending_claims': unlocked_achievements - claimed_achievements,
+            'percentage': round((unlocked_achievements / total_achievements * 100) if total_achievements > 0 else 0, 1),
+            'recent': UserAchievementSerializer(recent_achievements, many=True).data
+        })
+

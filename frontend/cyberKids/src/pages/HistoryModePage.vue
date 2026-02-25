@@ -119,7 +119,7 @@ onMounted(async () => {
         id: s.scenario_id,
         name: s.name,
         details: s.description || 'Prepárate para enfrentar un escenario de ingeniería social.',
-        currentScore: 0,
+        currentScore: s.user_score ?? 0,
         totalScore: s.base_points || 0,
         x: pos.x,
         y: pos.y,

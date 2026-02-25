@@ -62,6 +62,7 @@
                 max="100" 
                 v-model="backgroundVolume"
                 @input="updateBackgroundVolume"
+                @change="persistVolumes"
                 :disabled="isMuted"
                 class="volume-slider"
               />
@@ -84,6 +85,7 @@
                 max="100" 
                 v-model="sfxVolume"
                 @input="updateSFXVolume"
+                @change="persistVolumes"
                 :disabled="isMuted"
                 class="volume-slider"
               />
@@ -105,13 +107,14 @@
               <input 
                 type="range" 
                 min="0" 
-                max="500" 
+                max="100" 
                 v-model="petTTSVolume"
                 @input="updatePetTTSVolume"
+                @change="persistVolumes"
                 :disabled="isMuted"
                 class="volume-slider"
               />
-              <span class="volume-value">{{ (petTTSVolume / 100).toFixed(1) }}x</span>
+              <span class="volume-value">{{ petTTSVolume }}%</span>
             </div>
           </div>
         </div>
@@ -123,12 +126,18 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { AudioService } from '../services/audio.service';
+import { UserService } from '../services/user.service';
+
+const AUDIO_PREFS_STORAGE_KEY = 'audio_prefs_v1';
+
+const BG_MAX = 0.5;
+const SFX_MAX = 0.7;
 
 const showPanel = ref(false);
 const isMuted = ref(false);
 const backgroundVolume = ref(30);
 const sfxVolume = ref(50);
-const petTTSVolume = ref(150); // Inicial: 1.5 (150/100)
+const petTTSVolume = ref(100); // 100% = 1.0
 
 const togglePanel = () => {
   showPanel.value = !showPanel.value;
@@ -140,19 +149,129 @@ const toggleMute = () => {
 };
 
 const updateBackgroundVolume = () => {
-  AudioService.setBackgroundVolume(backgroundVolume.value / 100);
+  AudioService.setBackgroundVolume((backgroundVolume.value / 100) * BG_MAX);
+  persistVolumesLocal();
+  schedulePersistVolumes();
 };
 
 const updateSFXVolume = () => {
-  AudioService.setSFXVolume(sfxVolume.value / 100);
+  AudioService.setSFXVolume((sfxVolume.value / 100) * SFX_MAX);
+  persistVolumesLocal();
+  schedulePersistVolumes();
 };
 
 const updatePetTTSVolume = () => {
-  AudioService.setPetTTSVolume(petTTSVolume.value / 100); // Convertir de 0-300 a 0.0-3.0
+  AudioService.setPetTTSVolume(petTTSVolume.value / 100); // 0-100 => 0.0-1.0
+  persistVolumesLocal();
+  schedulePersistVolumes();
+};
+
+const persistVolumesLocal = () => {
+  try {
+    const payload = {
+      background_music_volume: (backgroundVolume.value / 100) * BG_MAX,
+      sfx_volume: (sfxVolume.value / 100) * SFX_MAX,
+      pet_tts_volume: petTTSVolume.value / 100,
+    };
+    localStorage.setItem(AUDIO_PREFS_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore
+  }
+};
+
+const loadVolumesFromLocal = () => {
+  try {
+    const raw = localStorage.getItem(AUDIO_PREFS_STORAGE_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+
+    if (typeof p?.background_music_volume === 'number') {
+      const v = Math.max(0, Math.min(BG_MAX, p.background_music_volume));
+      backgroundVolume.value = Math.round((v / BG_MAX) * 100);
+      AudioService.setBackgroundVolume(v);
+    }
+    if (typeof p?.sfx_volume === 'number') {
+      const v = Math.max(0, Math.min(SFX_MAX, p.sfx_volume));
+      sfxVolume.value = Math.round((v / SFX_MAX) * 100);
+      AudioService.setSFXVolume(v);
+    }
+    if (typeof p?.pet_tts_volume === 'number') {
+      const v = Math.max(0, Math.min(1, p.pet_tts_volume));
+      petTTSVolume.value = Math.round(v * 100);
+      AudioService.setPetTTSVolume(v);
+    }
+  } catch {
+    // ignore
+  }
+};
+
+const loadVolumesFromPreferences = async () => {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+
+  try {
+    const p = (await UserService.getPreferences()) as any;
+
+    if (typeof p?.background_music_volume === 'number') {
+      const v = Math.max(0, Math.min(BG_MAX, p.background_music_volume));
+      backgroundVolume.value = Math.round((v / BG_MAX) * 100);
+      AudioService.setBackgroundVolume(v);
+    }
+    if (typeof p?.sfx_volume === 'number') {
+      const v = Math.max(0, Math.min(SFX_MAX, p.sfx_volume));
+      sfxVolume.value = Math.round((v / SFX_MAX) * 100);
+      AudioService.setSFXVolume(v);
+    }
+    if (typeof p?.pet_tts_volume === 'number') {
+      const v = Math.max(0, Math.min(1, p.pet_tts_volume));
+      petTTSVolume.value = Math.round(v * 100);
+      AudioService.setPetTTSVolume(v);
+    }
+
+    persistVolumesLocal();
+  } catch {
+    console.warn('[AudioControls] No se pudieron cargar volúmenes desde preferencias.');
+  }
+};
+
+let persistTimer: number | null = null;
+
+const schedulePersistVolumes = () => {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+
+  if (persistTimer !== null) {
+    window.clearTimeout(persistTimer);
+  }
+
+  persistTimer = window.setTimeout(() => {
+    persistTimer = null;
+    persistVolumes();
+  }, 450);
+};
+
+const persistVolumes = async () => {
+  const token = localStorage.getItem('access_token');
+  if (!token) return;
+
+  try {
+    const res = await UserService.updatePreferences({
+      background_music_volume: (backgroundVolume.value / 100) * BG_MAX,
+      sfx_volume: (sfxVolume.value / 100) * SFX_MAX,
+      pet_tts_volume: petTTSVolume.value / 100,
+    });
+
+    if ((res as any)?.tokens?.access) localStorage.setItem('access_token', (res as any).tokens.access);
+    if ((res as any)?.tokens?.refresh) localStorage.setItem('refresh_token', (res as any).tokens.refresh);
+  } catch {
+    console.warn('[AudioControls] No se pudieron guardar volúmenes en preferencias.');
+  }
 };
 
 // Cerrar panel al hacer click fuera
 onMounted(() => {
+  loadVolumesFromLocal();
+  loadVolumesFromPreferences();
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
     const audioControls = document.querySelector('.audio-controls');

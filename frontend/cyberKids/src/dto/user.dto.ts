@@ -26,6 +26,9 @@ export interface UserPreferencesDto {
   preference_id?: number;
   receive_newsletters: boolean;
   dark_mode?: boolean;
+  background_music_volume?: number;
+  sfx_volume?: number;
+  pet_tts_volume?: number;
   base_content?: string | null;
   tone_instructions?: string | null;
   age?: number | null;
@@ -42,6 +45,9 @@ export interface UpdateUserDto {
 export interface UpdatePreferencesDto {
   receive_newsletters?: boolean;
   dark_mode?: boolean;
+  background_music_volume?: number;
+  sfx_volume?: number;
+  pet_tts_volume?: number;
   base_content?: string | null;
   tone_instructions?: string | null;
   age?: number | null;

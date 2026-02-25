@@ -225,8 +225,15 @@ const startPetChecker = () => {
           await transitionToPet(user.pet_id);
         }
       }
-    } catch (error) {
-      // Ignorar errores silenciosamente
+    } catch (error: any) {
+      // Ignorar errores silenciosamente, pero detener si es error de auth
+      if (error?.status === 401 || error?.status === 403) {
+        if (petCheckInterval) {
+          clearInterval(petCheckInterval);
+          petCheckInterval = null;
+          console.warn('🛑 [PetViewer] 401 Auth error detected. Stopping pet check interval.');
+        }
+      }
     }
   }, 3000);
 };

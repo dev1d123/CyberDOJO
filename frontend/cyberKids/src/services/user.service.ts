@@ -13,12 +13,13 @@ export class UserService {
   // Obtener información del usuario autenticado
   static async getCurrentUser(): Promise<UserDto> {
     const token = localStorage.getItem('access_token');
-    
+
     if (!token) {
       throw new Error('No hay token de acceso');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/me/`, {
+    const url = `${API_BASE_URL}/auth/me/`;
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -27,8 +28,20 @@ export class UserService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      const contentType = response.headers.get('content-type') || '';
+      const errorBody = contentType.includes('application/json') ? await response.json() : await response.text();
+
+      // Attach status to error object if possible
+      if (typeof errorBody === 'object' && errorBody !== null) {
+        (errorBody as any).status = response.status;
+      }
+
+      console.warn('⚠️ [UserService.getCurrentUser] Request failed', {
+        url,
+        status: response.status,
+        body: errorBody,
+      });
+      throw errorBody;
     }
 
     return await response.json();
@@ -37,12 +50,13 @@ export class UserService {
   // Obtener usuario por ID
   static async getUserById(userId: number): Promise<UserDto> {
     const token = localStorage.getItem('access_token');
-    
+
     if (!token) {
       throw new Error('No hay token de acceso');
     }
 
-    const response = await fetch(`${API_BASE_URL}/${userId}/`, {
+    const url = `${API_BASE_URL}/${userId}/`;
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -51,8 +65,14 @@ export class UserService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw error;
+      const contentType = response.headers.get('content-type') || '';
+      const errorBody = contentType.includes('application/json') ? await response.json() : await response.text();
+      console.warn('⚠️ [UserService.getUserById] Request failed', {
+        url,
+        status: response.status,
+        body: errorBody,
+      });
+      throw errorBody;
     }
 
     return await response.json();
@@ -152,12 +172,13 @@ export class UserService {
   // Actualizar preferencias de usuario
   static async updatePreferences(data: UpdatePreferencesDto): Promise<{ message: string; preferences: unknown; tokens: { access: string; refresh: string } }> {
     const token = localStorage.getItem('access_token');
-    
+
     if (!token) {
       throw new Error('No hay token de acceso');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/me/preferences/`, {
+    const url = `${API_BASE_URL}/auth/me/preferences/`;
+    const response = await fetch(url, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -182,7 +203,8 @@ export class UserService {
       throw new Error('No hay token de acceso');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/me/preferences/`, {
+    const url = `${API_BASE_URL}/auth/me/preferences/`;
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -201,7 +223,7 @@ export class UserService {
   // Verificar si el usuario ya completó el onboarding
   static async checkOnboardingStatus(userId: number): Promise<{ completed: boolean; has_responses: boolean }> {
     const token = localStorage.getItem('access_token');
-    
+
     if (!token) {
       throw new Error('No hay token de acceso');
     }
