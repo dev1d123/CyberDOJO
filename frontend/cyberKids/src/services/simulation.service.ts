@@ -54,6 +54,7 @@ interface ChatResponse {
     is_attack_attempt: boolean;
     is_user_evasion: boolean;
     force_end_session: boolean;
+    limit_reached?: boolean;
   };
   antagonist_attempts: number;
   is_game_over: boolean | null;
