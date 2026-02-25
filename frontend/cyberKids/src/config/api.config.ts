@@ -7,6 +7,6 @@ export const API_CONFIG = {
     // Default: backend deploy (prod). For local backend, set VITE_API_BASE_URL.
     // Default: local backend for debugging
     // return 'http://localhost:8001/api';
-    return 'http://localhost:8000/api';
+    return 'https://cyberdojo-production.up.railway.app/api';
   })(),
 } as const;
