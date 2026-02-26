@@ -62,7 +62,7 @@ const themeClass = computed(() => {
 .card {
   width: 100%;
   border: 0;
-  padding: 12px;
+  padding: 10px;
   border-radius: 22px;
   cursor: pointer;
   position: relative;
@@ -72,7 +72,7 @@ const themeClass = computed(() => {
 
   display: grid;
   grid-template-rows: 1fr auto;
-  gap: 10px;
+  gap: 8px;
 
   transform: translateZ(0);
   transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease, opacity 180ms ease;
@@ -122,7 +122,7 @@ const themeClass = computed(() => {
   border: 2px solid rgba(0, 0, 0, 0.08);
   display: grid;
   place-items: center;
-  min-height: 150px;
+  min-height: 132px;
   overflow: hidden;
   position: relative;
 }
@@ -152,7 +152,7 @@ const themeClass = computed(() => {
 
 .meta {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .name {
@@ -172,7 +172,7 @@ const themeClass = computed(() => {
   background: rgba(0, 0, 0, 0.06);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 999px;
-  padding: 8px 10px;
+  padding: 6px 10px;
 }
 
 .coin {
