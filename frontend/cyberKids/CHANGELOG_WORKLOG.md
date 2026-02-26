@@ -29,3 +29,6 @@ This file records grouped updates introduced during the dashboard/tour/quiz/prof
 
 ## Profile Readability
 - Increased typography sizes for labels, inputs, hints, and onboarding response blocks.
+
+## Pet Dialogue UX
+- Increased pet speech text size for improved readability during interactions.
