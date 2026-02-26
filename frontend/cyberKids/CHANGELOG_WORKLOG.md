@@ -16,3 +16,7 @@ This file records grouped updates introduced during the dashboard/tour/quiz/prof
 
 ## App Routing Stability
 - Removed transition wrapper around router-view to avoid stale renders during route switches.
+
+## Quiz Navigation Fixes
+- Quiz list back action now returns to challenges.
+- Quiz detail back actions return deterministically to quiz list.
