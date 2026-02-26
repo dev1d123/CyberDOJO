@@ -32,7 +32,7 @@
       :progress-percentage="progressPercent"
     >
       <template #actions>
-        <router-link to="/challenges/quiz" class="back-link">⬅️ Volver</router-link>
+        <a href="/challenges/quiz" class="back-link">⬅️ Volver</a>
       </template>
     </QuizHeader>
 
@@ -120,7 +120,7 @@ import ModalVictory from '@/components/quiz/quizPage/ModalVictory.vue'
 import ResumeQuizModal from '@/components/quiz/quizPage/ResumeQuizModal.vue'
 
 import { ref, onMounted, computed, onBeforeUnmount, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { QuizService } from '@/services/quiz.service'
 import { useQuizProgress, type QuizProgressData } from '@/composables/useQuizProgress'
 import { AudioService } from '@/services/audio.service'
@@ -148,7 +148,6 @@ const genericDialogs = [
 ]
 
 const route = useRoute()
-const router = useRouter()
 
 // Estado UI
 const showHint = ref(false)
@@ -535,7 +534,7 @@ const handleRetry = async () => {
 }
 
 const goBack = () => {
-  router.push('/challenges/quiz')
+  window.location.assign('/challenges/quiz')
 }
 
 const startSession = async (confirmRetry = false) => {
