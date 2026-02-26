@@ -23,3 +23,6 @@ This file records grouped updates introduced during the dashboard/tour/quiz/prof
 
 ## Shop Card Layout
 - Compacted internal card spacing to avoid clipped content for pets and sounds.
+
+## Home Presentation
+- Tightened mission text spacing for cleaner hero content density.
