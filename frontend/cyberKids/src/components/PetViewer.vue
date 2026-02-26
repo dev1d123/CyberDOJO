@@ -766,7 +766,7 @@ const petStyle = computed(() => ({
 
 <template>
   <div class="pet-system">
-    <button class="toggle-btn" @click="toggleVisibility">
+    <button class="toggle-btn" data-tour-step="pet-toggle" @click="toggleVisibility">
       {{ isVisible ? '👁️ Ocultar' : '👁️ Mostrar' }} Mascota
     </button>
 
@@ -800,7 +800,7 @@ const petStyle = computed(() => ({
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
-  font-size: 0.8rem;
+  font-size: 1rem;
   box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
   transition: all 0.2s ease;
   z-index: 9999;
