@@ -693,18 +693,18 @@ const changePassword = async () => {
 
 .onboarding-title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.95);
 }
 
 .onboarding-sub {
-  font-size: 0.8rem;
+  font-size: 1rem;
   color: rgba(255, 255, 255, 0.75);
 }
 
 .onboarding-state {
-  font-size: 0.85rem;
+  font-size: 1rem;
   color: rgba(255, 255, 255, 0.85);
 }
 
@@ -725,16 +725,17 @@ const changePassword = async () => {
 }
 
 .onboarding-item .q {
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.95);
   margin-bottom: 6px;
+  line-height: 1.35;
 }
 
 .onboarding-item .a {
-  font-size: 0.85rem;
+  font-size: 1.02rem;
   color: rgba(255, 255, 255, 0.85);
-  line-height: 1.25;
+  line-height: 1.35;
 }
 
 .profile-page::-webkit-scrollbar-thumb {
@@ -906,6 +907,7 @@ const changePassword = async () => {
 .small {
   grid-column: 2;
   opacity: 0.9;
+  font-size: 1.1rem;
 }
 
 .form {
@@ -926,6 +928,7 @@ const changePassword = async () => {
 .label {
   font-weight: 1000;
   opacity: 0.95;
+  font-size: 1.25rem;
 }
 
 .input {
@@ -936,6 +939,7 @@ const changePassword = async () => {
   color: white;
   padding: 12px 12px;
   font-weight: 900;
+  font-size: 1.1rem;
   outline: none;
 }
 
@@ -949,8 +953,12 @@ const changePassword = async () => {
 }
 
 .hint {
-  font-size: 0.95rem;
+  font-size: 1.08rem;
   opacity: 0.82;
+}
+
+.toggle-text {
+  font-size: 1.14rem;
 }
 
 .primary,
