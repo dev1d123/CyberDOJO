@@ -9,3 +9,7 @@ This file records grouped updates introduced during the dashboard/tour/quiz/prof
 ## Dashboard Tour Anchoring
 - Added pet toggle selector as explicit tour anchor.
 - Adjusted tour targeting behavior for reliability.
+
+## Tour Overlay and Sizing
+- Added viewport-safe constraints for tour cards.
+- Improved overlay layering and focus behavior.
