@@ -1,7 +1,14 @@
 <template>
   <div class="dashboard-page">
+    <template v-if="isTourActive">
+      <div class="tour-backdrop-segment" :style="tourBackdropTopStyle" aria-hidden="true"></div>
+      <div class="tour-backdrop-segment" :style="tourBackdropLeftStyle" aria-hidden="true"></div>
+      <div class="tour-backdrop-segment" :style="tourBackdropRightStyle" aria-hidden="true"></div>
+      <div class="tour-backdrop-segment" :style="tourBackdropBottomStyle" aria-hidden="true"></div>
+    </template>
+
     <!-- Debug Menu -->
-    <DebugMenu />
+    <DebugMenu @start-tutorial="startDashboardTutorial" />
     
     <!-- Vue Tour -->
     <v-tour name="dashboardTour" :steps="tourSteps" :options="tourOptions" :callbacks="tourCallbacks">
@@ -151,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch, getCurrentInstance } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch, getCurrentInstance, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { UserDto } from '../dto/user.dto';
 import { UserService } from '../services/user.service';
@@ -172,6 +179,100 @@ const user = ref<UserDto>({
 
 const loading = ref(true);
 const error = ref<string | null>(null);
+const isTourActive = ref(false);
+const activeTourStepIndex = ref(-1);
+const tourTargetRect = ref({
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+});
+
+let tourRectInterval: number | null = null;
+
+const getHighlightedTourTarget = () => {
+  return document.querySelector('.v-tour__target--highlighted') as HTMLElement | null;
+};
+
+const getActiveStepTarget = () => {
+  const activeStep = tourSteps.value[activeTourStepIndex.value];
+  if (!activeStep || typeof activeStep.target !== 'string') {
+    return getHighlightedTourTarget();
+  }
+
+  const targetEl = document.querySelector(activeStep.target) as HTMLElement | null;
+  return targetEl || getHighlightedTourTarget();
+};
+
+const updateTourTargetRect = () => {
+  const el = getActiveStepTarget();
+  if (!el) {
+    tourTargetRect.value = {
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    };
+    return;
+  }
+
+  const rect = el.getBoundingClientRect();
+  const padding = 10;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  tourTargetRect.value = {
+    top: Math.max(0, rect.top - padding),
+    left: Math.max(0, rect.left - padding),
+    right: Math.min(viewportWidth, rect.right + padding),
+    bottom: Math.min(viewportHeight, rect.bottom + padding),
+  };
+};
+
+const startTourBackdropTracking = () => {
+  stopTourBackdropTracking();
+  updateTourTargetRect();
+  tourRectInterval = window.setInterval(updateTourTargetRect, 120);
+  window.addEventListener('resize', updateTourTargetRect);
+  window.addEventListener('scroll', updateTourTargetRect, true);
+};
+
+const stopTourBackdropTracking = () => {
+  if (tourRectInterval) {
+    clearInterval(tourRectInterval);
+    tourRectInterval = null;
+  }
+  window.removeEventListener('resize', updateTourTargetRect);
+  window.removeEventListener('scroll', updateTourTargetRect, true);
+};
+
+const tourBackdropTopStyle = computed(() => ({
+  top: '0px',
+  left: '0px',
+  width: '100vw',
+  height: `${tourTargetRect.value.top}px`,
+}));
+
+const tourBackdropLeftStyle = computed(() => ({
+  top: `${tourTargetRect.value.top}px`,
+  left: '0px',
+  width: `${tourTargetRect.value.left}px`,
+  height: `${Math.max(0, tourTargetRect.value.bottom - tourTargetRect.value.top)}px`,
+}));
+
+const tourBackdropRightStyle = computed(() => ({
+  top: `${tourTargetRect.value.top}px`,
+  left: `${tourTargetRect.value.right}px`,
+  width: `${Math.max(0, window.innerWidth - tourTargetRect.value.right)}px`,
+  height: `${Math.max(0, tourTargetRect.value.bottom - tourTargetRect.value.top)}px`,
+}));
+
+const tourBackdropBottomStyle = computed(() => ({
+  top: `${tourTargetRect.value.bottom}px`,
+  left: '0px',
+  width: '100vw',
+  height: `${Math.max(0, window.innerHeight - tourTargetRect.value.bottom)}px`,
+}));
 
 const placeholderAvatar = 'https://api.dicebear.com/7.x/adventurer/png?seed=Default';
 
@@ -188,7 +289,10 @@ const tourSteps = ref([
       title: '¡Bienvenido a CyberDOJO! 🎉',
     },
     content: 'Este es tu <strong>Dashboard</strong>, tu punto central para acceder a todas las funcionalidades. Aquí puedes ver tu avatar y tu información personal.',
-    placement: 'bottom',
+    params: {
+      placement: 'bottom',
+      enableScrolling: false,
+    },
   },
   {
     target: '[data-tour-step="credits"]',
@@ -196,7 +300,10 @@ const tourSteps = ref([
       title: 'CyberCredits 💰',
     },
     content: 'Estos son tus <strong>CyberCredits</strong>, la moneda virtual de la aplicación. Gánalos completando misiones y úsalos para comprar mascotas y temas de audio en la tienda.',
-    placement: 'bottom',
+    params: {
+      placement: 'bottom',
+      enableScrolling: false,
+    },
   },
   {
     target: '[data-tour-step="history"]',
@@ -204,7 +311,10 @@ const tourSteps = ref([
       title: 'Modo Historia 🏝️',
     },
     content: '<strong>Modo Historia</strong> te lleva a vivir aventuras en 6 escenarios diferentes de ciberseguridad. Aquí enfrentarás conversaciones con antagonistas virtuales y aprenderás a detectar señales de alerta. ¡Gana puntos y CyberCredits por cada misión completada!',
-    placement: 'right',
+    params: {
+      placement: 'right',
+      enableScrolling: false,
+    },
   },
   {
     target: '[data-tour-step="challenges"]',
@@ -212,7 +322,10 @@ const tourSteps = ref([
       title: 'Desafíos ⚡',
     },
     content: '<strong>Desafíos</strong> te permite poner a prueba tus habilidades con retos específicos. Ideal para practicar y perfeccionar lo que has aprendido.',
-    placement: 'right',
+    params: {
+      placement: 'right',
+      enableScrolling: false,
+    },
   },
   {
     target: '[data-tour-step="shop"]',
@@ -220,7 +333,10 @@ const tourSteps = ref([
       title: 'Tienda 🛒',
     },
     content: 'En la <strong>Tienda</strong> puedes gastar tus CyberCredits en:<br>🐾 <strong>Mascotas</strong> - Compañeros virtuales que te acompañan en tu aventura<br>🎵 <strong>Temas de Audio</strong> - Personaliza los sonidos de la aplicación',
-    placement: 'left',
+    params: {
+      placement: 'left',
+      enableScrolling: false,
+    },
   },
   {
     target: '[data-tour-step="profile"]',
@@ -228,7 +344,10 @@ const tourSteps = ref([
       title: 'Perfil 👤',
     },
     content: 'En tu <strong>Perfil</strong> puedes:<br>• Ver tu progreso y estadísticas<br>• Cambiar tu avatar<br>• Equipar mascotas y temas de audio<br>• Personalizar tu experiencia',
-    placement: 'left',
+    params: {
+      placement: 'left',
+      enableScrolling: false,
+    },
   },
   {
     target: '[data-tour-step="achievements"]',
@@ -236,7 +355,10 @@ const tourSteps = ref([
       title: 'Logros 🏆',
     },
     content: 'En <strong>Logros</strong> puedes ver todas tus hazañas y recompensas:<br>• Desbloquea logros completando actividades<br>• Reclama CyberCredits y XP por tus logros<br>• ¡Compite por conseguirlos todos!',
-    placement: 'left',
+    params: {
+      placement: 'left',
+      enableScrolling: false,
+    },
   },
   {
     target: '.audio-controls',
@@ -244,19 +366,26 @@ const tourSteps = ref([
       title: 'Controles de Audio 🎵',
     },
     content: 'Este botón en la esquina inferior izquierda te permite:<br>• Controlar el volumen de la música<br>• Ajustar efectos de sonido<br>• Silenciar todo si lo necesitas<br>¡Personaliza tu experiencia auditiva!',
-    placement: 'top',
+    params: {
+      placement: 'top',
+      enableScrolling: false,
+    },
   },
   {
-    target: '.pet-viewer',
+    target: '[data-tour-step="pet-toggle"]',
     header: {
       title: 'Tu Mascota 🐾',
     },
     content: 'Esta es tu <strong>mascota virtual</strong>. Te acompañará en todas las páginas de la aplicación. Puedes comprar más mascotas en la tienda y cambiarlas desde tu perfil. ¡Colecciónalas todas!',
-    placement: 'left',
+    params: {
+      placement: 'left',
+      enableScrolling: false,
+    },
   },
 ]);
 
 const tourOptions = ref({
+  highlight: true,
   useKeyboardNavigation: true,
   labels: {
     buttonSkip: 'Saltar tour',
@@ -267,14 +396,49 @@ const tourOptions = ref({
 });
 
 const tourCallbacks = ref({
+  onStart: () => {
+    isTourActive.value = true;
+    activeTourStepIndex.value = 0;
+    nextTick(() => {
+      startTourBackdropTracking();
+    });
+  },
+  onNextStep: (currentStep: number) => {
+    activeTourStepIndex.value = currentStep + 1;
+    nextTick(() => {
+      updateTourTargetRect();
+    });
+  },
+  onPreviousStep: (currentStep: number) => {
+    activeTourStepIndex.value = Math.max(0, currentStep - 1);
+    nextTick(() => {
+      updateTourTargetRect();
+    });
+  },
   onStop: () => {
+    isTourActive.value = false;
+    activeTourStepIndex.value = -1;
+    stopTourBackdropTracking();
     // Marcar que el usuario ya vio el tour
     localStorage.setItem('dashboard_tour_completed', 'true');
   },
   onSkip: () => {
+    isTourActive.value = false;
+    activeTourStepIndex.value = -1;
+    stopTourBackdropTracking();
+    localStorage.setItem('dashboard_tour_completed', 'true');
+  },
+  onFinish: () => {
+    isTourActive.value = false;
+    activeTourStepIndex.value = -1;
+    stopTourBackdropTracking();
     localStorage.setItem('dashboard_tour_completed', 'true');
   },
 });
+
+const startDashboardTutorial = () => {
+  instance?.proxy?.$tours?.['dashboardTour']?.start?.();
+};
 
 onMounted(async () => {
   await loadUserData();
@@ -400,6 +564,7 @@ watch(
 );
 
 onUnmounted(() => {
+  stopTourBackdropTracking();
   destroyTilt();
 });
 </script>
@@ -421,6 +586,16 @@ onUnmounted(() => {
   overflow-x: hidden;
   display: flex;
   justify-content: center;
+}
+
+.tour-backdrop-segment {
+  position: fixed;
+  background: rgba(6, 10, 18, 0.36);
+  backdrop-filter: blur(14px) saturate(1.08);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+  z-index: 9999;
+  pointer-events: none;
+  will-change: backdrop-filter;
 }
 
 .dashboard-page::before {
@@ -731,7 +906,7 @@ onUnmounted(() => {
 }
 
 .card-description {
-  font-size: clamp(0.9rem, 1.3vw, 1rem);
+  font-size: clamp(1.3rem, 1.6vw, 1.3rem);
   color: #666;
 }
 
@@ -815,7 +990,7 @@ onUnmounted(() => {
 }
 
 .achievements-btn-text {
-  font-size: 0.75rem;
+  font-size: 1rem;
   font-weight: 600;
   color: white;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
@@ -923,8 +1098,14 @@ onUnmounted(() => {
 
 /* Tour Styles */
 :deep(.v-tour__target--highlighted) {
-  box-shadow: 0 0 0 99999px rgba(0, 0, 0, 0.6) !important;
-  z-index: 10000 !important;
+  position: relative !important;
+  opacity: 1 !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transform: none;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.7), 0 0 24px rgba(102, 126, 234, 0.45) !important;
+  z-index: 10002 !important;
 }
 
 :deep(.v-step) {
@@ -932,8 +1113,11 @@ onUnmounted(() => {
   border-radius: 12px !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
   padding: 0 !important;
-  max-width: 400px !important;
-  z-index: 10001 !important;
+  width: min(400px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+  max-height: calc(100vh - 24px) !important;
+  overflow: hidden !important;
+  z-index: 10003 !important;
 }
 
 :deep(.v-step__header) {
