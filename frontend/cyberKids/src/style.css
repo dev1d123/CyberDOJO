@@ -95,7 +95,10 @@ a {
 
 .v-step {
   z-index: 10001 !important;
-  max-width: 400px !important;
+  width: min(400px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+  max-height: calc(100vh - 24px) !important;
+  overflow: hidden !important;
 }
 
 .v-tour__target--highlighted {
