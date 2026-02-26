@@ -88,31 +88,7 @@ const showPetViewer = computed(() => {
   return !hiddenRoutes.includes(route.path);
 });
 
-type RouteTransitionMeta = {
-  enterAnim?: string;
-  leaveAnim?: string;
-};
-
 const prefersReducedMotion = ref(false);
-
-const enterActiveClass = computed(() => {
-  if (prefersReducedMotion.value) return '';
-  const meta = (route.meta ?? {}) as RouteTransitionMeta;
-  const enter = meta.enterAnim || 'animate__fadeIn';
-  return `animate__animated ${enter}`;
-});
-
-const leaveActiveClass = computed(() => {
-  if (prefersReducedMotion.value) return '';
-  const meta = (route.meta ?? {}) as RouteTransitionMeta;
-  const leave = meta.leaveAnim || 'animate__fadeOut';
-  return `animate__animated ${leave}`;
-});
-
-const transitionDuration = computed(() => {
-  if (prefersReducedMotion.value) return { enter: 0, leave: 0 };
-  return { enter: 520, leave: 360 };
-});
 </script>
 
 <template>
@@ -120,18 +96,7 @@ const transitionDuration = computed(() => {
     <AnimatedBackground v-if="showLayout" />
     <div class="content-wrapper" :class="{ 'no-bg': !showLayout }">
       <Navbar v-if="showLayout" />
-      <router-view v-slot="{ Component, route: viewRoute }">
-        <Transition
-          mode="out-in"
-          :enter-active-class="enterActiveClass"
-          :leave-active-class="leaveActiveClass"
-          :duration="transitionDuration"
-        >
-          <div class="route-transition" :key="viewRoute.fullPath">
-            <component :is="Component" />
-          </div>
-        </Transition>
-      </router-view>
+      <router-view :key="route.fullPath" />
     </div>
     <PetViewer v-if="showPetViewer" />
     <AudioControls v-if="showAudioControls" />
@@ -162,14 +127,4 @@ const transitionDuration = computed(() => {
   overflow-y: auto;
 }
 
-.route-transition {
-  /* animate.css reads this custom property for animation duration */
-  --animate-duration: 520ms;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .route-transition {
-    --animate-duration: 0ms;
-  }
-}
 </style>
