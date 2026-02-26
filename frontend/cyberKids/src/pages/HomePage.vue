@@ -315,7 +315,7 @@ const goToLogin = () => {
   font-size: clamp(1.05rem, 2.2vw, 1.8rem);
   line-height: 1.6;
   color: #2c3e50;
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.25rem 0;
   text-align: center;
 }
 
@@ -328,7 +328,7 @@ const goToLogin = () => {
 
 .action-text {
   font-size: clamp(1rem, 2vw, 1.6rem);
-  margin-top: 1.5rem;
+  margin-top: 0.25rem;
   font-weight: 600;
 }
 
