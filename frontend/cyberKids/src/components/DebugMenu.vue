@@ -36,6 +36,10 @@ const ttsStatus = ref<string>('');
 
 import { API_CONFIG } from '../config/api.config';
 
+const emit = defineEmits<{
+  (e: 'start-tutorial'): void;
+}>();
+
 const API_BASE_URL = API_CONFIG.BASE_URL;
 
 onMounted(async () => {
@@ -261,15 +265,24 @@ const toggleMenu = () => {
   }
 };
 
+const startTutorial = () => {
+  emit('start-tutorial');
+};
+
 const ownedPetIds = computed(() => ownedPets.value.map(up => up.pet).join(', '));
 const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', '));
 </script>
 
 <template>
   <div class="debug-menu">
-    <button class="debug-toggle" @click="toggleMenu" :class="{ active: isOpen }">
-      🐛 Debug
-    </button>
+    <div class="debug-actions">
+      <button class="debug-toggle" @click="toggleMenu" :class="{ active: isOpen }">
+        🐛 Debug
+      </button>
+      <button class="tutorial-toggle" @click="startTutorial">
+        🎓 Tutorial
+      </button>
+    </div>
 
     <div v-if="isOpen" class="debug-panel">
       <div class="debug-header">
@@ -484,6 +497,12 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
   z-index: 9999;
 }
 
+.debug-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .debug-toggle {
   padding: 12px 18px;
   background: rgba(0, 0, 0, 0.85);
@@ -492,7 +511,7 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
-  font-size: 0.85rem;
+  font-size: 1.5rem;
   box-shadow: 0 4px 12px rgba(0, 255, 0, 0.3);
   transition: all 0.2s ease;
 }
@@ -505,6 +524,24 @@ const ownedAudioIds = computed(() => ownedAudios.value.map(a => a.item).join(', 
 .debug-toggle.active {
   background: #00ff00;
   color: black;
+}
+
+.tutorial-toggle {
+  padding: 12px 18px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #00e5ff;
+  border: 2px solid #00e5ff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3);
+  transition: all 0.2s ease;
+}
+
+.tutorial-toggle:hover {
+  background: rgba(0, 229, 255, 0.1);
+  transform: scale(1.05);
 }
 
 .debug-panel {
