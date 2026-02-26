@@ -26,3 +26,6 @@ This file records grouped updates introduced during the dashboard/tour/quiz/prof
 
 ## Home Presentation
 - Tightened mission text spacing for cleaner hero content density.
+
+## Profile Readability
+- Increased typography sizes for labels, inputs, hints, and onboarding response blocks.
