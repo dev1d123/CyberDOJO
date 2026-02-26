@@ -7,10 +7,10 @@
 
     <main class="main">
       <div class="back-container">
-        <router-link to="/" class="back-btn">
+        <a class="back-btn" href="/challenges">
           <span class="material-icons-round">arrow_back</span>
           <span>Regresar</span>
-        </router-link>
+        </a>
       </div>
 
       <header class="page-header">
