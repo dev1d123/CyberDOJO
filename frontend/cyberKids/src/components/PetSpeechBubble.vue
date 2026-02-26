@@ -135,7 +135,7 @@ function handleBubbleClick() {
 }
 
 .text {
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   line-height: 1.3;
   white-space: normal;
 }
