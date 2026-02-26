@@ -20,3 +20,6 @@ This file records grouped updates introduced during the dashboard/tour/quiz/prof
 ## Quiz Navigation Fixes
 - Quiz list back action now returns to challenges.
 - Quiz detail back actions return deterministically to quiz list.
+
+## Shop Card Layout
+- Compacted internal card spacing to avoid clipped content for pets and sounds.
