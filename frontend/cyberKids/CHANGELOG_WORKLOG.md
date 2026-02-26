@@ -13,3 +13,6 @@ This file records grouped updates introduced during the dashboard/tour/quiz/prof
 ## Tour Overlay and Sizing
 - Added viewport-safe constraints for tour cards.
 - Improved overlay layering and focus behavior.
+
+## App Routing Stability
+- Removed transition wrapper around router-view to avoid stale renders during route switches.
