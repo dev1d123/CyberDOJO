@@ -164,7 +164,7 @@ export class SimulationService {
   static async startSession(scenarioId: number): Promise<StartSessionResponse> {
     devLog('🚀 [START SESSION] Request:', { scenario_id: scenarioId });
     
-    const response = await fetch(`${API_BASE_URL}/session/start-role/`, {
+    const response = await this.fetchWithAuth(`${API_BASE_URL}/session/start-role/`, {
       method: 'POST',
       body: JSON.stringify({ scenario_id: scenarioId }),
     });
@@ -217,7 +217,7 @@ export class SimulationService {
   static async sendMessage(sessionId: number, message: string): Promise<ChatResponse> {
     devLog('💬 [SEND MESSAGE] Request:', { session_id: sessionId, message });
     
-    const response = await fetch(`${API_BASE_URL}/chat/`, {
+    const response = await this.fetchWithAuth(`${API_BASE_URL}/chat/`, {
       method: 'POST',
       body: JSON.stringify({
         session_id: sessionId,
@@ -247,7 +247,7 @@ export class SimulationService {
   static async getSessionMessages(sessionId: number) {
     devLog('📨 [GET MESSAGES] Request:', { session_id: sessionId });
     
-    const response = await fetch(`${API_BASE_URL}/session/${sessionId}/messages/`, {
+    const response = await this.fetchWithAuth(`${API_BASE_URL}/session/${sessionId}/messages/`, {
       method: 'GET',
     });
 
