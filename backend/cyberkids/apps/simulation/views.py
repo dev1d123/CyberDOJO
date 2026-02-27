@@ -493,6 +493,7 @@ def chat(request):
         
     # F. Persistir Fin del Juego
     final_reward = 0  # To track actual credits given for UI display
+    unlocked_achievements = []
     if game_over:
         try:
             with transaction.atomic():
@@ -559,24 +560,26 @@ def chat(request):
                             
                     s.save()
                     session = s
-                    
-                    # Verificar y desbloquear logros
-                    unlocked_achievements = []
-                    try:
-                        unlocked = AchievementService.on_simulation_completed(s.user, s)
-                        if unlocked:
-                            unlocked_achievements = [{
-                                'achievement_id': a['achievement'].achievement_id,
-                                'name': a['achievement'].name,
-                                'description': a['achievement'].description,
-                                'category': a['achievement'].category,
-                                'icon': a['achievement'].icon.url if a['achievement'].icon else None,
-                                'cybercreds_reward': a['achievement'].cybercreds_reward,
-                                'xp_reward': a['achievement'].xp_reward,
-                            } for a in unlocked]
-                            logger.info(f"🏆 Logros desbloqueados: {[a['name'] for a in unlocked_achievements]}")
-                    except Exception as e:
-                        logger.warning(f"⚠️ Error verificando logros: {e}")
+
+            # Verificar y desbloquear logros FUERA del atomic block.
+            # Si estuviera dentro y AchievementService tocara la DB y fallara,
+            # corrompería la transacción y haría rollback del s.save() de arriba.
+            if session.is_game_over:
+                try:
+                    unlocked = AchievementService.on_simulation_completed(session.user, session)
+                    if unlocked:
+                        unlocked_achievements = [{
+                            'achievement_id': a['achievement'].achievement_id,
+                            'name': a['achievement'].name,
+                            'description': a['achievement'].description,
+                            'category': a['achievement'].category,
+                            'icon': a['achievement'].icon.url if a['achievement'].icon else None,
+                            'cybercreds_reward': a['achievement'].cybercreds_reward,
+                            'xp_reward': a['achievement'].xp_reward,
+                        } for a in unlocked]
+                        logger.info(f"🏆 Logros desbloqueados: {[a['name'] for a in unlocked_achievements]}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Error verificando logros: {e}")
                         
         except Exception:
              logger.exception(f'Failed to close session {session.session_id}')
@@ -623,7 +626,7 @@ def chat(request):
     }
 
     # Incluir logros desbloqueados (si los hay)
-    if session.is_game_over and 'unlocked_achievements' in dir() and unlocked_achievements:
+    if session.is_game_over and unlocked_achievements:
         resp['achievements_unlocked'] = unlocked_achievements
 
     # Si hubo disclosure pero quedan vidas (y no es game over), añadir advertencia
